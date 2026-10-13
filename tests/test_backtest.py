@@ -24,6 +24,17 @@ def synthetic_frame(T=360, countries=("A", "B"), beta=0.4, seed=0):
     return pd.DataFrame(cols)
 
 
+def test_drop_unrealized_blanks_returns_past_cutoff():
+    from bondpredictor.dataset import drop_unrealized
+
+    f = synthetic_frame()
+    cut = f.index[200]
+    g = drop_unrealized(f, cut)
+    assert g["A.rx12_n10"].last_valid_index() == cut - 12
+    assert g["A.rx1_n10"].last_valid_index() == cut - 1
+    assert g["A.x"].equals(f["A.x"])
+
+
 def test_information_set_masks_unrealised_returns():
     f = synthetic_frame()
     info = information_set(f, 100)

@@ -102,15 +102,111 @@ All free.  `config.py` is the single place that says which series feeds what.
 * Learned factors (CP, global CP, cycle, macro PCs) are re-fitted at every
   origin on that information set.  `tests/test_backtest.py` checks this:
   scrambling all data after an origin must leave its forecast unchanged.
-* Ridge and lasso choose their penalty on a validation block at the end of
-  the training window.  The block is separated by a horizon-length gap so
-  overlapping returns cannot leak across.
+* Ridge and lasso choose their penalty by expanding-window CV inside the
+  training window: five validation blocks over its second half, each with
+  a horizon-length gap so overlapping returns cannot leak across.  The
+  penalty is re-selected every 12 months; coefficients are refitted every
+  month.
+* Returns that would need data after the last complete month are blanked,
+  so a partial month never completes a target.
 * Predictors not yet observed at an origin, or with too little history,
   are dropped for that origin rather than back-filled.
 
 ## Results from this build
 
-RESULTS_PLACEHOLDER
+Run on 13 October 2026 from a sandbox that could reach **FRED and the
+Bundesbank only**.  Three sources therefore used their fallbacks:
+
+* **US curve**: Kim–Wright zero yields (1990–), not GSW (1961–).  The OOS
+  window starts in Dec 2000.
+* **US macro panel**: the curated FRED panel, not FRED-MD.
+* **Japan**: no MOF zero curve.  The OECD 10-year yield (a *monthly
+  average*) with par-bond returns, so there is no CP or cycle factor, and
+  inflation is extended with the GDP deflator after mid-2021.
+
+Run `build` + `backtest` on a machine with full internet access to get the
+GSW, MOF and FRED-MD versions.
+
+Target: 12-month log excess return on the 10y bond.  Expanding window with
+at least 120 training months.  All models for a country are scored on the
+same months (US 2000-12..2025-09, DE 1990-01..2025-09, JP 1999-12..2025-08).
+The strategy is mean–variance timing (γ = 5, weight clipped to [−1, 2])
+rebalanced monthly on one-month returns.  CER gain is against the same
+strategy driven by the prevailing mean.
+
+| | Model | R²_OS | Clark–West p | Sharpe: model / mean / hold | CER gain (bp/yr) |
+|---|---|---|---|---|---|
+| US | slope | +0.14 | 0.001 | 0.44 / 0.31 / 0.36 | +142 |
+| US | cp | -0.23 | 0.074 | 0.19 / 0.31 / 0.36 | +26 |
+| US | cp+global | -0.27 | 0.083 | 0.12 / 0.31 / 0.36 | -19 |
+| US | curve | +0.16 | 0.000 | 0.83 / 0.31 / 0.36 | +540 |
+| US | curve+macro | +0.15 | 0.000 | 0.78 / 0.31 / 0.36 | +497 |
+| US | all:ridge | -0.17 | 0.020 | 0.38 / 0.31 / 0.36 | +148 |
+| US | all:lasso | -0.22 | 0.005 | 0.69 / 0.31 / 0.36 | +421 |
+| US | all:pcr | -0.11 | 0.004 | 0.42 / 0.31 / 0.36 | +185 |
+| US | all:combo | +0.10 | 0.002 | 0.40 / 0.31 / 0.36 | +154 |
+| US | panel:ridge | +0.05 | 0.002 | 0.62 / 0.31 / 0.36 | +363 |
+| DE | slope | +0.11 | 0.002 | 0.56 / 0.39 / 0.46 | +159 |
+| DE | cp | -0.47 | 0.285 | -0.23 / 0.39 / 0.46 | -370 |
+| DE | cp+global | -0.32 | 0.064 | 0.26 / 0.43 / 0.46 | -113 |
+| DE | curve | -0.17 | 0.027 | 0.38 / 0.43 / 0.46 | -22 |
+| DE | curve+macro | -0.39 | 0.192 | 0.26 / 0.43 / 0.46 | -145 |
+| DE | all:ridge | -0.25 | 0.297 | 0.26 / 0.43 / 0.46 | -144 |
+| DE | all:lasso | -0.52 | 0.337 | 0.09 / 0.43 / 0.46 | -325 |
+| DE | all:pcr | -0.11 | 0.034 | 0.38 / 0.43 / 0.46 | -32 |
+| DE | all:combo | +0.06 | 0.014 | 0.44 / 0.43 / 0.46 | +14 |
+| DE | panel:ridge | -0.12 | 0.061 | 0.29 / 0.43 / 0.46 | -109 |
+| JP | slope | +0.17 | 0.000 | 0.29 / 0.25 / 0.25 | +26 |
+| JP | cp+global | +0.21 | 0.000 | -0.04 / 0.25 / 0.25 | -119 |
+| JP | curve | +0.32 | 0.000 | 0.17 / 0.25 / 0.25 | -33 |
+| JP | curve+macro | +0.13 | 0.006 | 0.26 / 0.25 / 0.25 | +12 |
+| JP | all:ridge | +0.19 | 0.014 | 0.34 / 0.25 / 0.25 | +59 |
+| JP | all:lasso | +0.00 | 0.010 | 0.15 / 0.25 / 0.25 | -42 |
+| JP | all:pcr | +0.12 | 0.012 | 0.02 / 0.25 / 0.25 | -107 |
+| JP | all:combo | +0.07 | 0.002 | 0.25 / 0.25 / 0.25 | +0 |
+| JP | panel:ridge | +0.20 | 0.007 | 0.27 / 0.25 / 0.25 | +16 |
+
+How to read this:
+
+* **The slope is the most reliable predictor.**  It beats the historical
+  mean in all three countries (R²_OS 11–17%, Clark–West p ≤ 0.002) and
+  improves the timing Sharpe ratio in each.  This matches the out-of-sample
+  literature (Thornton–Valente; Gargano–Pettenuzzo–Timmermann).
+* **The CP factor does well in sample and badly out of sample.**  In-sample
+  R² is 0.20 (US) and 0.11 (DE), with Hodrick t-stats of 2.4 and 3.0, but
+  R²_OS is −0.23 and −0.47.  Fitted curves (Kim–Wright, Bundesbank)
+  smooth forwards and make the five-forward regression unstable.  This is
+  the Bauer–Hamilton / smoothing problem in practice.
+* **Global information helps Japan.**  The global CP factor plus the US
+  slope give R²_OS 0.21 for JGBs, consistent with US yields acting as the
+  global factor.
+* **The US curve block (slope, CP, global CP, cycle, carry under ridge) is
+  the best US model.**  R²_OS is 0.16 and the timing Sharpe 0.83 vs 0.31.
+  Adding macro factors adds nothing out of sample.
+* **Kitchen-sink models overfit.**  All 20+ predictors under ridge or lasso
+  give negative R²_OS in the US and Germany, even with cross-validated
+  shrinkage.  Forecast combination is the only "all predictors" model that
+  stays positive everywhere.  The pooled panel helps Japan (+0.20), is
+  small for the US (+0.05) and negative for Germany.
+* A significant Clark–West statistic with a negative R²_OS (e.g. US
+  `all:lasso`) means the predictors carry information but estimation noise
+  costs more than it gains.  That pattern is common at this sample size.
+* Japan's R²_OS is flattered by the smoothed monthly-average yields and
+  near-zero rates, and it does not turn into trading gains.  Treat it as
+  provisional until rerun on MOF data.
+
+In-sample, for comparison (`insample --bootstrap 300`, 12-month return on the
+10y bond):
+
+| | Predictor | R² | t (Newey–West) | t (Hodrick 1B) | bootstrap p |
+|---|---|---|---|---|---|
+| US 1990–2025 | slope | 0.13 | 3.5 | 1.9 | 0.03 |
+| US 1990–2025 | CP | 0.20 | 3.6 | 2.4 | 0.02 |
+| DE 1972–2025 | slope | 0.12 | 2.8 | 2.7 | 0.04 |
+| DE 1972–2025 | CP | 0.11 | 3.7 | 3.0 | 0.003 |
+
+The bootstrap treats CP as observed rather than estimated, so its p-value
+is optimistic.  The out-of-sample table is the one to trust.
 
 ## Layout
 

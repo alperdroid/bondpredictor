@@ -30,7 +30,7 @@ from .features import (
     regime_dummy,
     trend_inflation,
 )
-from .returns import maturity_label, par_bond_excess_returns, rx_column, zero_excess_returns
+from .returns import maturity_label, par_bond_excess_returns, rx_column, target_horizon, zero_excess_returns
 from .timeseries import to_monthly
 
 log = logging.getLogger(__name__)
@@ -285,6 +285,20 @@ def build_country(dl: Downloader, cfg: CountryConfig) -> CountryData:
     return CountryData(cfg.code, frame, curve, source, notes)
 
 
+def drop_unrealized(frame: pd.DataFrame, cutoff: pd.Period) -> pd.DataFrame:
+    """Blank returns that would need data after ``cutoff``.
+
+    Returns are computed before the sample is cut, so without this a
+    12-month return could be completed with a partial-month yield.
+    """
+    frame = frame.copy()
+    for col in frame.columns:
+        h = target_horizon(col)
+        if h:
+            frame.loc[frame.index > cutoff - h, col] = np.nan
+    return frame
+
+
 def build_dataset(
     countries=("US", "DE", "JP"),
     dl: Downloader | None = None,
@@ -315,6 +329,6 @@ def build_dataset(
     frame = frame.reindex(full)
     # Drop the trailing months where nothing but slow macro data exists.
     last = max(frame[f"{c}.y_10"].last_valid_index() for c in built)
-    cutoff = pd.Period(end, "M") if end else pd.Period(pd.Timestamp.today(), "M") - 1
-    frame = frame.loc[: min(last, cutoff)]
+    cutoff = min(last, pd.Period(end, "M") if end else pd.Period(pd.Timestamp.today(), "M") - 1)
+    frame = drop_unrealized(frame, cutoff).loc[:cutoff]
     return Dataset(frame=frame, countries=built)

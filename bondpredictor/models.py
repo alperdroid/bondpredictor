@@ -74,25 +74,25 @@ def _ridge(Z, yc, alpha):
     return np.linalg.solve(Z.T @ Z / n + alpha * np.eye(p), Z.T @ yc / n)
 
 
-def _lasso(Z, yc, alpha, beta0=None, max_iter=2000, tol=1e-7):
-    """Coordinate descent for (1/2n)||y - Zb||^2 + alpha*||b||_1."""
+def _lasso(Z, yc, alpha, beta0=None, max_iter=1000, tol=1e-6):
+    """Coordinate descent for (1/2n)||y - Zb||^2 + alpha*||b||_1 on the Gram matrix."""
     n, p = Z.shape
+    G = Z.T @ Z / n
+    c = Z.T @ yc / n
+    diag = np.diag(G).copy()
     beta = np.zeros(p) if beta0 is None else beta0.copy()
-    col_ss = (Z**2).sum(axis=0) / n
-    r = yc - Z @ beta
     for _ in range(max_iter):
         delta = 0.0
         for j in range(p):
-            if col_ss[j] == 0:
+            if diag[j] <= 0:
                 continue
             old = beta[j]
-            rho = Z[:, j] @ r / n + col_ss[j] * old
-            new = np.sign(rho) * max(abs(rho) - alpha, 0.0) / col_ss[j]
+            rho = c[j] - G[j] @ beta + diag[j] * old
+            new = np.sign(rho) * max(abs(rho) - alpha, 0.0) / diag[j]
             if new != old:
-                r -= Z[:, j] * (new - old)
                 beta[j] = new
                 delta = max(delta, abs(new - old))
-        if delta < tol:
+        if delta < tol * max(1.0, np.abs(beta).max()):
             break
     return beta
 
@@ -192,6 +192,8 @@ class Combination(_Standardized):
         self.beta = slopes / Z.shape[1]
         return self
 
+
+PENALIZED = ("ridge", "lasso")
 
 ESTIMATORS = {
     "mean": HistoricalMean,

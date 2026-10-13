@@ -12,11 +12,22 @@ Constant-maturity par bonds (when only a 10-year yield series exists)
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
 from .curves import ZeroCurve
 from .timeseries import forward_sum
+
+
+_TARGET_RE = re.compile(r"(?:^|\.)rx(\d+)_")
+
+
+def target_horizon(column: str) -> int | None:
+    """Holding period in months encoded in a return column name (``US.rx12_n10`` -> 12)."""
+    m = _TARGET_RE.search(column)
+    return int(m.group(1)) if m else None
 
 
 def maturity_label(n: float) -> str:

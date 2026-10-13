@@ -16,24 +16,16 @@ At each forecast origin ``t``:
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 
 from .learned import Transformer
-from .models import make_estimator
+from .models import PENALIZED, make_estimator
+from .returns import target_horizon
 
 log = logging.getLogger(__name__)
-
-_TARGET_RE = re.compile(r"(?:^|\.)rx(\d+)_")
-
-
-def target_horizon(column: str) -> int | None:
-    m = _TARGET_RE.search(column)
-    return int(m.group(1)) if m else None
-
 
 def information_set(frame: pd.DataFrame, pos: int) -> pd.DataFrame:
     """Rows ``0..pos`` with returns not yet realised at ``pos`` set to NaN."""
@@ -96,16 +88,30 @@ def _augment(info: pd.DataFrame, transformers: list[Transformer]) -> pd.DataFram
     return pd.concat([info] + extra, axis=1)
 
 
+def _fit_estimator(name, kw, horizon, X, y, cache: dict, pos: int, cv_every: int):
+    """Fit an estimator, re-selecting a CV penalty only every ``cv_every`` months."""
+    kw = dict(kw)
+    reuse = name in PENALIZED and "alpha" not in kw and cache.get("alpha") is not None and pos - cache["pos"] < cv_every
+    if reuse:
+        kw["alpha"] = cache["alpha"]
+    est = make_estimator(name, horizon=horizon, **kw).fit(X, y)
+    if name in PENALIZED and not reuse and "alpha" not in kw:
+        cache.update(alpha=est.alpha_, pos=pos)
+    return est
+
+
 def run_backtest(
     frame: pd.DataFrame,
     spec: ModelSpec,
     start: str = "1990-01",
     end: str | None = None,
     min_train: int = 120,
+    cv_every: int = 12,
 ) -> pd.DataFrame:
     """Expanding-window forecasts for one country/target.
 
-    Returns a frame indexed by forecast origin with ``forecast``,
+    Coefficients are re-estimated every month; penalties chosen by CV are
+    re-selected every ``cv_every`` months.  Returns a frame indexed by forecast origin with ``forecast``,
     ``benchmark``, ``actual`` (NaN until realised), ``n_train`` and the
     predictors used.
     """
@@ -114,7 +120,7 @@ def run_backtest(
     idx = frame.index
     first = idx.searchsorted(pd.Period(start, "M"))
     last = len(idx) - 1 if end is None else idx.searchsorted(pd.Period(end, "M"), side="right") - 1
-    rows = []
+    rows, cache = [], {}
     for pos in range(first, last + 1):
         info = information_set(frame, pos)
         data = _augment(info, spec.transformers)
@@ -128,8 +134,8 @@ def run_backtest(
         ytr = y[ok].to_numpy()
         bench = float(ytr.mean())
         if feats:
-            est = make_estimator(spec.estimator, horizon=h, **spec.estimator_kw)
-            est.fit(data.loc[ok, feats].to_numpy(dtype=float), ytr)
+            est = _fit_estimator(spec.estimator, spec.estimator_kw, h, data.loc[ok, feats].to_numpy(dtype=float),
+                                 ytr, cache, pos, cv_every)
             fc = float(est.predict(data[feats].iloc[[-1]].to_numpy(dtype=float))[0])
         else:
             fc = bench
@@ -182,6 +188,7 @@ def run_panel_backtest(
     start: str = "1990-01",
     end: str | None = None,
     min_train: int = 120,
+    cv_every: int = 12,
 ) -> dict[str, pd.DataFrame]:
     """Expanding-window forecasts from a pooled panel; one result frame per country."""
     h = spec.horizon
@@ -192,6 +199,7 @@ def run_panel_backtest(
     last = len(idx) - 1 if end is None else idx.searchsorted(pd.Period(end, "M"), side="right") - 1
     generic = [_generic(f) for f in spec.features]
     rows: dict[str, list] = {c: [] for c in spec.countries}
+    cache: dict = {}
     for pos in range(first, last + 1):
         info = information_set(frame, pos)
         data = _augment(info, spec.transformers)
@@ -223,9 +231,10 @@ def run_panel_backtest(
         use = [g for g in generic if stacked[g].abs().sum() > 0]
         if len(stacked) < min_train:
             continue
-        est = make_estimator(spec.estimator, horizon=h * len(blocks), **spec.estimator_kw)
         if use:
-            est.fit(stacked[use].to_numpy(dtype=float), stacked["_y"].to_numpy())
+            # Rows are stacked by date, so the CV gap is horizon x countries rows.
+            est = _fit_estimator(spec.estimator, spec.estimator_kw, h * len(blocks),
+                                 stacked[use].to_numpy(dtype=float), stacked["_y"].to_numpy(), cache, pos, cv_every)
         for c, xt in origin_x.items():
             ybar, n, present = means[c]
             fc = ybar + (float(est.predict(xt[use].to_numpy(dtype=float)[None, :])[0]) if use else 0.0)
