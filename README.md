@@ -11,12 +11,13 @@ regressions use Hodrick (1992) standard errors and a Bauer–Hamilton-style
 small-sample bootstrap.
 
 ```
-pip install -e ".[dev]"          # numpy, pandas, requests (+ pytest)
+pip install -e ".[dev,ml]"       # numpy, pandas, requests, scikit-learn (+ pytest)
 pip install xlrd                 # optional: NY Fed ACM workbook
 
 python -m bondpredictor build                  # download + build data/processed/panel.pkl
 python -m bondpredictor insample --country US --bootstrap 500
-python -m bondpredictor backtest --out output  # full model zoo, all countries, + pooled panel
+python -m bondpredictor backtest --ml --jobs 4 --out output   # linear + ML zoo, all countries, pooled panel
+python -m bondpredictor robustness --forecasts output/forecasts.pkl --jobs 4 --out output
 python -m bondpredictor forecast --model curve # latest forecast per country
 python -m bondpredictor termpremium --country DE
 ```
@@ -208,6 +209,98 @@ In-sample, for comparison (`insample --bootstrap 300`, 12-month return on the
 The bootstrap treats CP as observed rather than estimated, so its p-value
 is optimistic.  The out-of-sample table is the one to trust.
 
+## Machine-learning models and robustness
+
+`backtest --ml` adds four ML forecasters (`ml.py`, scikit-learn):
+
+* random forest and gradient boosting on every predictor plus raw forward rates;
+* a neural net on the same inputs;
+* a neural net on forwards plus macro factors (the Bianchi–Büchner–Tamoni
+  2021 specification);
+* `ml:ensemble`, the equal-weighted average of the forest, boosting and net.
+
+The ML models share safeguards suited to ~300–400 overlapping monthly
+observations:
+
+* standardised inputs and target;
+* small hyperparameter grids, tuned by expanding-window CV with a horizon gap;
+* nets averaged over 5 initialisations;
+* inputs clamped to the training range;
+* yearly refits with the fitted factors frozen alongside.
+
+Clamping was added after the first run, which showed the German net
+forecasting +13% to +25% just before the 2022 sell-off.  Negative yields lay
+outside its training range and a ReLU net extrapolates linearly.  The
+unclamped version is kept as a robustness variant so the effect of that
+choice is visible.
+
+`robustness` then runs the following (full output in
+[`docs/robustness_report.md`](docs/robustness_report.md)):
+
+* **Diebold–Mariano** (Harvey–Leybourne–Newbold corrected) of every model
+  against the slope-only model.
+* **Hansen SPA / White Reality Check** across all 12 main models.  This asks
+  whether *any* model beats the benchmark once the number of models tried
+  is accounted for.
+* R²_OS by **sub-period** (1990s, 2000–07, GFC/QE, 2016–21, 2022–), by
+  **zero-lower-bound regime**, and by **evaluation start date**.
+* About 75 **re-estimation variants**:
+  * a rolling 15-year window;
+  * other random seeds;
+  * each hyperparameter setting fixed instead of CV-tuned;
+  * the net without input clamping;
+  * training that excludes QE (US), negative rates (DE) or YCC (JP) months.
+* Timing-strategy **Sharpe net of 5 bp** per unit of turnover.
+
+### What the robustness tests say (12-month return on the 10y bond)
+
+| | Best ML model, R²_OS | Any model beats the mean? (SPA p) | Any ML model beats the mean? | Any model beats the slope? |
+|---|---|---|---|---|
+| US 2000–25 | boosting −0.03, forest −0.03 | **yes, 0.02** | no, 0.60 | no, 0.85 |
+| DE 1990–25 | forest −0.16 | no, 0.30 | no, 1.00 | no, 1.00 |
+| JP 2000–25 | forest **+0.23**, boosting +0.16 | borderline, 0.055 | **yes, 0.03** | no, 0.74 |
+
+1. **ML does not beat the slope anywhere** once you account for having
+   tried 12 models.  No ML model has a significantly positive
+   Diebold–Mariano statistic against the slope; the best ones are
+   statistically tied (US |DM| < 1, Japan's forest +0.57, p = 0.57).  In
+   Germany, boosting and the nets are significantly *worse* than the slope
+   (DM p = 0.03 and 0.002).
+2. **Trees are robust; nets are fragile.**
+   * Forest and boosting results barely move across seeds (forecast
+     correlation 0.95–0.99) or fixed hyperparameters.  A rolling window
+     moves them more (US forest −0.12 vs −0.03).
+   * Net results depend on the penalty (US R²_OS −0.30 with strong L2,
+     −0.71 with weak) and on the seed set (−0.22 to −0.41).  The
+     Bianchi-style forwards-plus-macro net is the worst model in every
+     country (R²_OS −0.3 to −1.5).
+3. **Japan is the one place ML helps.**  The forest (+0.23) and boosting
+   (+0.16) beat the mean after the snooping correction.  Boosting's timing
+   Sharpe is 0.45 net of costs vs 0.25 for the mean.  This holds across
+   seeds, hyperparameters and a rolling window, but it is not
+   significantly better than the slope.  It also rests on the FRED
+   par-yield fallback (smoothed monthly averages), so treat it as
+   provisional until it is rerun on MOF data.
+4. **US timing value from ML is real but second-best.**  Boosting, the net
+   and the ensemble lift the strategy Sharpe to about 0.55 (net of costs)
+   from 0.31 for the mean.  The linear curve model still does better, at
+   0.80.
+5. **Predictability is regime-dependent.**  In the US and Japan most
+   models do better at the zero lower bound than outside it.  In Germany
+   most models fail in the 1990s and 2008–15, and only the slope and the
+   forecast combination are positive in nearly every sub-period.
+6. The SPA test compares mean squared errors without the Clark–West
+   adjustment, so it is conservative for nested comparisons.  That is why
+   Germany's slope model (Clark–West p = 0.002 on its own) does not survive
+   the 12-model SPA (p = 0.30).
+
+Bottom line on this data: the ML models add little that is robust.  Use the
+slope, or the forecast combination, as the core signal.  Gradient boosting
+is a reasonable diversifying second model for timing, and the neural nets
+are not reliable at this sample size.  Rerun with GSW data from 1961 for a
+fairer test of the US neural-net results in the literature, whose evidence
+rests on a longer sample.
+
 ## Layout
 
 ```
@@ -220,6 +313,8 @@ bondpredictor/
   learned.py     CP, global CP, cycle and PCA factors re-fitted inside the backtest
   dataset.py     builds the monthly panel
   models.py      OLS, ridge, lasso, PCR, forecast combination (numpy only)
+  ml.py          random forest, gradient boosting, neural-net ensembles (scikit-learn)
+  robustness.py  Diebold–Mariano, SPA / Reality Check, sub-period and re-estimation checks
   backtest.py    expanding-window country and pooled-panel backtests
   evaluation.py  R²_OS, Clark–West, timing strategy, CER
   inference.py   Newey–West, Hodrick 1B, null bootstrap

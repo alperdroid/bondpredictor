@@ -17,6 +17,8 @@ dependencies = [
 [project.optional-dependencies]
 # xlrd reads the NY Fed ACM workbook (.xls); openpyxl reads .xlsx overrides.
 excel = ["xlrd>=2.0", "openpyxl>=3.1"]
+# Random forest, gradient boosting and neural-net forecasters.
+ml = ["scikit-learn>=1.3"]
 dev = ["pytest>=7"]
 
 [project.scripts]

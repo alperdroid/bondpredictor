@@ -40,6 +40,8 @@ def feature_blocks(c: str, countries: list[str], frame: pd.DataFrame) -> dict[st
         "global": (["G.cp"] + ([] if c == "US" else ["US.slope"]), [glob]),
         "cycle": (["{c}.cycle"], [cycle_factor(c)]),
         "carry": (["{c}.carry"], []),
+        # Raw one-year forwards (inputs of Bianchi-Buchner-Tamoni's neural nets).
+        "fwd": ([f"{{c}}.fwd_{k}" for k in range(1, 6)] + ["{c}.slope"], []),
         "macro": (
             [f"{{c}}.mf{i + 1}" for i in range(N_MACRO_FACTORS)] + ["{c}.output_gap", "{c}.infl_unc"],
             [PCAFactors(rf"^{c}\.m_", N_MACRO_FACTORS, output_prefix=f"{c}.mf")],
@@ -81,16 +83,36 @@ MODEL_ZOO = [
 ]
 
 
+ML_ALL = ALL + ["fwd"]
+ML_REFIT_MONTHS = 12
+
+# Machine-learning models: refitted yearly, hyperparameters tuned by CV.
+ML_ZOO = [
+    ("ml:rf", ML_ALL, "rf", {}),
+    ("ml:gbm", ML_ALL, "gbm", {}),
+    ("ml:nn", ML_ALL, "nn", {}),
+    ("ml:nn_fwd_macro", ["fwd", "macro"], "nn", {}),
+]
+
+# Equal-weighted averages of other models' forecasts, formed date by date.
+ENSEMBLES = {"ml:ensemble": ["ml:rf", "ml:gbm", "ml:nn"]}
+
+
 def country_specs(c: str, countries: list[str], frame: pd.DataFrame, maturity: float = 10, horizon: int = 12,
-                  models=None, exclude_regimes=()) -> list[ModelSpec]:
+                  models=None, exclude_regimes=(), ml: bool = False) -> list[ModelSpec]:
     blocks = feature_blocks(c, countries, frame)
     target = f"{c}.{rx_column(horizon, maturity)}"
+    zoo = [(n, b, e, k, 1) for n, b, e, k in MODEL_ZOO]
+    if ml or (models and any(m.startswith("ml:") for m in models)):
+        zoo += [(n, b, e, k, ML_REFIT_MONTHS) for n, b, e, k in ML_ZOO]
     specs = []
-    for name, names, est, kw in MODEL_ZOO:
+    for name, names, est, kw, refit in zoo:
         if models and name not in models:
             continue
         feats, trs = _combine(blocks, names)
-        specs.append(ModelSpec(name, target, feats, trs, est, dict(kw), [f"{c}.reg_{r}" for r in exclude_regimes]))
+        feats = list(dict.fromkeys(feats))
+        specs.append(ModelSpec(name, target, feats, trs, est, dict(kw),
+                               [f"{c}.reg_{r}" for r in exclude_regimes], refit_every=refit))
     return specs
 
 
@@ -134,21 +156,92 @@ class RunResult:
     summary: pd.DataFrame
 
 
+_FRAME: pd.DataFrame | None = None  # shared with forked worker processes
+
+
+def _run_job(job):
+    key, spec, kw = job
+    if isinstance(spec, PanelSpec):
+        return key, run_panel_backtest(_FRAME, spec, **kw)
+    return key, run_backtest(_FRAME, spec, **kw)
+
+
+def _run_job_single_threaded(job):
+    """Worker entry point: one BLAS thread per process so workers don't oversubscribe the CPUs."""
+    try:
+        from threadpoolctl import threadpool_limits
+    except ImportError:  # pragma: no cover - threadpoolctl ships with scikit-learn
+        return _run_job(job)
+    with threadpool_limits(limits=1):
+        return _run_job(job)
+
+
+def run_jobs(frame: pd.DataFrame, jobs: list, n_jobs: int = 1) -> dict:
+    """Run backtest jobs ``(key, spec, kwargs)``, in parallel processes if ``n_jobs > 1``."""
+    global _FRAME
+    _FRAME = frame
+    # Slow jobs first so the pool stays busy.
+    jobs = sorted(jobs, key=lambda j: -(getattr(j[1], "refit_every", 1) > 1 or isinstance(j[1], PanelSpec)))
+    out = {}
+    if n_jobs <= 1:
+        for job in jobs:
+            log.info("backtest %s", job[0])
+            k, r = _run_job(job)
+            out[k] = r
+        return out
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor
+
+    with ProcessPoolExecutor(max_workers=n_jobs, mp_context=mp.get_context("fork")) as pool:
+        for k, r in pool.map(_run_job_single_threaded, jobs):
+            log.info("done %s", k)
+            out[k] = r
+    return out
+
+
+def add_ensembles(forecasts: dict) -> dict:
+    """Equal-weighted combinations of member forecasts on the dates all members cover."""
+    countries = {c for c, _ in forecasts}
+    for name, members in ENSEMBLES.items():
+        for c in countries:
+            parts = [forecasts[(c, m)] for m in members if (c, m) in forecasts]
+            if len(parts) < 2:
+                continue
+            dates = parts[0].index
+            for p in parts[1:]:
+                dates = dates.intersection(p.index)
+            frame = pd.DataFrame({
+                "forecast": sum(p.loc[dates, "forecast"] for p in parts) / len(parts),
+                "benchmark": sum(p.loc[dates, "benchmark"] for p in parts) / len(parts),
+                "actual": parts[0].loc[dates, "actual"],
+                "n_train": parts[0].loc[dates, "n_train"],
+                "features": "+".join(members),
+            })
+            forecasts[(c, name)] = frame
+    return forecasts
+
+
 def run_all(frame: pd.DataFrame, countries: list[str], start: str = "1990-01", min_train: int = 120,
             maturity: float = 10, horizon: int = 12, models=None, panel: bool = True,
-            exclude_regimes=(), common_sample: bool = True) -> RunResult:
-    forecasts: dict[tuple[str, str], pd.DataFrame] = {}
+            exclude_regimes=(), common_sample: bool = True, ml: bool = False, n_jobs: int = 1,
+            window: int | None = None) -> RunResult:
+    kw = dict(start=start, min_train=min_train, window=window)
+    jobs = []
     for c in countries:
-        for spec in country_specs(c, countries, frame, maturity, horizon, models, exclude_regimes):
-            log.info("backtest %s %s", c, spec.name)
-            res = run_backtest(frame, spec, start=start, min_train=min_train)
-            if not res.empty:
-                forecasts[(c, spec.name)] = res
+        for spec in country_specs(c, countries, frame, maturity, horizon, models, exclude_regimes, ml):
+            jobs.append(((c, spec.name), spec, kw))
     if panel and len(countries) > 1 and (not models or "panel:ridge" in models):
         spec = panel_spec(countries, frame, maturity, horizon, exclude_regimes=exclude_regimes)
-        log.info("backtest panel")
-        for c, res in run_panel_backtest(frame, spec, start=start, min_train=min_train).items():
-            forecasts[(c, spec.name)] = res
+        jobs.append((("*", spec.name), spec, kw))
+    raw = run_jobs(frame, jobs, n_jobs)
+    forecasts: dict[tuple[str, str], pd.DataFrame] = {}
+    for (c, name), res in raw.items():
+        if c == "*":
+            for cc, r in res.items():
+                forecasts[(cc, name)] = r
+        elif not res.empty:
+            forecasts[(c, name)] = res
+    forecasts = add_ensembles(forecasts)
     summary = summarize_runs(frame, forecasts, maturity, horizon, common_sample)
     return RunResult(forecasts, summary)
 

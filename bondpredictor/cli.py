@@ -96,10 +96,14 @@ def cmd_backtest(args):
         models=args.models,
         panel=not args.no_panel,
         exclude_regimes=args.exclude_regimes or (),
+        ml=args.ml,
+        n_jobs=args.jobs,
+        window=args.window,
     )
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     res.summary.to_csv(out / "summary.csv", index=False)
+    pd.to_pickle(res.forecasts, out / "forecasts.pkl")
     for (c, name), fc in res.forecasts.items():
         fc.to_csv(out / f"forecasts_{c}_{name.replace(':', '_').replace('+', '_')}.csv")
     show = res.summary.copy()
@@ -108,6 +112,33 @@ def cmd_backtest(args):
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(show.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
     print(f"\nwrote {out}/summary.csv and per-model forecasts")
+
+
+def cmd_robustness(args):
+    from .pipeline import run_jobs
+    from .robustness import country_report, robustness_jobs
+
+    frame = _load_frame(args)
+    main = pd.read_pickle(Path(args.forecasts))
+    variants: dict = {}
+    saved = Path(args.out) / "robustness_variants.pkl"
+    if args.reuse_variants and saved.exists():
+        variants = pd.read_pickle(saved)
+    elif not args.skip_variants:
+        jobs = robustness_jobs(frame, list(args.countries), start=args.start, min_train=args.min_train)
+        print(f"running {len(jobs)} re-estimation variants on {args.jobs} processes ...", flush=True)
+        variants = run_jobs(frame, jobs, args.jobs)
+        pd.to_pickle(variants, Path(args.out) / "robustness_variants.pkl")
+    sections = []
+    for c in args.countries:
+        m = {name: r for (cc, name), r in main.items() if cc == c}
+        v = {name: r for (cc, name), r in variants.items() if cc == c and not r.empty}
+        sections.append(country_report(c, frame, m, v, args.horizon, n_boot=args.n_boot))
+    text = "# Robustness report\n\n" + "\n\n".join(sections)
+    path = Path(args.out) / "robustness.md"
+    path.write_text(text)
+    print(text)
+    print(f"\nwrote {path}")
 
 
 def cmd_forecast(args):
@@ -193,8 +224,21 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--models", nargs="+", default=None, help="subset of the model zoo (e.g. slope cp curve all:ridge panel:ridge)")
     t.add_argument("--no-panel", action="store_true")
     t.add_argument("--exclude-regimes", nargs="+", default=None, help="drop training months in these regimes, e.g. ycc nirp")
+    t.add_argument("--ml", action="store_true", help="also run the machine-learning models (needs scikit-learn)")
+    t.add_argument("--jobs", type=int, default=1, help="parallel processes")
+    t.add_argument("--window", type=int, default=None, help="rolling estimation window in months (default expanding)")
     t.add_argument("--out", default="output")
     t.set_defaults(func=cmd_backtest)
+
+    r = sub.add_parser("robustness", parents=[common, model], help="robustness tests on backtest forecasts")
+    r.add_argument("--forecasts", default="output/forecasts.pkl", help="forecasts.pkl written by `backtest`")
+    r.add_argument("--start", default="1990-01")
+    r.add_argument("--jobs", type=int, default=1)
+    r.add_argument("--n-boot", type=int, default=2000)
+    r.add_argument("--skip-variants", action="store_true", help="only tests on existing forecasts (no re-estimation)")
+    r.add_argument("--reuse-variants", action="store_true", help="reuse robustness_variants.pkl from --out")
+    r.add_argument("--out", default="output")
+    r.set_defaults(func=cmd_robustness)
 
     f = sub.add_parser("forecast", parents=[common, model], help="latest forecast")
     f.add_argument("--model", default="slope")

@@ -93,12 +93,21 @@ def strategy_stats(returns: pd.Series, gamma: float = 5.0) -> dict:
     }
 
 
-def evaluate_strategy(result: pd.DataFrame, monthly_rx: pd.Series, horizon: int, gamma: float = 5.0) -> dict:
-    """Model vs prevailing-mean vs buy-and-hold, on the months with realised returns."""
+def evaluate_strategy(result: pd.DataFrame, monthly_rx: pd.Series, horizon: int, gamma: float = 5.0,
+                      cost_bp: float = 0.0) -> dict:
+    """Model vs prevailing-mean vs buy-and-hold, on the months with realised returns.
+
+    ``cost_bp`` is charged per unit of turnover in the bond weight (|Δw|),
+    in basis points of notional, to both timing strategies.
+    """
     model = timing_strategy(result["forecast"], monthly_rx, horizon, gamma)
     bench = timing_strategy(result["benchmark"], monthly_rx, horizon, gamma)
     common = model.index.intersection(bench.index)
-    m, b = strategy_stats(model.loc[common, "ret"], gamma), strategy_stats(bench.loc[common, "ret"], gamma)
+    m_ret, b_ret = model.loc[common, "ret"], bench.loc[common, "ret"]
+    if cost_bp:
+        m_ret = m_ret - cost_bp * 1e-4 * model.loc[common, "weight"].diff().abs().fillna(0.0)
+        b_ret = b_ret - cost_bp * 1e-4 * bench.loc[common, "weight"].diff().abs().fillna(0.0)
+    m, b = strategy_stats(m_ret, gamma), strategy_stats(b_ret, gamma)
     hold = strategy_stats(monthly_rx.reindex(common), gamma)
     if not m or not b:
         return {}
@@ -108,4 +117,5 @@ def evaluate_strategy(result: pd.DataFrame, monthly_rx: pd.Series, horizon: int,
         "sharpe_hold": hold.get("sharpe", float("nan")),
         "cer_gain_bp": (m["cer"] - b["cer"]) * 1e4,
         "avg_weight": float(model.loc[common, "weight"].mean()),
+        "turnover": float(model.loc[common, "weight"].diff().abs().mean() * 12),
     }

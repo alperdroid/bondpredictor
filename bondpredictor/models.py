@@ -1,12 +1,13 @@
-"""Forecasting estimators (numpy only).
+"""Forecasting estimators.
 
 All estimators standardise predictors with training moments and keep an
-unpenalised intercept.  Penalised models choose their penalty by
-expanding-window cross-validation over the second half of the training
-window: five consecutive validation blocks, each fitted only on earlier rows,
-with a gap of ``horizon`` months so overlapping returns cannot leak across.
-A single holdout block proved too noisy; the chosen penalty jumped across
-the whole grid from one month to the next.
+unpenalised intercept.  Tunable models (ridge, lasso and the machine-learning
+models in :mod:`bondpredictor.ml`) choose hyperparameters by expanding-window
+cross-validation over the second half of the training window.  Consecutive
+validation blocks are each fitted only on earlier rows, with a gap of
+``horizon`` months so overlapping returns cannot leak across.  A single
+holdout block proved too noisy; the chosen penalty jumped across the whole
+grid from one month to the next.
 """
 
 from __future__ import annotations
@@ -14,8 +15,23 @@ from __future__ import annotations
 import numpy as np
 
 
+def cv_folds(n: int, horizon: int, n_folds: int = 5, cv_frac: float = 0.5, min_fit: int = 24):
+    """Expanding-window CV splits: yields (end_fit, val_start, val_end).
+
+    Validation blocks tile the last ``cv_frac`` of the sample; each is fitted
+    on rows before ``val_start - (horizon - 1)``.
+    """
+    edges = np.linspace(int(n * (1 - cv_frac)), n, n_folds + 1).astype(int)
+    gap = max(horizon - 1, 0)
+    for v0, v1 in zip(edges[:-1], edges[1:]):
+        if v1 > v0 and v0 - gap >= min_fit:
+            yield v0 - gap, v0, v1
+
+
 class Estimator:
     name = "estimator"
+    tune_key: str | None = None  # constructor argument that fixes the tuned hyperparameter
+    tuned_ = None
 
     def __init__(self, horizon: int = 12):
         self.horizon = horizon
@@ -99,6 +115,7 @@ def _lasso(Z, yc, alpha, beta0=None, max_iter=1000, tol=1e-6):
 
 class _Penalized(_Standardized):
     alphas: np.ndarray
+    tune_key = "alpha"
 
     def __init__(self, horizon=12, alpha: float | None = None, n_folds: int = 5, cv_frac: float = 0.5, alphas=None):
         super().__init__(horizon)
@@ -114,14 +131,9 @@ class _Penalized(_Standardized):
     def _cv_alpha(self, Z, y):
         n, p = Z.shape
         grid = np.sort(self.alphas)[::-1]  # strongest penalty first (warm starts)
-        edges = np.linspace(int(n * (1 - self.cv_frac)), n, self.n_folds + 1).astype(int)
-        gap = max(self.horizon - 1, 0)
         sse = np.zeros(len(grid))
         used = 0
-        for v0, v1 in zip(edges[:-1], edges[1:]):
-            end_fit = v0 - gap
-            if v1 <= v0 or end_fit < 3 * p + 12:
-                continue
+        for end_fit, v0, v1 in cv_folds(n, self.horizon, self.n_folds, self.cv_frac, 3 * p + 12):
             Zf, yf = Z[:end_fit], y[:end_fit]
             mu = yf.mean()
             warm = None
@@ -134,6 +146,7 @@ class _Penalized(_Standardized):
     def fit(self, X, y):
         Z, yc = self._prep(X, y)
         self.alpha_ = self.alpha if self.alpha is not None else self._cv_alpha(Z, y)
+        self.tuned_ = self.alpha_
         self.beta = self._solve(Z, yc, self.alpha_)
         return self
 
@@ -193,8 +206,6 @@ class Combination(_Standardized):
         return self
 
 
-PENALIZED = ("ridge", "lasso")
-
 ESTIMATORS = {
     "mean": HistoricalMean,
     "ols": OLS,
@@ -204,6 +215,12 @@ ESTIMATORS = {
     "combo": Combination,
 }
 
+ML_ESTIMATORS = ("rf", "gbm", "nn")
+
 
 def make_estimator(name: str, horizon: int = 12, **kw) -> Estimator:
+    if name in ML_ESTIMATORS:
+        from . import ml  # optional dependency: scikit-learn
+
+        return ml.ML_MODELS[name](horizon=horizon, **kw)
     return ESTIMATORS[name](horizon=horizon, **kw)
