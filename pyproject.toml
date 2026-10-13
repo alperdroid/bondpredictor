@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bondpredictor"
+version = "0.1.0"
+description = "Forecasting government bond excess returns (US, Germany, Japan) from public data"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.1",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+# xlrd reads the NY Fed ACM workbook (.xls); openpyxl reads .xlsx overrides.
+excel = ["xlrd>=2.0", "openpyxl>=3.1"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+bondpredictor = "bondpredictor.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["bondpredictor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
