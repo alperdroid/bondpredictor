@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bondpredictor"
 version = "0.1.0"
-description = "Forecasting government bond excess returns (US, Germany, Japan) from public data"
+description = "Forecasting bond excess returns (US, Germany, Japan) and inflation (US, UK, Japan, euro area) from public data"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -17,8 +17,10 @@ dependencies = [
 [project.optional-dependencies]
 # xlrd reads the NY Fed ACM workbook (.xls); openpyxl reads .xlsx overrides.
 excel = ["xlrd>=2.0", "openpyxl>=3.1"]
-# Random forest, gradient boosting and neural-net forecasters.
-ml = ["scikit-learn>=1.3"]
+# Random forest, gradient boosting and neural-net forecasters (bond and inflation models).
+ml = ["scikit-learn>=1.4", "lightgbm>=4.0", "scipy>=1.10", "torch>=2.2"]
+# Tier-2 deep time-series networks for the inflation horse race.
+deep = ["neuralforecast>=3.0"]
 dev = ["pytest>=7"]
 
 [project.scripts]

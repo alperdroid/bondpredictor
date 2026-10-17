@@ -71,6 +71,10 @@ def load_series(dl: Downloader, spec: Series) -> pd.Series:
         den = load_series(dl, spec.divide)
         idx = s.index.union(den.index)
         s = s.reindex(idx) / den.reindex(idx)
+    if spec.times is not None:
+        other = load_series(dl, spec.times)
+        idx = s.index.union(other.index)
+        s = s.reindex(idx) * other.reindex(idx)
     return (s * spec.scale).rename(spec.key)
 
 

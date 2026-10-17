@@ -1,0 +1,15 @@
+STATUS,200
+MESSAGEID,M181000I
+MESSAGE,Successfully completed
+DATE,2026-10-18T00:58:18.404+09:00
+PARAMETER,FORMAT,CSV
+PARAMETER,LANG,EN
+PARAMETER,DB,PR01
+PARAMETER,STARTDATE,195001
+PARAMETER,ENDDATE,
+PARAMETER,STARTPOSITION,
+NEXTPOSITION,
+SERIES_CODE,NAME_OF_TIME_SERIES,UNIT,FREQUENCY,CATEGORY,LAST_UPDATE,SURVEY_DATES,VALUES
+PRCG20_2600000000,[Import Price Index / yen basis] All commodities,CY2020 average=100,MONTHLY,Corporate Goods Price Index (2020 Base)/ Import Price Index (yen basis),20261013,196001,51.4
+PRCG20_2600000000,[Import Price Index / yen basis] All commodities,CY2020 average=100,MONTHLY,Corporate Goods Price Index (2020 Base)/ Import Price Index (yen basis),20261013,196002,51.1
+PRCG20_2600000000,[Import Price Index / yen basis] All commodities,CY2020 average=100,MONTHLY,Corporate Goods Price Index (2020 Base)/ Import Price Index (yen basis),20261013,202609,193.8

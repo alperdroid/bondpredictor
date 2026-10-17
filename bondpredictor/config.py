@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class Series:
-    source: str  # "fred" | "bundesbank" | "csv"
+    source: str  # "fred" | "bundesbank" | "oecd" | "ecb" | "eurostat" | "boj" | "csv"
     key: str
     lag: int = 0  # publication lag, months
     how: str = "last"  # month aggregation for daily/weekly data: "last" | "mean"
@@ -31,6 +31,7 @@ class Series:
     kind: str = "level"  # "level" or "yoy_pct" (already a % change on a year ago)
     minus: "Series | None" = None  # value = self - minus (e.g. spreads)
     divide: "Series | None" = None  # value = self / divide * scale
+    times: "Series | None" = None  # value = self * times * scale
     scale: float = 1.0
 
 
