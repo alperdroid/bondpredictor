@@ -41,6 +41,8 @@ def _cell(v, kind="2"):
             return ""
         if kind == "p":
             return f"{v:.3f}"
+        if kind == "i":
+            return f"{v:.0f}"
         if kind == "s":
             return f"{v:+.2f}"
         return f"{v:.2f}"
@@ -185,7 +187,8 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
         d = density_table(res, main_h, models=["rw", "ucsv", "ridge", "rf", "lgbm", "mrf", "bart", "hnn",
                                                 "panel:bart", "ens:ml", "ens:ml+ucsv"])
         if not d.empty:
-            L += [f"### {NAMES.get(c, c)}", "", md_table(d[["coverage", "width", "interval_score", "n"]], index_name="model"), ""]
+            d.index = [f"{LABELS.get(i.split(' (')[0], i.split(' (')[0])} ({i.split(' (')[1]}" for i in d.index]
+            L += [f"### {NAMES.get(c, c)}", "", md_table(d[["coverage", "width", "interval_score", "n"]], {"n": "i"}, "model"), ""]
     if robust:
         L += [f"## Robustness of the econometric ML models, {main_h} months ahead", "",
               "Each variant re-runs one model with one change, scored with its baseline on the same months "
