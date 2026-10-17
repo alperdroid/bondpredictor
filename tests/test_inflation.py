@@ -156,3 +156,30 @@ def test_models_fit_and_predict(name):
     pred = m.predict(X[150:])
     assert pred.shape == (50,) and np.all(np.isfinite(pred))
     assert np.corrcoef(pred, y[150:])[0, 1] > 0.5
+
+
+def test_pooled_engine_no_lookahead_and_min_train():
+    from bondpredictor.inflation.panel import run_panel_backtest
+
+    a, _ = build_frame(_synthetic(seed=0), "US")
+    late = _synthetic(seed=1, n_months=300, start="1995-01")  # shorter history
+    late.countries["UK"] = late.countries.pop("US")
+    late.countries["UK"].code = "UK"
+    b, gb = build_frame(late, "UK")
+    frames = {"US": (a, build_frame(_synthetic(seed=0), "US")[1]), "UK": (b, gb)}
+    spec = Spec("panel:ridge", "ridge", refit_every=12, train_start="1985-01")
+    k, h = pd.Period("2012-03", "M"), 12
+    res = run_panel_backtest(frames, h, spec, start="2004-01", end=str(k), min_train=120)
+    # The late economy needs 120 realised targets: its CPI y/y starts 1996-01, so not before ~2007.
+    assert res["UK"].index.min() >= pd.Period("2006-12", "M") and res["US"].index.min() == pd.Period("2004-01", "M")
+    rng = np.random.default_rng(3)
+    noisy = {}
+    for c, (f, g) in frames.items():
+        f = f.copy()
+        cols = [col for col in f.columns if not col.startswith("tgt")]
+        f.loc[f.index > k, cols] = rng.normal(size=((f.index > k).sum(), len(cols)))
+        f.loc[f.index > k - h, f"tgt{h}"] = rng.normal(size=(f.index > k - h).sum())
+        noisy[c] = (f, g)
+    again = run_panel_backtest(noisy, h, spec, start="2004-01", end=str(k), min_train=120)
+    for c in res:
+        assert again[c].loc[k, "forecast"] == pytest.approx(res[c].loc[k, "forecast"])

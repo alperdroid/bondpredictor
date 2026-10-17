@@ -29,8 +29,14 @@ def _country_design(frame, groups, code, h):
 
 
 def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01", end: str | None = None,
-                       min_train: int = 120, min_hist: int = 120) -> dict[str, pd.DataFrame]:
-    """``frames``: code -> (frame, groups).  Returns one result frame per economy."""
+                       min_train: int = 120, min_hist: int = 60) -> dict[str, pd.DataFrame]:
+    """``frames``: code -> (frame, groups).  Returns one result frame per economy.
+
+    As in the single-economy models, an economy needs ``min_train`` realised
+    targets to be forecast and a predictor enters an economy's block only
+    with ``min_hist`` training observations there.  Shorter histories would
+    give noisy standardisation moments and extreme z-scores.
+    """
     codes = list(frames)
     D = {c: _country_design(*frames[c], c, h) for c in codes}
     names = sorted(set().union(*[set(D[c][0].columns) for c in codes]))
@@ -53,14 +59,16 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
                 X, y = Xc[c], Y[c]
                 lo = t0 if spec.window is None else max(t0, d - h - spec.window + 1)
                 tr = (X.index >= lo) & (X.index <= d - h) & y.notna().to_numpy() & D[c][2].notna().to_numpy()
-                if tr.sum() < 24:
+                if tr.sum() < min_train:
                     continue
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", RuntimeWarning)
                     mu, sd = X[tr].mean(), X[tr].std()
                 sd = sd.where(sd > 1e-12, 1.0)
-                moments[c] = (mu, sd)
+                valid = X[tr].notna().sum() >= min_hist
+                moments[c] = (mu, sd, valid)
                 Z = (X[tr] - mu) / sd
+                Z[list(valid.index[~valid])] = np.nan
                 Z[dummies] = 0.0
                 Z[f"cty_{c}"] = 1.0
                 Z["_y"] = y[tr]
@@ -79,8 +87,9 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
         for c in codes:
             if c not in moments or d not in Xc[c].index or not np.isfinite(D[c][2].get(d, np.nan)):
                 continue
-            mu, sd = moments[c]
-            z = ((Xc[c].loc[[d]] - mu) / sd)
+            mu, sd, valid = moments[c]
+            z = (Xc[c].loc[[d]] - mu) / sd
+            z[list(valid.index[~valid])] = np.nan
             z[dummies] = 0.0
             z[f"cty_{c}"] = 1.0
             change = float(model.predict(z[feats].to_numpy(float))[0])
