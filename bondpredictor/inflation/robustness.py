@@ -7,7 +7,9 @@ thing changed:
 * each hyperparameter fixed instead of tuned, or set to an alternative value;
 * a rolling 20-year window instead of an expanding one;
 * training only from 1985, which drops the Great Inflation.  This asks
-  whether the 1970s taught the models anything useful for 2021-22.
+  whether the 1970s taught the models anything useful for 2021-22;
+* tree models forecasting the deviation from the mechanical base-effect
+  path (``mech``) rather than from no change.
 
 The report compares each variant with its baseline on the same months.
 """
@@ -42,6 +44,10 @@ def robustness_specs() -> list[Spec]:
     specs.append(Spec("mrf | no time smoothing", "mrf", kw={"zeta": 0.0}))
     specs.append(Spec("bart | k=3 (more shrinkage)", "bart", kw={"k": 3.0}))
     specs.append(Spec("bart | 100 trees", "bart", kw={"n_trees": 100}))
+    # Trees cannot represent the additive base-effect identity well: let them forecast
+    # deviations from the mechanical path instead of from no change.
+    for m in ("rf", "lgbm", "bart"):
+        specs.append(Spec(f"{m} | offset mech", m, offset="mech"))
     for m in WINDOW_MODELS:
         specs.append(Spec(f"{m} | rolling 20y", m, window=240, refit_every=1 if m == "ridge" else 12))
         specs.append(Spec(f"{m} | train from 1985", m, train_start="1985-01", refit_every=1 if m == "ridge" else 12))

@@ -55,6 +55,7 @@ class Spec:
     window: int | None = None  # rolling window in months (None = expanding)
     train_start: str = "1960-01"
     tier: int = 1  # 1 = econometric ML and benchmarks, 2 = generic deep learning
+    offset: str | None = None  # forecast the target minus this predictor (e.g. "mech"), then add it back
 
 
 def design(frame: pd.DataFrame, groups: dict[str, str], h: int):
@@ -84,6 +85,8 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
     if spec.features is not None:
         X = X[[c for c in spec.features if c in X]]
     y = (tgt - pi).to_numpy()
+    off = X[spec.offset].to_numpy(dtype=float) if spec.offset else np.zeros(len(X))
+    y = y - off
     idx = frame.index
     first = idx.searchsorted(pd.Period(start, "M"))
     last = len(idx) - 1 if end is None else idx.searchsorted(pd.Period(end, "M"), side="right") - 1
@@ -122,10 +125,12 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
                 model.fit(Xv[np.ix_(train, cols)], y[train], feats, [g[f] for f in feats])
                 fitted_at, n_train = k, len(train)
             row = Xv[k, cols][None, :]
-            change = float(model.predict(row)[0])
+            if not np.isfinite(off[k]):
+                continue
+            change = float(model.predict(row)[0]) + off[k]
             if hasattr(model, "predict_quantiles"):
                 q = model.predict_quantiles(row, (0.1, 0.5, 0.9))[0]
-                extra.update({"q10": piv[k] + q[0], "q50": piv[k] + q[1], "q90": piv[k] + q[2]})
+                extra.update({"q10": piv[k] + off[k] + q[0], "q50": piv[k] + off[k] + q[1], "q90": piv[k] + off[k] + q[2]})
             if explain and hasattr(model, "contributions"):
                 labels, parts = model.contributions(row)
                 extra.update({f"c_{lab}": float(v) for lab, v in zip(labels, parts[0])})

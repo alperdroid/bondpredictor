@@ -160,7 +160,8 @@ def cmd_robustness(args):
     path = out_dir / "robustness.pkl"
     results = pd.read_pickle(path) if (args.resume and path.exists()) else {}
     horizons = args.horizons or [12]
-    jobs = [((c, h, s.name), s, kw) for s in robustness_specs() for c in args.countries for h in horizons]
+    specs = [s for s in robustness_specs() if not args.only or any(o in s.name for o in args.only)]
+    jobs = [((c, h, s.name), s, kw) for s in specs for c in args.countries for h in horizons]
     jobs = [j for j in jobs if j[0] not in results]
     t0 = time.time()
     print(f"{len(jobs)} robustness jobs on {args.jobs} processes", flush=True)
@@ -252,6 +253,7 @@ def build_parser():
 
     # Parent parsers share their actions, so the robustness default (h = 12) is applied in cmd_robustness.
     r = sub.add_parser("robustness", parents=[common, run])
+    r.add_argument("--only", nargs="+", default=None, help="run variants whose name contains any of these strings")
     r.add_argument("--out", default="output/inflation")
     r.set_defaults(func=cmd_robustness)
 
