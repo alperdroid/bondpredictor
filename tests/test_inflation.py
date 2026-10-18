@@ -6,7 +6,8 @@ import pytest
 
 from bondpredictor.inflation import config as cfg
 from bondpredictor.inflation.backtest import Spec, run_backtest
-from bondpredictor.inflation.data import CountryData, InflationData, global_factor, splice
+from bondpredictor.inflation.data import (CountryData, InflationData, contiguous, fill_price_gaps, global_factor,
+                                          splice)
 from bondpredictor.inflation.evaluation import (conformal_intervals, interval_scores, model_confidence_set,
                                                  subperiod_table)
 from bondpredictor.inflation.features import build_frame, sa_onesided, tax_feature
@@ -183,3 +184,38 @@ def test_pooled_engine_no_lookahead_and_min_train():
     again = run_panel_backtest(noisy, h, spec, start="2004-01", end=str(k), min_train=120)
     for c in res:
         assert again[c].loc[k, "forecast"] == pytest.approx(res[c].loc[k, "forecast"])
+
+
+def test_splice_keeps_missing_months_on_the_calendar():
+    idx = pd.period_range("2024-01", "2025-06", freq="M")
+    s = pd.Series(np.arange(len(idx), dtype=float) + 100, index=idx).drop(pd.Period("2024-10", "M"))
+    out = splice([s], "ratio")
+    assert len(out) == len(idx) and np.isnan(out[pd.Period("2024-10", "M")])
+    # A 12-month change after the gap compares the right months.
+    assert out.diff(12)[pd.Period("2025-06", "M")] == 12.0
+    assert contiguous(s).index.equals(idx)
+
+
+def test_fill_price_gaps_interpolates_short_internal_gaps_only():
+    idx = pd.period_range("2025-01", "2025-12", freq="M")
+    s = pd.Series(100 * 1.01 ** np.arange(12), index=idx)
+    s.iloc[[0, 5, 8, 9, 10]] = np.nan  # leading gap, a 1-month gap, a 3-month gap
+    out, filled = fill_price_gaps(s, max_gap=2)
+    assert filled == [pd.Period("2025-06", "M")]
+    assert out[pd.Period("2025-06", "M")] == pytest.approx(100 * 1.01**5)
+    assert np.isnan(out.iloc[0]) and out.iloc[8:11].isna().all()
+
+
+def test_cpi_gap_is_an_input_but_never_a_target():
+    data = _synthetic()
+    cd = data.countries["US"]
+    gap = pd.Period("2010-10", "M")
+    true_pi = 100 * np.log(cd.cpi / cd.cpi.shift(12))
+    cd.cpi, filled = fill_price_gaps(cd.cpi.drop(gap))
+    cd.filled = {"CPI": filled}
+    frame, _ = build_frame(data, "US")
+    after = pd.Period("2011-03", "M")
+    assert frame.loc[after, "pi"] == pytest.approx(true_pi[after])  # no positional shift after the gap
+    assert np.isfinite(frame.loc[gap, "pi"])  # filled, usable as an input
+    for p in (gap, gap + 12):
+        assert np.isnan(frame.loc[p - 3, "tgt3"]) and np.isnan(frame.loc[p - 12, "tgt12"])

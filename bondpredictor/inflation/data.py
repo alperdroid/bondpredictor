@@ -22,8 +22,42 @@ from . import config as cfg
 log = logging.getLogger(__name__)
 
 
+def contiguous(s: pd.Series) -> pd.Series:
+    """Every month between the first and last observation; missing months become NaN.
+
+    Transforms such as 12-month changes are positional, so a month missing
+    from the index (rather than NaN) would silently shift everything after it.
+    """
+    if s.empty:
+        return s
+    idx = s.index if isinstance(s.index, pd.PeriodIndex) else pd.DatetimeIndex(s.index).to_period("M")
+    s = pd.Series(s.to_numpy(), index=idx, name=s.name)
+    s = s[~s.index.duplicated(keep="last")].sort_index()
+    return s.reindex(pd.period_range(idx.min(), idx.max(), freq="M"))
+
+
+def fill_price_gaps(s: pd.Series, max_gap: int = 2) -> tuple[pd.Series, list]:
+    """Log-linearly interpolate internal runs of at most ``max_gap`` missing months in a price index.
+
+    Returns the filled series and the filled months.  Used for e.g. US CPI for
+    October 2025, which was never collected because of the federal shutdown.
+    """
+    s = contiguous(s)
+    miss = s.isna()
+    run = (miss != miss.shift()).cumsum()
+    length = miss.groupby(run).transform("sum")
+    inside = miss & s.ffill().notna() & s.bfill().notna()
+    fill = inside & (length <= max_gap)
+    if not fill.any():
+        return s, []
+    logs = np.log(s.where(s > 0)).interpolate(limit_area="inside")
+    out = s.copy()
+    out[fill] = np.exp(logs[fill])
+    return out, list(s.index[fill])
+
+
 def splice(parts: list[pd.Series], how: str = "ratio") -> pd.Series:
-    """Combine series in priority order.
+    """Combine series in priority order, on a contiguous monthly index.
 
     The first series is kept wherever it has data; each later one fills the
     remaining months, rescaled to match the combined series at their first
@@ -44,7 +78,7 @@ def splice(parts: list[pd.Series], how: str = "ratio") -> pd.Series:
             p = p * (out[first] / p[first])
         idx = out.index.union(p.index)
         out = out.reindex(idx).combine_first(p.reindex(idx))
-    return out
+    return contiguous(out) if isinstance(out.index, (pd.PeriodIndex, pd.DatetimeIndex)) else out
 
 
 def load_sources(dl: Downloader, sources: tuple[Series, ...], how: str, notes: list[str], label: str) -> pd.Series | None:
@@ -67,17 +101,30 @@ class CountryData:
     oil: pd.Series | None
     predictors: dict[str, pd.Series]  # raw levels, known-at grid
     notes: list[str] = field(default_factory=list)
+    filled: dict[str, list] = field(default_factory=dict)  # interpolated months per price index
 
 
 def build_country(dl: Downloader, c: cfg.InflationCountry) -> CountryData:
     notes: list[str] = []
-    cpi = load_sources(dl, c.cpi, "ratio", notes, f"{c.code} CPI")
+    filled: dict[str, list] = {}
+
+    def prices(srcs, label):
+        s = load_sources(dl, srcs, "ratio", notes, f"{c.code} {label}")
+        if s is None:
+            return None
+        s, gaps = fill_price_gaps(s)
+        if gaps:
+            filled[label] = gaps
+            notes.append(f"{c.code} {label}: interpolated missing month(s) {', '.join(map(str, gaps))}")
+        return s
+
+    cpi = prices(c.cpi, "CPI")
     if cpi is None:
         raise DataUnavailable(f"{c.code}: no CPI source available")
-    core = load_sources(dl, c.core, "ratio", notes, f"{c.code} core") if c.core else None
+    core = prices(c.core, "core") if c.core else None
     comps = {}
     for name, srcs in c.components.items():
-        s = load_sources(dl, srcs, "ratio", notes, f"{c.code} {name}")
+        s = prices(srcs, name)
         if s is not None:
             comps[name] = s
     oil = load_sources(dl, c.oil_local, "ratio", notes, f"{c.code} oil") if c.oil_local else None
@@ -86,7 +133,7 @@ def build_country(dl: Downloader, c: cfg.InflationCountry) -> CountryData:
         s = load_sources(dl, p.sources, p.splice, notes, f"{c.code} {name}")
         if s is not None:
             preds[name] = s
-    return CountryData(c.code, cpi, core, comps, oil, preds, notes)
+    return CountryData(c.code, cpi, core, comps, oil, preds, notes, filled)
 
 
 def oecd_cpi_panel(dl: Downloader) -> pd.DataFrame:
@@ -102,11 +149,10 @@ def oecd_cpi_panel(dl: Downloader) -> pd.DataFrame:
         new = pd.DataFrame()
     cols = {}
     for area in sorted(set(old.columns) | set(new.columns)):
-        parts = [df[area] for df in (new, old) if area in df]
-        s = splice(parts, "ratio")
-        s.index = pd.DatetimeIndex(s.index).to_period("M")
-        cols[area] = s
-    return pd.DataFrame(cols).sort_index()
+        parts = [contiguous(df[area].dropna()) for df in (new, old) if area in df]
+        cols[area] = splice(parts, "ratio")
+    out = pd.DataFrame(cols).sort_index()
+    return out.reindex(pd.period_range(out.index.min(), out.index.max(), freq="M"))
 
 
 def yoy(index: pd.Series) -> pd.Series:

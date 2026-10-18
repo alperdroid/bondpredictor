@@ -196,6 +196,10 @@ def build_frame(data: InflationData, code: str, horizons=HORIZONS) -> tuple[pd.D
             groups[f"x_{other}"] = "global"
     pi = own["pi"].reindex(idx)
     sa_i = sa.reindex(idx)
+    # Interpolated CPI months are fine as inputs but are never forecast targets.
+    pi_target = pi.copy()
+    for p in getattr(cd, "filled", {}).get("CPI", []):
+        pi_target[pi_target.index.isin([p, p + 12])] = np.nan
     # Benchmark input, not a predictor (not listed in ``groups``).
     parts.append(own.attrs["ucsv"].reindex(idx).rename("ucsv_tau"))
     cpi_lag = c.cpi[0].lag
@@ -206,7 +210,7 @@ def build_frame(data: InflationData, code: str, horizons=HORIZONS) -> tuple[pd.D
         if c.tax_events:
             parts.append(tax_feature(idx, c.tax_events, h, cpi_lag))
             groups[f"tax_h{h}"] = "calendar"
-        parts.append(pi.shift(-h).rename(f"tgt{h}"))
+        parts.append(pi_target.shift(-h).rename(f"tgt{h}"))
     frame = pd.concat(parts, axis=1)
     frame = frame.loc[:, ~frame.columns.duplicated()]
     frame.attrs["country"] = code
