@@ -53,7 +53,7 @@ def load_frames(args) -> dict:
         return pickle.load(fh)
 
 
-def _progress(t0, sink: dict | None = None, path: Path | None = None, every: int = 8):
+def _progress(t0, sink: dict | None = None, path: Path | None = None, every: int = 1):
     """Print each finished job; with ``sink``/``path``, checkpoint results every ``every`` jobs."""
     done = [0]
 
