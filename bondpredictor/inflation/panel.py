@@ -2,11 +2,17 @@
 
 Four economies share one model on the predictors they have in common
 (``features.COMMON`` plus own-inflation, oil and global terms).  Each
-economy's predictors are standardised with its own training moments, so the
-model learns from relative movements, and country dummies enter linearly.
-The target stays in percentage points.  Pooling gives the data-hungry
-models four times the observations, including the high-inflation episodes
-of every economy.
+economy's predictors are demeaned with its own training means, and country
+dummies enter linearly; the scale stays common because almost every
+predictor is already in comparable units (percentage changes, rates).  The
+target stays in percentage points.  Pooling gives the data-hungry models
+four times the observations, including the high-inflation episodes of
+every economy.
+
+Per-economy *standardisation* was tried first and failed: the euro area's
+short, calm history made its 2022 energy shock an eight-standard-deviation
+event, which the pooled BART and hemisphere net mapped onto other economies'
+1970s episodes and turned into forecasts of an 11-16 pp rise in inflation.
 """
 
 from __future__ import annotations
@@ -63,11 +69,10 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
                     continue
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore", RuntimeWarning)
-                    mu, sd = X[tr].mean(), X[tr].std()
-                sd = sd.where(sd > 1e-12, 1.0)
+                    mu = X[tr].mean()
                 valid = X[tr].notna().sum() >= min_hist
-                moments[c] = (mu, sd, valid)
-                Z = (X[tr] - mu) / sd
+                moments[c] = (mu, valid)
+                Z = X[tr] - mu
                 Z[list(valid.index[~valid])] = np.nan
                 Z[dummies] = 0.0
                 Z[f"cty_{c}"] = 1.0
@@ -87,8 +92,8 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
         for c in codes:
             if c not in moments or d not in Xc[c].index or not np.isfinite(D[c][2].get(d, np.nan)):
                 continue
-            mu, sd, valid = moments[c]
-            z = (Xc[c].loc[[d]] - mu) / sd
+            mu, valid = moments[c]
+            z = Xc[c].loc[[d]] - mu
             z[list(valid.index[~valid])] = np.nan
             z[dummies] = 0.0
             z[f"cty_{c}"] = 1.0
