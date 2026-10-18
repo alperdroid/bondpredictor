@@ -77,6 +77,32 @@ def _benchmark_change(spec: Spec, X: pd.DataFrame, frame: pd.DataFrame, pi: pd.S
     return tau - pi
 
 
+def fit_at(Xv: np.ndarray, names: list[str], g: dict[str, str], y: np.ndarray, piv: np.ndarray, k: int, h: int,
+           spec: Spec, t0: int, min_train: int = 120, min_hist: int = 60):
+    """Fit ``spec`` at origin ``k`` on the rows whose target is published by then.
+
+    Keeps the predictors observed at ``k`` that have at least ``min_hist`` training observations.
+    Returns ``(model, cols, n_train)``, or None when there is too little data.
+    """
+    lo = t0 if spec.window is None else max(t0, k - h - spec.window + 1)
+    train = np.arange(lo, k - h + 1)
+    train = train[np.isfinite(y[train]) & np.isfinite(piv[train])]
+    if len(train) < min_train:
+        return None
+    ok_now = np.isfinite(Xv[k])
+    hist = np.isfinite(Xv[train]).sum(axis=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # all-missing columns
+        sd = np.nanstd(Xv[train], axis=0)
+    cols = [i for i in range(Xv.shape[1]) if ok_now[i] and hist[i] >= min_hist and sd[i] > 1e-12]
+    if not cols:
+        return None
+    feats = [names[i] for i in cols]
+    model = make_model(spec.model, h, **spec.kw)
+    model.fit(Xv[np.ix_(train, cols)], y[train], feats, [g[f] for f in feats])
+    return model, cols, len(train)
+
+
 def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec, start: str = "2000-01",
                  end: str | None = None, min_train: int = 120, min_hist: int = 60,
                  explain: bool = False) -> pd.DataFrame:
@@ -105,25 +131,13 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
             if not np.isfinite(change):
                 continue
         else:
-            lo = t0 if spec.window is None else max(t0, k - h - spec.window + 1)
-            train = np.arange(lo, k - h + 1)
-            train = train[np.isfinite(y[train]) & np.isfinite(piv[train])]
             due = model is None or k - fitted_at >= spec.refit_every or not np.all(np.isfinite(Xv[k, cols]))
             if due:
-                if len(train) < min_train:
+                fit = fit_at(Xv, list(X.columns), g, y, piv, k, h, spec, t0, min_train, min_hist)
+                if fit is None:
                     continue
-                ok_now = np.isfinite(Xv[k])
-                hist = np.isfinite(Xv[train]).sum(axis=0)
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)  # all-missing columns
-                    sd = np.nanstd(Xv[train], axis=0)
-                cols = [i for i in range(Xv.shape[1]) if ok_now[i] and hist[i] >= min_hist and sd[i] > 1e-12]
-                feats = [X.columns[i] for i in cols]
-                if not cols:
-                    continue
-                model = make_model(spec.model, h, **spec.kw)
-                model.fit(Xv[np.ix_(train, cols)], y[train], feats, [g[f] for f in feats])
-                fitted_at, n_train = k, len(train)
+                model, cols, n_train = fit
+                fitted_at = k
             row = Xv[k, cols][None, :]
             if not np.isfinite(off[k]):
                 continue

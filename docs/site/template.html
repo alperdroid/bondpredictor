@@ -1,0 +1,1178 @@
+<title>Inflation Forecast Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Inflation forecasts for the US, UK, Japan and euro area from 34 econometric ML, deep learning and foundation models, with a scenario lab.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: an inflation report engraved like a banknote. One sticky economy switch scopes every live section;
+   sections run outlook -> scenarios -> models -> track record -> drivers -> method. */
+:root {
+  --paper: #edf1ee;
+  --paper-2: #e2e9e5;
+  --card: #f7faf8;
+  --ink: #0e2420;
+  --ink-2: #44605a;
+  --ink-3: #6b817b;
+  --rule: #c7d3cd;
+  --grid: #dae3de;
+  --accent: #00866a;
+  --heat: #d24a1c;
+  --cool: #2a78d6;
+  --fam-benchmark: #8a9a95;
+  --fam-linear: #2a78d6;
+  --fam-nonlinear: #eb6834;
+  --fam-ensemble: #00866a;
+  --fam-tier2: #6250d6;
+  --div-neg: #2a78d6;
+  --div-mid: #e7ece9;
+  --div-pos: #d24a1c;
+  --shadow: 0 1px 0 rgba(14, 36, 32, 0.04), 0 8px 24px -12px rgba(14, 36, 32, 0.18);
+  --font-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.75rem;
+  --step-3: 2.75rem;
+  --step-4: clamp(2.9rem, 7vw, 5.6rem);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1614; --paper-2: #17211e; --card: #141c1a; --ink: #e2ebe6; --ink-2: #a8bab3; --ink-3: #7f938c;
+    --rule: #2b3834; --grid: #212c28; --accent: #2fa98f; --heat: #e06a35; --cool: #3987e5;
+    --fam-benchmark: #7f938c; --fam-linear: #3987e5; --fam-nonlinear: #d95926; --fam-ensemble: #2fa98f; --fam-tier2: #9085e9;
+    --div-neg: #3987e5; --div-mid: #222c29; --div-pos: #e06a35;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1614; --paper-2: #17211e; --card: #141c1a; --ink: #e2ebe6; --ink-2: #a8bab3; --ink-3: #7f938c;
+  --rule: #2b3834; --grid: #212c28; --accent: #2fa98f; --heat: #e06a35; --cool: #3987e5;
+  --fam-benchmark: #7f938c; --fam-linear: #3987e5; --fam-nonlinear: #d95926; --fam-ensemble: #2fa98f; --fam-tier2: #9085e9;
+  --div-neg: #3987e5; --div-mid: #222c29; --div-pos: #e06a35;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 10px 28px -14px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: var(--step-0);
+  line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); }
+a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1; letter-spacing: 0.005em; margin: 0; text-wrap: balance; }
+h2 { font-size: var(--step-3); text-transform: uppercase; }
+h3 { font-size: var(--step-1); text-transform: uppercase; letter-spacing: 0.02em; }
+p { margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.muted { color: var(--ink-2); }
+.small { font-size: var(--step--1); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- top bar ---------- */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+.bar .wrap { display: flex; align-items: center; gap: 20px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; text-transform: uppercase; letter-spacing: 0.04em; text-decoration: none; white-space: nowrap; }
+.brand svg { width: 26px; height: 26px; color: var(--accent); }
+.nav { display: flex; gap: 18px; font-size: 0.875rem; margin-left: 8px; overflow-x: auto; scrollbar-width: none; }
+.nav a { text-decoration: none; color: var(--ink-2); white-space: nowrap; }
+.nav a:hover { color: var(--ink); }
+.bar .seg { margin-left: auto; }
+@media (max-width: 860px) { .nav { display: none; } }
+@media (max-width: 480px) {
+  .bar .wrap { gap: 10px; }
+  .brand { font-size: 1.1rem; gap: 8px; }
+  .brand svg { width: 22px; height: 22px; }
+  .bar .seg { flex-wrap: nowrap; }
+  .bar .seg button { padding: 6px 9px; }
+}
+
+/* ---------- segmented controls and chips ---------- */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; background: var(--card); gap: 2px; flex-wrap: wrap; }
+.seg button { font: 500 0.8125rem/1 var(--font-body); color: var(--ink-2); background: none; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--ink); background: var(--paper-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; font: 500 0.8125rem/1 var(--font-body); color: var(--ink-2); background: var(--card);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+.chip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.chip svg { width: 12px; height: 12px; flex: none; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.controls label, .ctl-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+select { font: 500 0.875rem var(--font-body); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 30px 7px 10px;
+  appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; max-width: 100%; }
+
+/* ---------- hero ---------- */
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--rule); }
+.hero .wrap { position: relative; padding-block: 56px 40px; display: grid; gap: 34px; }
+#guilloche { position: absolute; top: -40px; right: -120px; width: 640px; height: 640px; pointer-events: none; opacity: 0.9; }
+@media (max-width: 760px) { #guilloche { right: -260px; top: -90px; opacity: 0.45; } }
+.hero h1 { font-size: var(--step-4); text-transform: uppercase; font-weight: 800; max-width: 12ch; line-height: 0.92; }
+.hero .lead { max-width: 60ch; font-size: 1.125rem; color: var(--ink-2); }
+.hero .lead strong { color: var(--ink); font-weight: 600; }
+.hero-text { display: grid; gap: 18px; position: relative; }
+.tickets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; position: relative; }
+@media (max-width: 980px) { .tickets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .tickets { grid-template-columns: minmax(0, 1fr); } }
+.ticket { text-align: left; font: inherit; color: inherit; background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius);
+  padding: 14px 16px 12px; display: grid; gap: 6px; cursor: pointer; box-shadow: var(--shadow); position: relative; overflow: hidden; min-width: 0; }
+.ticket::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--accent) 6%, transparent) 7px 8px); opacity: 0; transition: opacity 0.2s; }
+.ticket:hover::after, .ticket[aria-pressed="true"]::after { opacity: 1; }
+.ticket[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), var(--shadow); }
+.t-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.t-code { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.1em; color: var(--ink-2); }
+.t-name { font-weight: 600; font-size: 0.9rem; }
+.t-now { display: flex; align-items: baseline; gap: 8px; }
+.t-now b { font-family: var(--font-display); font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.t-now small, .t-range { color: var(--ink-2); font-size: 0.78rem; }
+.t-next { font-size: 0.9rem; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.t-next b { font-weight: 700; color: var(--accent); }
+.ticket svg.spark { width: 100%; height: 46px; display: block; }
+
+/* ---------- sections ---------- */
+section.block { padding-block: 64px 24px; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 16px 24px; margin-bottom: 22px; }
+.sec-head .intro { max-width: 68ch; color: var(--ink-2); margin-top: 12px; }
+@media (max-width: 760px) { .sec-head { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; min-width: 0; }
+.chart { width: 100%; min-height: 200px; position: relative; }
+.chart svg { display: block; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8125rem; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key-line { width: 18px; height: 0; border-top: 2px solid currentColor; display: inline-block; }
+.key-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.key-ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 2px solid var(--ink-3); }
+.key-band { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+.stack { display: grid; gap: 14px; }
+
+/* chart chrome */
+.axis text { fill: var(--ink-3); font: 11px var(--font-mono); }
+.axis path, .axis line { stroke: var(--rule); }
+.axis .domain { display: none; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.ref-line { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 4; }
+.ref-label { fill: var(--ink-3); font: 11px var(--font-mono); }
+.lab { fill: var(--ink); font: 600 12px var(--font-body); }
+.lab-2 { fill: var(--ink-2); font: 500 11px var(--font-body); }
+.hair { stroke: var(--ink-3); stroke-width: 1; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table.data { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+table.data th, table.data td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data thead th { font: 500 0.7rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--rule); }
+table.data td.best { font-weight: 700; color: var(--ink); }
+table.data tbody tr:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
+
+/* outlook */
+.outlook-grid { display: grid; gap: 16px; }
+.outlook-lead { font-size: 1.05rem; max-width: 70ch; }
+.outlook-lead b { font-weight: 600; }
+
+/* scenario lab */
+.lab-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .lab-grid { grid-template-columns: minmax(0, 1fr); } }
+.levers { display: grid; gap: 16px; }
+.lever { display: grid; gap: 4px; }
+.lever-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.lever-name { font-weight: 600; font-size: 0.9rem; }
+.lever-val { font: 500 0.875rem var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.lever-val.on { color: var(--heat); }
+.lever-note { font-size: 0.75rem; color: var(--ink-3); }
+.lever.off .lever-name, .lever.off .lever-val { color: var(--ink-3); }
+.range-wrap { position: relative; height: 22px; }
+.range-wrap::before { content: ""; position: absolute; left: var(--zero); top: 3px; bottom: 3px; width: 1px; background: var(--ink-3); pointer-events: none; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; position: relative; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--rule) 0 var(--lo), var(--heat) var(--lo) var(--hi), var(--rule) var(--hi) 100%); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--rule) 0 var(--lo), var(--heat) var(--lo) var(--hi), var(--rule) var(--hi) 100%); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--card); border: 2px solid var(--ink); margin-top: -7px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--ink); }
+input[type="range"]:disabled { cursor: not-allowed; opacity: 0.45; }
+.readout { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 22px; }
+.ro { display: grid; gap: 2px; }
+.ro-label { font: 500 0.7rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.ro-val { font-family: var(--font-display); font-weight: 700; font-size: 3.2rem; line-height: 0.95; }
+.ro-val.base { color: var(--accent); }
+.ro-val.scen { color: var(--heat); }
+.ro-arrow { font-size: 1.6rem; color: var(--ink-3); padding-bottom: 6px; }
+.delta-pill { font: 600 0.9rem var(--font-mono); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper-2); margin-bottom: 6px; }
+.agree { font-size: 0.875rem; color: var(--ink-2); }
+.impact { display: grid; gap: 6px; }
+.impact-row { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) 72px; align-items: center; gap: 10px; font-size: 0.85rem; }
+.impact-row .bar-cell { position: relative; height: 16px; }
+.impact-row .bar-cell::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--rule); }
+.impact-row .bar { position: absolute; top: 2px; height: 12px; border-radius: 3px; }
+.impact-row .v { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.impact-row.total { font-weight: 700; border-top: 1px solid var(--rule); padding-top: 8px; margin-top: 2px; }
+.impact-empty { color: var(--ink-3); font-size: 0.875rem; }
+.preset-blurb { font-size: 0.85rem; color: var(--ink-2); min-height: 1.4em; }
+.reset { font: 500 0.8125rem var(--font-body); background: none; border: 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 0; }
+
+/* models */
+.models-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 18px; align-items: start; }
+@media (max-width: 960px) { .models-grid { grid-template-columns: minmax(0, 1fr); } }
+.finding { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 6px; }
+.finding h3 { font-size: 1.3rem; }
+.finding p { font-size: 0.9rem; color: var(--ink-2); }
+.finding .big { font-family: var(--font-display); font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--ink); }
+
+/* drivers */
+.drivers-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 18px; align-items: start; }
+@media (max-width: 960px) { .drivers-grid { grid-template-columns: minmax(0, 1fr); } }
+table.heat td.cell { text-align: center; font-family: var(--font-mono); font-size: 0.8125rem; border: 2px solid var(--card); border-radius: 6px; min-width: 84px; cursor: default; }
+table.heat td:first-child { font-size: 0.875rem; }
+.heat-legend { display: flex; align-items: center; gap: 10px; font-size: 0.78rem; color: var(--ink-2); flex-wrap: wrap; }
+.heat-legend .ramp { width: 160px; height: 10px; border-radius: 3px; }
+.howto { display: grid; gap: 10px; font-size: 0.9rem; color: var(--ink-2); }
+.howto b { color: var(--ink); }
+.minibar { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.minibar i { display: block; height: 8px; border-radius: 2px; background: var(--accent); }
+
+/* method */
+.method { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
+.method div { display: grid; gap: 8px; align-content: start; }
+.method p, .method li { font-size: 0.9rem; color: var(--ink-2); }
+.method ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+footer { border-top: 1px solid var(--rule); margin-top: 48px; }
+footer .wrap { padding-block: 22px 40px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; font-size: 0.8125rem; color: var(--ink-2); }
+
+/* tooltip */
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 9px 11px; font-size: 0.8125rem; min-width: 150px; max-width: 280px; }
+#tip .tt { font: 500 0.7rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+#tip .row { display: grid; grid-template-columns: 16px auto 1fr; gap: 7px; align-items: center; }
+#tip .row b { font-variant-numeric: tabular-nums; font-weight: 700; }
+#tip .row span { color: var(--ink-2); }
+#tip .row i { display: block; width: 14px; border-top: 2px solid; }
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Inflation Forecast Lab, back to top">
+      <svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.1">
+        <circle cx="16" cy="16" r="14.5"></circle>
+        <path d="M16 3.5c3 4 3 21 0 25M16 3.5c-3 4-3 21 0 25M3.5 16c4-3 21-3 25 0M3.5 16c4 3 21 3 25 0M7.2 7.2c4.2 1.6 16 13.4 17.6 17.6M24.8 7.2c-1.6 4.2-13.4 16-17.6 17.6"></path>
+      </svg>
+      Inflation Lab
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#outlook">Outlook</a><a href="#scenarios">Scenarios</a><a href="#models">Models</a><a href="#track">Track record</a><a href="#drivers">Drivers</a><a href="#method">Method</a>
+    </nav>
+    <div class="seg" id="econ-switch" role="group" aria-label="Economy"></div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <canvas id="guilloche" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <div class="hero-text">
+        <p class="eyebrow" id="hero-eyebrow">Inflation outlook</p>
+        <h1>The next two years of inflation</h1>
+        <p class="lead" id="hero-lead"></p>
+      </div>
+      <div class="tickets" id="tickets"></div>
+    </div>
+  </section>
+
+  <section class="block" id="outlook">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Outlook</p>
+          <h2 id="outlook-title">Fan chart</h2>
+          <p class="intro outlook-lead" id="outlook-lead"></p>
+        </div>
+        <div class="seg" id="range-switch" role="group" aria-label="Time range"></div>
+      </div>
+      <div class="panel outlook-grid">
+        <div class="controls">
+          <span class="ctl-label">Compare with</span>
+          <div class="chips" id="overlay-chips"></div>
+        </div>
+        <div class="legend" id="outlook-legend"></div>
+        <div class="chart" id="outlook-chart" role="img"></div>
+        <div class="tbl-wrap"><table class="data" id="outlook-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="scenarios">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Scenario lab</p>
+          <h2>What if?</h2>
+          <p class="intro">Shift today's oil price, supply chains, currency or labour market and the 13 econometric ML models forecast again. Pick a ready-made scenario or move the sliders.</p>
+        </div>
+        <div class="seg" id="scen-h" role="group" aria-label="Horizon"></div>
+      </div>
+      <div class="lab-grid">
+        <div class="panel stack">
+          <div class="stack" style="gap:10px">
+            <span class="ctl-label">Scenarios</span>
+            <div class="chips" id="presets"></div>
+            <p class="preset-blurb" id="preset-blurb"></p>
+          </div>
+          <div class="levers" id="levers"></div>
+          <div><button class="reset" id="scen-reset" type="button">Reset to baseline</button></div>
+        </div>
+        <div class="panel stack">
+          <p class="ctl-label" id="scen-when"></p>
+          <div class="readout">
+            <div class="ro"><span class="ro-label">Baseline</span><span class="ro-val base" id="ro-base"></span></div>
+            <span class="ro-arrow" aria-hidden="true">→</span>
+            <div class="ro"><span class="ro-label">Scenario</span><span class="ro-val scen" id="ro-scen"></span></div>
+            <span class="delta-pill" id="ro-delta"></span>
+          </div>
+          <p class="agree" id="ro-agree"></p>
+          <div class="legend" id="scen-legend"></div>
+          <div class="chart" id="scen-chart" role="img"></div>
+          <div class="stack" style="gap:8px">
+            <span class="ctl-label" id="impact-title">Effect of each lever</span>
+            <div class="impact" id="impact"></div>
+          </div>
+          <p class="small muted">The models learned correlations from 1960–2026 data, not causal effects, and a shock here does not move the other drivers. The policy rate is left out: central banks raise it when they expect inflation, so the models read hikes as a sign of more inflation to come.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="models">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Model league table</p>
+          <h2>Who forecasts best</h2>
+          <p class="intro">Every model forecast each month from 2000 using only the data published at the time. Scores are forecast errors (RMSE) relative to assuming no change; below 1.0 beats it.</p>
+        </div>
+        <div class="controls">
+          <div class="seg" id="models-h" role="group" aria-label="Horizon"></div>
+          <div class="seg" id="models-scope" role="group" aria-label="Economy"></div>
+        </div>
+      </div>
+      <div class="models-grid">
+        <div class="panel stack">
+          <div class="legend" id="models-legend"></div>
+          <div class="chart" id="models-chart" role="img"></div>
+        </div>
+        <div class="stack" id="findings"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="track">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Track record</p>
+          <h2>Replay the backtest</h2>
+          <p class="intro" id="track-intro"></p>
+        </div>
+        <div class="seg" id="track-h" role="group" aria-label="Horizon"></div>
+      </div>
+      <div class="panel stack">
+        <div class="controls">
+          <label for="track-a">Model</label><select id="track-a"></select>
+          <label for="track-b">Against</label><select id="track-b"></select>
+        </div>
+        <div class="legend" id="track-legend"></div>
+        <div class="chart" id="track-chart" role="img"></div>
+        <div class="tbl-wrap"><table class="data" id="track-table"></table></div>
+        <p class="small muted">Relative RMSE by the month being forecast. Below 1.00 beats the no-change forecast.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="drivers">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Drivers</p>
+          <h2>What moves inflation</h2>
+          <p class="intro" id="drivers-intro"></p>
+        </div>
+        <div class="seg" id="drivers-h" role="group" aria-label="Horizon"></div>
+      </div>
+      <div class="drivers-grid">
+        <div class="panel stack">
+          <div class="heat-legend" id="heat-legend"></div>
+          <div class="tbl-wrap"><table class="data heat" id="heat-table"></table></div>
+        </div>
+        <div class="stack">
+          <div class="howto" id="howto"></div>
+        </div>
+      </div>
+      <div class="panel stack" style="margin-top:18px">
+        <h3>What gradient boosting leaned on</h3>
+        <p class="small muted">Share of the model's total split gain by group of predictors, 12 months ahead, fitted on all realised data.</p>
+        <div class="tbl-wrap"><table class="data" id="blocks-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="method">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Method</p>
+          <h2>How this was built</h2>
+        </div>
+      </div>
+      <div class="method" id="method-body"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span id="foot-asof"></span>
+    <span>Code and full reports: <a href="https://github.com/alperdroid/bondpredictor/tree/claude/ecstatic-bell-vmmnv3">alperdroid/bondpredictor</a></span>
+  </div>
+</footer>
+
+<div id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+"use strict";
+const DATA = /*__DATA__*/null;
+
+// ------------------------------------------------------------------ helpers
+const $ = s => document.querySelector(s);
+const H = [3, 6, 12, 24];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ECON = Object.fromEntries(DATA.economies.map(e => [e.code, e]));
+const ym = s => { const [y, m] = s.split("-").map(Number); return new Date(y, m - 1, 1); };
+const addM = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+const fmtM = d => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const fmtYM = s => fmtM(ym(s));
+const MINUS = "−";
+const pct = (v, nd = 1) => (v == null || !isFinite(v)) ? "–" : `${v < 0 ? MINUS : ""}${Math.abs(v).toFixed(nd)}%`;
+const signed = (v, nd = 1) => `${v >= 0 ? "+" : MINUS}${Math.abs(v).toFixed(nd)}`;
+const ppv = (v, nd = 1) => `${signed(v, nd)} pp`;
+const series = s => { const d0 = ym(s.start); return s.values.map((v, i) => ({ d: addM(d0, i), v })).filter(p => p.v != null); };
+const median = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; };
+const quant = (a, q) => d3.quantile([...a].sort(d3.ascending), q);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const famVar = m => `var(--fam-${{ benchmark: "benchmark", linear: "linear", nonlinear: "nonlinear", ensemble: "ensemble", foundation: "tier2", deep: "tier2" }[DATA.models[m]?.family || "benchmark"]})`;
+const label = m => DATA.models[m]?.short || m;
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else if (v != null) n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+};
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
+};
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function segmented(container, options, current, onPick) {
+  container.replaceChildren();
+  for (const o of options) {
+    container.append(el("button", { type: "button", "aria-pressed": String(o.value === current), title: o.title || null, text: o.label,
+      onclick: ev => { for (const b of container.children) b.setAttribute("aria-pressed", String(b === ev.currentTarget)); onPick(o.value); } }));
+  }
+}
+
+// ------------------------------------------------------------------ tooltip
+const tip = $("#tip");
+function showTip(evt, title, rows) {
+  tip.replaceChildren(el("div", { class: "tt", text: title }));
+  for (const r of rows) {
+    const key = el("i"); key.style.borderColor = r.color || "transparent";
+    if (r.dash) key.style.borderTopStyle = "dashed";
+    tip.append(el("div", { class: "row" }, key, el("b", { text: r.value }), el("span", { text: r.label })));
+  }
+  tip.hidden = false;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = `${Math.max(8, x)}px`; tip.style.top = `${Math.max(8, y)}px`;
+}
+const hideTip = () => { tip.hidden = true; };
+
+function frame(node, height, m) {
+  const width = Math.max(280, Math.floor(node.clientWidth));
+  node.replaceChildren();
+  const svg = d3.select(node).append("svg").attr("width", width).attr("height", height).attr("viewBox", `0 0 ${width} ${height}`);
+  const g = svg.append("g").attr("transform", `translate(${m.l},${m.t})`);
+  return { svg, g, width, height, iw: width - m.l - m.r, ih: height - m.t - m.b, m };
+}
+function yGrid(f, y, ticks, fmt = v => `${v}%`) {
+  const gg = f.g.append("g");
+  for (const t of ticks) {
+    gg.append("line").attr("class", "gridline").attr("x1", 0).attr("x2", f.iw).attr("y1", y(t)).attr("y2", y(t));
+    gg.append("text").attr("class", "ref-label").attr("x", -8).attr("y", y(t)).attr("dy", "0.32em").attr("text-anchor", "end").text(fmt(t));
+  }
+}
+function xYears(f, x, from, to) {
+  const span = to.getFullYear() - from.getFullYear();
+  const step = f.iw < 520 ? (span > 12 ? 5 : span > 6 ? 2 : 1) : (span > 16 ? 4 : span > 8 ? 2 : 1);
+  const gg = f.g.append("g").attr("class", "axis").attr("transform", `translate(0,${f.ih})`);
+  for (let yr = from.getFullYear() + (from.getMonth() ? 1 : 0); yr <= to.getFullYear(); yr++) {
+    if (yr % step) continue;
+    const d = new Date(yr, 0, 1);
+    if (d < from || d > to) continue;
+    gg.append("line").attr("x1", x(d)).attr("x2", x(d)).attr("y1", 0).attr("y2", 5).attr("stroke", "var(--rule)");
+    gg.append("text").attr("x", x(d)).attr("y", 18).attr("text-anchor", "middle").text(yr);
+  }
+}
+function niceY(lo, hi) {
+  const pad = Math.max(0.4, (hi - lo) * 0.08);
+  let a = Math.floor((lo - pad) * 2) / 2, b = Math.ceil((hi + pad) * 2) / 2;
+  const span = b - a, step = span > 14 ? 4 : span > 7 ? 2 : span > 3 ? 1 : 0.5;
+  a = Math.floor(a / step) * step; b = Math.ceil(b / step) * step;
+  return { domain: [a, b], ticks: d3.range(a, b + step / 2, step) };
+}
+
+// ------------------------------------------------------------------ state
+const state = {
+  econ: ECON[store.get("infl-econ")] ? store.get("infl-econ") : "US",
+  range: "2015",
+  overlays: new Set(["ucsv", "fm:timesfm3_cov"]),
+  scen: { values: { ...(DATA.scenarios.presets.find(p => p.key === "oil_shock")?.values || {}) }, h: 12, preset: "oil_shock" },
+  models: { h: 12, scope: "avg" },
+  track: { h: 12, a: "ens:median", b: "ucsv" },
+  drivers: { h: 12 },
+};
+function setEcon(c) {
+  state.econ = c; store.set("infl-econ", c);
+  for (const b of $("#econ-switch").children) b.setAttribute("aria-pressed", String(b.dataset.code === c));
+  renderTickets(); renderOutlook(); renderLevers(); renderScenario(); renderTrack();
+}
+
+// ------------------------------------------------------------------ hero
+function renderHero() {
+  const L = c => DATA.latest[c];
+  const last = DATA.economies.map(e => ym(e.month)).sort((a, b) => b - a)[0];
+  $("#hero-eyebrow").textContent = `Inflation outlook · data to ${fmtM(last)}`;
+  const t = c => fmtYM(L(c)["12"].target);
+  const lead = $("#hero-lead");
+  lead.replaceChildren(
+    "Inflation has picked up in all four economies this year. The median of 13 econometric ML models sees US inflation at ",
+    el("strong", { text: `${pct(L("US")["12"].median)} by ${t("US")}` }), ", the UK at ",
+    el("strong", { text: pct(L("UK")["12"].median) }), ", Japan at ", el("strong", { text: pct(L("JP")["12"].median) }),
+    " and the euro area at ", el("strong", { text: pct(L("EA")["12"].median) }),
+    " a year from now. Every forecast below comes from a horse race of 34 models, backtested on each month since 2000.");
+}
+function renderTickets() {
+  const wrap = $("#tickets"); wrap.replaceChildren();
+  for (const e of DATA.economies) {
+    const L12 = DATA.latest[e.code]["12"];
+    const svg = d3.create("svg").attr("class", "spark").attr("viewBox", "0 0 240 46").attr("preserveAspectRatio", "none").attr("aria-hidden", "true");
+    const hist = series(DATA.history[e.code]).slice(-36);
+    const fc = [{ d: ym(e.month), v: e.value }, ...H.map(h => ({ d: ym(DATA.latest[e.code][h].target), v: DATA.latest[e.code][h].median }))];
+    const all = [...hist, ...fc];
+    const x = d3.scaleTime().domain([hist[0].d, fc.at(-1).d]).range([2, 236]);
+    const y = d3.scaleLinear().domain(d3.extent(all, p => p.v)).range([42, 6]);
+    const ln = d3.line().x(p => x(p.d)).y(p => y(p.v));
+    svg.append("line").attr("x1", x(ym(e.month))).attr("x2", x(ym(e.month))).attr("y1", 2).attr("y2", 44).attr("stroke", "var(--rule)");
+    svg.append("path").attr("d", ln(hist)).attr("fill", "none").attr("stroke", "var(--ink-2)").attr("stroke-width", 1.6).attr("vector-effect", "non-scaling-stroke");
+    svg.append("path").attr("d", ln(fc)).attr("fill", "none").attr("stroke", "var(--accent)").attr("stroke-width", 1.6).attr("stroke-dasharray", "3 2").attr("vector-effect", "non-scaling-stroke");
+    const b = el("button", { class: "ticket", type: "button", "aria-pressed": String(e.code === state.econ),
+      "aria-label": `${e.name}: ${pct(e.value)} in ${fmtYM(e.month)}, forecast ${pct(L12.median)} by ${fmtYM(L12.target)}. Show in outlook.`,
+      onclick: () => { setEcon(e.code); $("#outlook").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" }); } },
+      el("span", { class: "t-head" }, el("span", { class: "t-name", text: e.name }), el("span", { class: "t-code", text: e.code })),
+      el("span", { class: "t-now" }, el("b", { text: pct(e.value) }), el("small", { text: `${e.index}, ${fmtYM(e.month)}` })),
+      svg.node(),
+      el("span", { class: "t-next" }, "Median model:", el("b", { text: pct(L12.median) }), `by ${fmtYM(L12.target)}`),
+      el("span", { class: "t-range", text: `80% range ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}` }));
+    wrap.append(b);
+  }
+}
+
+// Banknote guilloche: woven rings and a hypotrochoid rosette, drawn in once.
+function guilloche() {
+  const cv = $("#guilloche"), ctx = cv.getContext("2d");
+  let start = null, raf = 0;
+  const draw = p => {
+    const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 6, col = css("--accent");
+    ctx.lineWidth = 0.6;
+    const T = Math.PI * 2;
+    for (let i = 0; i < 28; i++) {               // outer woven band
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.22;
+      ctx.beginPath();
+      for (let a = 0; a <= T * p + 1e-9; a += 0.01) {
+        const r = R * (0.84 + 0.07 * Math.sin(18 * a + (i * T) / 28) + 0.03 * Math.sin(5 * a));
+        const xx = cx + r * Math.cos(a), yy = cy + r * Math.sin(a);
+        a === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+      }
+      ctx.stroke();
+    }
+    for (let i = 0; i < 18; i++) {               // middle band
+      ctx.globalAlpha = 0.18; ctx.beginPath();
+      for (let a = 0; a <= T * p + 1e-9; a += 0.01) {
+        const r = R * (0.6 + 0.06 * Math.sin(11 * a - (i * T) / 18));
+        const xx = cx + r * Math.cos(a), yy = cy + r * Math.sin(a);
+        a === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.3; ctx.beginPath();     // rosette: hypotrochoid with R:r = 25:7, closes after 7 turns
+    const Rr = R * 0.42, rr = Rr * 7 / 25, d = rr * 1.25;
+    for (let t = 0; t <= T * 7 * p + 1e-9; t += 0.008) {
+      const xx = cx + (Rr - rr) * Math.cos(t) + d * Math.cos(((Rr - rr) / rr) * t);
+      const yy = cy + (Rr - rr) * Math.sin(t) - d * Math.sin(((Rr - rr) / rr) * t);
+      t === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy);
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  };
+  const tick = ts => {
+    if (start == null) start = ts;
+    const p = Math.min(1, (ts - start) / 2400);
+    draw(1 - Math.pow(1 - p, 3));
+    if (p < 1) raf = requestAnimationFrame(tick);
+  };
+  if (reduceMotion) draw(1); else raf = requestAnimationFrame(tick);
+  return () => { cancelAnimationFrame(raf); draw(1); };
+}
+
+// ------------------------------------------------------------------ outlook
+const OVERLAYS = [
+  { m: "ucsv", shape: "symbolSquare" }, { m: "ridge", shape: "symbolDiamond" }, { m: "lgbm", shape: "symbolTriangle" },
+  { m: "mrf", shape: "symbolDiamond" }, { m: "hnn", shape: "symbolWye" }, { m: "mlp", shape: "symbolCross" },
+  { m: "fm:timesfm3_cov", shape: "symbolCircle" }, { m: "fm:chronos2_cov", shape: "symbolTriangle" },
+];
+const RANGES = [{ value: "2000", label: "Since 2000" }, { value: "2015", label: "Since 2015" }, { value: "2021", label: "Since 2021" }];
+function shapeSvg(o) {
+  const s = d3.create("svg").attr("viewBox", "-7 -7 14 14").attr("aria-hidden", "true");
+  s.append("path").attr("d", d3.symbol(d3[o.shape], 60)()).attr("fill", famVar(o.m));
+  return s.node();
+}
+function renderOverlayChips() {
+  const box = $("#overlay-chips"); box.replaceChildren();
+  for (const o of OVERLAYS) {
+    box.append(el("button", { class: "chip", type: "button", "aria-pressed": String(state.overlays.has(o.m)),
+      onclick: ev => { state.overlays.has(o.m) ? state.overlays.delete(o.m) : state.overlays.add(o.m); ev.currentTarget.setAttribute("aria-pressed", String(state.overlays.has(o.m))); renderOutlook(); } },
+      shapeSvg(o), label(o.m)));
+  }
+}
+function renderOutlook() {
+  const c = state.econ, e = ECON[c], Lc = DATA.latest[c], L12 = Lc["12"];
+  $("#outlook-title").textContent = e.name;
+  const lead = $("#outlook-lead");
+  lead.replaceChildren(`${e.index} inflation was `, el("b", { text: pct(e.value) }), ` in ${fmtYM(e.month)}. The median model sees `,
+    el("b", { text: pct(L12.median) }), ` in ${fmtYM(L12.target)}, with an 80% range of ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}. The ranges come from the model's own errors over the past ten years, so the 2021–22 surge stretches them upwards.`);
+  const legend = $("#outlook-legend"); legend.replaceChildren(
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--accent)" }), "Median model"),
+    el("span", {}, Object.assign(el("i", { class: "key-band" }), { style: "background:color-mix(in srgb, var(--accent) 34%, transparent)" }), "50% range"),
+    el("span", {}, Object.assign(el("i", { class: "key-band" }), { style: "background:color-mix(in srgb, var(--accent) 15%, transparent)" }), "80% range"));
+
+  const node = $("#outlook-chart");
+  const narrow = node.clientWidth < 560;
+  const f = frame(node, narrow ? 330 : 420, { t: 26, r: narrow ? 46 : 70, b: 30, l: 42 });
+  node.setAttribute("aria-label", `${e.name} inflation since ${state.range} with median forecast and 50% and 80% ranges to ${fmtYM(Lc["24"].target)}`);
+  const from = new Date(+state.range, 0, 1);
+  const hist = series(DATA.history[c]).filter(p => p.d >= from);
+  const last = { d: ym(e.month), v: e.value };
+  const fan = [{ d: last.d, v: last.v, q10: last.v, q25: last.v, q75: last.v, q90: last.v },
+    ...H.map(h => ({ h, d: ym(Lc[h].target), v: Lc[h].median, ...Lc[h].bands }))];
+  const ov = OVERLAYS.filter(o => state.overlays.has(o.m)).flatMap(o => H.map(h => ({ ...o, h, d: ym(Lc[h].target), v: Lc[h].models[o.m] })).filter(p => p.v != null));
+  const xEnd = addM(fan.at(-1).d, 2);
+  const x = d3.scaleTime().domain([from, xEnd]).range([0, f.iw]);
+  const ys = niceY(Math.min(0, ...hist.map(p => p.v), ...fan.map(p => p.q10), ...ov.map(p => p.v)), Math.max(...hist.map(p => p.v), ...fan.map(p => p.q90), ...ov.map(p => p.v)));
+  const y = d3.scaleLinear().domain(ys.domain).range([f.ih, 0]);
+  f.g.append("rect").attr("x", x(last.d)).attr("y", 0).attr("width", f.iw - x(last.d)).attr("height", f.ih).attr("fill", "var(--paper-2)").attr("opacity", 0.55);
+  yGrid(f, y, ys.ticks);
+  xYears(f, x, from, xEnd);
+  if (y.domain()[0] < 2 && y.domain()[1] > 2) {
+    f.g.append("line").attr("class", "ref-line").attr("x1", 0).attr("x2", f.iw).attr("y1", y(2)).attr("y2", y(2));
+    f.g.append("text").attr("class", "ref-label").attr("x", 4).attr("y", y(2) - 5).text("2% target");
+  }
+  f.g.append("text").attr("class", "ref-label").attr("x", x(last.d) + 6).attr("y", -10).text("FORECAST");
+  const area = (lo, hi) => d3.area().x(p => x(p.d)).y0(p => y(p[lo])).y1(p => y(p[hi])).curve(d3.curveMonotoneX);
+  f.g.append("path").attr("d", area("q10", "q90")(fan)).attr("fill", "var(--accent)").attr("fill-opacity", 0.15);
+  f.g.append("path").attr("d", area("q25", "q75")(fan)).attr("fill", "var(--accent)").attr("fill-opacity", 0.22);
+  const line = d3.line().x(p => x(p.d)).y(p => y(p.v));
+  f.g.append("path").attr("d", line(hist)).attr("fill", "none").attr("stroke", "var(--ink)").attr("stroke-width", 1.8).attr("stroke-linejoin", "round");
+  f.g.append("path").attr("d", line.curve(d3.curveMonotoneX)(fan)).attr("fill", "none").attr("stroke", "var(--accent)").attr("stroke-width", 2.2);
+  for (const p of ov) {
+    f.g.append("path").attr("d", d3.symbol(d3[p.shape], 46)()).attr("transform", `translate(${x(p.d)},${y(p.v)})`).attr("fill", famVar(p.m)).attr("stroke", "var(--card)").attr("stroke-width", 1.5);
+  }
+  for (const p of fan.slice(1)) f.g.append("circle").attr("cx", x(p.d)).attr("cy", y(p.v)).attr("r", 4.5).attr("fill", "var(--accent)").attr("stroke", "var(--card)").attr("stroke-width", 2);
+  f.g.append("circle").attr("cx", x(last.d)).attr("cy", y(last.v)).attr("r", 4.5).attr("fill", "var(--ink)").attr("stroke", "var(--card)").attr("stroke-width", 2);
+  f.g.append("text").attr("class", "lab").attr("x", x(last.d) - 8).attr("y", y(last.v) - 10).attr("text-anchor", "end").text(pct(last.v));
+  const p12 = fan.find(p => p.h === 12), p24 = fan.find(p => p.h === 24);
+  f.g.append("text").attr("class", "lab").attr("x", x(p12.d) + 8).attr("y", y(p12.v) - 9).text(pct(p12.v));
+  f.g.append("text").attr("class", "lab").attr("x", x(p24.d) + 9).attr("y", y(p24.v)).attr("dy", "0.32em").text(pct(p24.v));
+
+  // crosshair
+  const hair = f.g.append("line").attr("class", "hair").attr("y1", 0).attr("y2", f.ih).style("display", "none");
+  const dot = f.g.append("circle").attr("r", 5).attr("fill", "none").attr("stroke", "var(--ink)").attr("stroke-width", 2).style("display", "none");
+  const bis = d3.bisector(p => p.d).center;
+  f.g.append("rect").attr("width", f.iw).attr("height", f.ih).attr("fill", "transparent")
+    .on("pointermove", ev => {
+      const [mx] = d3.pointer(ev), d0 = x.invert(mx);
+      let p, rows, title;
+      if (d0 <= last.d && hist.length) {
+        p = hist[bis(hist, d0)];
+        title = fmtM(p.d); rows = [{ color: "var(--ink)", value: pct(p.v, 2), label: `${e.index} inflation` }];
+      } else {
+        p = fan.slice(1).reduce((a, b) => Math.abs(b.d - d0) < Math.abs(a.d - d0) ? b : a);
+        title = `${fmtM(p.d)} · ${p.h} months ahead`;
+        rows = [{ color: "var(--accent)", value: pct(p.v, 2), label: "Median model" },
+          { value: `${pct(p.q25)} to ${pct(p.q75)}`, label: "50% range" }, { value: `${pct(p.q10)} to ${pct(p.q90)}`, label: "80% range" },
+          ...ov.filter(o => o.h === p.h).map(o => ({ color: famVar(o.m), value: pct(o.v, 2), label: label(o.m) }))];
+      }
+      hair.style("display", null).attr("x1", x(p.d)).attr("x2", x(p.d));
+      dot.style("display", null).attr("cx", x(p.d)).attr("cy", y(p.v));
+      showTip(ev, title, rows);
+    })
+    .on("pointerleave", () => { hair.style("display", "none"); dot.style("display", "none"); hideTip(); });
+
+  // table
+  const sel = OVERLAYS.filter(o => state.overlays.has(o.m));
+  const tbl = $("#outlook-table"); tbl.replaceChildren();
+  tbl.append(el("thead", {}, el("tr", {}, el("th", { text: "Horizon" }), el("th", { text: "Target month" }), el("th", { text: "Median" }),
+    el("th", { text: "50% range" }), el("th", { text: "80% range" }), ...sel.map(o => el("th", { text: label(o.m) })))));
+  const tb = el("tbody");
+  for (const h of H) {
+    const L = Lc[h];
+    tb.append(el("tr", {}, el("td", { text: `${h} months` }), el("td", { text: fmtYM(L.target) }), el("td", { class: "best", text: pct(L.median, 2) }),
+      el("td", { text: `${pct(L.bands.q25)} to ${pct(L.bands.q75)}` }), el("td", { text: `${pct(L.bands.q10)} to ${pct(L.bands.q90)}` }),
+      ...sel.map(o => el("td", { text: pct(L.models[o.m], 2) }))));
+  }
+  tbl.append(tb);
+}
+
+// ------------------------------------------------------------------ scenario lab
+const SC = DATA.scenarios;
+const STEP = { oil: 5, supply: 0.25, ppi: 1, currency: 1, wages: 0.25, unemployment: 0.25, expectations: 0.1, abroad: 0.25 };
+const LEVER = Object.fromEntries(SC.levers.map(l => [l.key, l]));
+function fmtLever(l, v) {
+  let s = Math.abs(v).toFixed(2);
+  if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  s = `${v >= 0 ? "+" : MINUS}${s}`;
+  return l.unit.startsWith("%") ? `${s}%` : l.unit === "pp" ? `${s} pp` : s;
+}
+const leverActive = (c, k) => (SC.active[c]?.[k] || []).length > 0;
+function interp(grid, ys, v) {
+  if (v <= grid[0]) return ys[0];
+  if (v >= grid.at(-1)) return ys.at(-1);
+  let i = 1; while (grid[i] < v) i++;
+  const t = (v - grid[i - 1]) / (grid[i] - grid[i - 1]);
+  return ys[i - 1] + t * (ys[i] - ys[i - 1]);
+}
+function scenarioAt(c, h, values) {
+  const R = SC.resp[c][String(h)], ms = Object.keys(R);
+  const base = ms.map(m => R[m].base);
+  const delta = ms.map(m => Object.entries(values).reduce((s, [k, v]) => s + (v ? interp(LEVER[k].grid, R[m].curves[k], v) : 0), 0));
+  const scen = base.map((b, i) => b + delta[i]);
+  const shift = DATA.latest[c][h].median - median(base);
+  return { base: DATA.latest[c][h].median, value: median(scen) + shift, lo: quant(scen, 0.25) + shift, hi: quant(scen, 0.75) + shift,
+    up: delta.filter(d => d > 0.05).length, down: delta.filter(d => d < -0.05).length, n: ms.length };
+}
+function leverEffect(c, h, k, v) {
+  const R = SC.resp[c][String(h)];
+  return median(Object.keys(R).map(m => interp(LEVER[k].grid, R[m].curves[k], v)));
+}
+function renderPresets() {
+  const box = $("#presets"); box.replaceChildren();
+  for (const p of SC.presets) {
+    box.append(el("button", { class: "chip", type: "button", "aria-pressed": String(state.scen.preset === p.key),
+      onclick: () => { state.scen.values = { ...p.values }; state.scen.preset = p.key; renderPresets(); renderLevers(); renderScenario(); } }, p.label));
+  }
+  const p = SC.presets.find(q => q.key === state.scen.preset);
+  $("#preset-blurb").textContent = p ? p.blurb : "Baseline: today's data, no shocks.";
+}
+function trackFill(input, l) {
+  const lo = l.grid[0], hi = l.grid.at(-1), v = +input.value, z = (0 - lo) / (hi - lo) * 100, p = (v - lo) / (hi - lo) * 100;
+  input.style.setProperty("--lo", `${Math.min(z, p)}%`); input.style.setProperty("--hi", `${Math.max(z, p)}%`);
+  input.parentElement.style.setProperty("--zero", `calc(9px + ${z / 100} * (100% - 18px))`);
+}
+function renderLevers() {
+  const c = state.econ, box = $("#levers"); box.replaceChildren();
+  for (const l of SC.levers) {
+    const on = leverActive(c, l.key), v = state.scen.values[l.key] || 0;
+    const out = el("span", { class: `lever-val${v ? " on" : ""}`, text: on ? fmtLever(l, v) : "n/a" });
+    const input = el("input", { type: "range", id: `lever-${l.key}`, min: l.grid[0], max: l.grid.at(-1), step: STEP[l.key] || 0.1, value: v,
+      "aria-label": `${l.label}, ${l.unit}`, ...(on ? {} : { disabled: "" }) });
+    input.addEventListener("input", () => {
+      const val = +input.value;
+      state.scen.values[l.key] = val; state.scen.preset = null;
+      out.textContent = fmtLever(l, val); out.classList.toggle("on", val !== 0);
+      trackFill(input, l);
+      for (const b of $("#presets").children) b.setAttribute("aria-pressed", "false");
+      $("#preset-blurb").textContent = "Custom scenario.";
+      renderScenario();
+    });
+    const row = el("div", { class: `lever${on ? "" : " off"}` },
+      el("div", { class: "lever-top" }, el("label", { class: "lever-name", for: `lever-${l.key}`, text: l.label }), out),
+      el("div", { class: "range-wrap" }, input),
+      el("span", { class: "lever-note", text: on ? `${l.note} (${l.unit})` : `No current data for ${ECON[c].name}, so the models cannot use this lever.` }));
+    box.append(row);
+    trackFill(input, l);
+  }
+}
+function renderScenario() {
+  const c = state.econ, e = ECON[c], h = state.scen.h, vals = state.scen.values;
+  const pts = H.map(hh => ({ h: hh, d: ym(DATA.latest[c][hh].target), ...scenarioAt(c, hh, vals) }));
+  const cur = pts.find(p => p.h === h);
+  $("#scen-when").textContent = `${e.name} · inflation in ${fmtM(cur.d)}, ${h} months ahead`;
+  $("#ro-base").textContent = pct(cur.base);
+  $("#ro-scen").textContent = pct(cur.value);
+  const dlt = cur.value - cur.base;
+  $("#ro-delta").textContent = ppv(dlt);
+  const others = cur.n - cur.up - cur.down;
+  $("#ro-agree").textContent = Object.values(vals).some(v => v)
+    ? `${cur.up} of ${cur.n} models raise the forecast, ${cur.down} lower it${others ? ` and ${others} barely move` : ""}.`
+    : "Move a slider or pick a scenario to see how the forecast responds.";
+  const legend = $("#scen-legend"); legend.replaceChildren(
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--accent)" }), "Baseline"),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--heat)" }), "Scenario"),
+    el("span", {}, Object.assign(el("i", { class: "key-band" }), { style: "background:color-mix(in srgb, var(--heat) 20%, transparent)" }), "Middle half of the models"));
+
+  const node = $("#scen-chart"), narrow = node.clientWidth < 520;
+  const f = frame(node, narrow ? 280 : 320, { t: 18, r: narrow ? 70 : 96, b: 30, l: 42 });
+  node.setAttribute("aria-label", `Baseline and scenario inflation paths for ${e.name}`);
+  const last = { d: ym(e.month), v: e.value };
+  const from = addM(last.d, -24);
+  const hist = series(DATA.history[c]).filter(p => p.d >= from);
+  const basePath = [last, ...pts.map(p => ({ d: p.d, v: p.base }))];
+  const scenPath = [{ ...last, lo: last.v, hi: last.v }, ...pts.map(p => ({ d: p.d, v: p.value, lo: p.lo, hi: p.hi }))];
+  const xEnd = addM(pts.at(-1).d, 1);
+  const x = d3.scaleTime().domain([from, xEnd]).range([0, f.iw]);
+  const ys = niceY(Math.min(0, ...hist.map(p => p.v), ...scenPath.map(p => p.lo), ...basePath.map(p => p.v)),
+    Math.max(...hist.map(p => p.v), ...scenPath.map(p => p.hi), ...basePath.map(p => p.v)));
+  const y = d3.scaleLinear().domain(ys.domain).range([f.ih, 0]);
+  f.g.append("rect").attr("x", x(last.d)).attr("y", 0).attr("width", f.iw - x(last.d)).attr("height", f.ih).attr("fill", "var(--paper-2)").attr("opacity", 0.55);
+  yGrid(f, y, ys.ticks);
+  xYears(f, x, from, xEnd);
+  if (y.domain()[0] < 2 && y.domain()[1] > 2) {
+    f.g.append("line").attr("class", "ref-line").attr("x1", 0).attr("x2", f.iw).attr("y1", y(2)).attr("y2", y(2));
+    f.g.append("text").attr("class", "ref-label").attr("x", 4).attr("y", y(2) - 5).text("2% target");
+  }
+  f.g.append("line").attr("class", "hair").attr("x1", x(cur.d)).attr("x2", x(cur.d)).attr("y1", 0).attr("y2", f.ih).attr("stroke-dasharray", "2 3");
+  f.g.append("path").attr("d", d3.area().x(p => x(p.d)).y0(p => y(p.lo)).y1(p => y(p.hi)).curve(d3.curveMonotoneX)(scenPath))
+    .attr("fill", "var(--heat)").attr("fill-opacity", 0.16);
+  const ln = d3.line().x(p => x(p.d)).y(p => y(p.v));
+  f.g.append("path").attr("d", ln(hist)).attr("fill", "none").attr("stroke", "var(--ink)").attr("stroke-width", 1.8);
+  f.g.append("path").attr("d", ln.curve(d3.curveMonotoneX)(basePath)).attr("fill", "none").attr("stroke", "var(--accent)").attr("stroke-width", 2);
+  f.g.append("path").attr("d", ln.curve(d3.curveMonotoneX)(scenPath)).attr("fill", "none").attr("stroke", "var(--heat)").attr("stroke-width", 2.5);
+  for (const p of pts) {
+    for (const [v, col] of [[p.base, "var(--accent)"], [p.value, "var(--heat)"]]) {
+      f.g.append("circle").attr("cx", x(p.d)).attr("cy", y(v)).attr("r", p.h === h ? 5.5 : 3.5).attr("fill", col).attr("stroke", "var(--card)").attr("stroke-width", 2);
+    }
+  }
+  // end labels, pushed apart when they would overlap
+  const end = pts.at(-1);
+  let yb = y(end.base), ysn = y(end.value);
+  if (Math.abs(yb - ysn) < 15) { const mid = (yb + ysn) / 2, s = yb >= ysn ? 1 : -1; yb = mid + s * 7.5; ysn = mid - s * 7.5; }
+  f.g.append("text").attr("class", "lab-2").attr("x", x(end.d) + 9).attr("y", yb).attr("dy", "0.32em").text(`Baseline ${pct(end.base)}`);
+  f.g.append("text").attr("class", "lab").attr("x", x(end.d) + 9).attr("y", ysn).attr("dy", "0.32em").text(`Scenario ${pct(end.value)}`);
+  const hit = f.g.append("g");
+  for (const p of pts) {
+    hit.append("rect").attr("x", x(p.d) - 16).attr("width", 32).attr("y", 0).attr("height", f.ih).attr("fill", "transparent")
+      .on("pointermove", ev => showTip(ev, `${fmtM(p.d)} · ${p.h} months ahead`, [
+        { color: "var(--heat)", value: pct(p.value, 2), label: "Scenario" }, { color: "var(--accent)", value: pct(p.base, 2), label: "Baseline" },
+        { value: `${pct(p.lo)} to ${pct(p.hi)}`, label: "Middle half of the models" }]))
+      .on("pointerleave", hideTip)
+      .on("click", () => { state.scen.h = p.h; segmented($("#scen-h"), H.map(v => ({ value: v, label: `${v} months` })), p.h, v => { state.scen.h = v; renderScenario(); }); renderScenario(); });
+  }
+
+  // lever effects at the chosen horizon
+  const box = $("#impact"); box.replaceChildren();
+  $("#impact-title").textContent = `Effect of each lever on ${fmtM(cur.d)}, median model`;
+  const rows = SC.levers.filter(l => vals[l.key] && leverActive(c, l.key)).map(l => ({ l, v: vals[l.key], eff: leverEffect(c, h, l.key, vals[l.key]) }));
+  if (!rows.length) { box.append(el("p", { class: "impact-empty", text: "No levers moved yet." })); return; }
+  const span = Math.max(0.5, ...rows.map(r => Math.abs(r.eff)), Math.abs(dlt));
+  const bar = (v) => {
+    const w = Math.abs(v) / span * 50, b = el("span", { class: "bar" });
+    b.style.left = v >= 0 ? "50%" : `${50 - w}%`; b.style.width = `${w}%`;
+    b.style.background = v >= 0 ? "var(--heat)" : "var(--cool)";
+    return el("span", { class: "bar-cell" }, b);
+  };
+  for (const r of rows.sort((a, b) => Math.abs(b.eff) - Math.abs(a.eff))) {
+    box.append(el("div", { class: "impact-row" }, el("span", { text: `${r.l.label} ${fmtLever(r.l, r.v)}` }), bar(r.eff), el("span", { class: "v", text: ppv(r.eff, 2) })));
+  }
+  box.append(el("div", { class: "impact-row total" }, el("span", { text: "All together" }), bar(dlt), el("span", { class: "v", text: ppv(dlt, 2) })));
+}
+
+// ------------------------------------------------------------------ league table
+const SCOPES = [{ value: "avg", label: "Average" }, ...DATA.economies.map(e => ({ value: e.code, label: e.code, title: e.name }))];
+const FAMILIES = [["linear", "Linear and factor"], ["nonlinear", "Non-linear ML"], ["ensemble", "Ensembles"], ["tier2", "Foundation and deep (tier 2)"], ["benchmark", "Benchmarks"]];
+function leagueRows(h, scope) {
+  const rows = DATA.accuracy.filter(r => r.h === h && r.m !== "rw");
+  if (scope !== "avg") return rows.filter(r => r.c === scope).map(r => ({ m: r.m, rel: r.rel, mcs: r.mcs, per: null }));
+  const by = d3.group(rows, r => r.m);
+  return [...by].filter(([, v]) => v.length === 4).map(([m, v]) => ({ m, rel: d3.mean(v, r => r.rel), mcs: v.every(r => r.mcs),
+    nmcs: v.filter(r => r.mcs).length, per: Object.fromEntries(v.map(r => [r.c, r.rel])) }));
+}
+function renderModels() {
+  const { h, scope } = state.models;
+  const rows = leagueRows(h, scope).sort((a, b) => a.rel - b.rel);
+  const legend = $("#models-legend"); legend.replaceChildren(
+    ...FAMILIES.map(([k, t]) => el("span", {}, Object.assign(el("i", { class: "key-dot" }), { style: `background:var(--fam-${k})` }), t)),
+    el("span", {}, el("i", { class: "key-ring" }), scope === "avg" ? "Hollow: outside the 75% confidence set somewhere" : "Hollow: outside the 75% confidence set"));
+  const node = $("#models-chart"), narrow = node.clientWidth < 560;
+  const rowH = 23, lw = narrow ? 128 : 190;
+  const f = frame(node, rows.length * rowH + 40, { t: 26, r: 50, b: 14, l: lw });
+  node.setAttribute("aria-label", `Forecast error relative to no change, ${h} months ahead, ${scope === "avg" ? "average of four economies" : ECON[scope].name}`);
+  const lo = Math.min(0.6, d3.min(rows, r => r.rel) - 0.03), hi = 1.3;
+  const x = d3.scaleLinear().domain([lo, hi]).range([0, f.iw]);
+  const tstep = narrow ? 0.2 : 0.1;
+  for (const t of d3.range(Math.ceil(lo / tstep) * tstep, hi + 1e-9, tstep)) {
+    f.g.append("line").attr("class", "gridline").attr("x1", x(t)).attr("x2", x(t)).attr("y1", -6).attr("y2", rows.length * rowH);
+    f.g.append("text").attr("class", "ref-label").attr("x", x(t)).attr("y", -12).attr("text-anchor", "middle").text(t.toFixed(1));
+  }
+  f.g.append("line").attr("stroke", "var(--ink-3)").attr("stroke-width", 1.5).attr("x1", x(1)).attr("x2", x(1)).attr("y1", -6).attr("y2", rows.length * rowH);
+  rows.forEach((r, i) => {
+    const cy = i * rowH + rowH / 2, g = f.g.append("g").attr("tabindex", 0).attr("role", "listitem")
+      .attr("aria-label", `${DATA.models[r.m]?.label || r.m}: ${r.rel.toFixed(2)}`);
+    g.append("rect").attr("x", -lw).attr("y", cy - rowH / 2).attr("width", f.iw + lw + f.m.r).attr("height", rowH).attr("fill", i % 2 ? "transparent" : "var(--paper-2)").attr("opacity", 0.45);
+    g.append("text").attr("x", -10).attr("y", cy).attr("dy", "0.32em").attr("text-anchor", "end")
+      .attr("class", i === 0 ? "lab" : "lab-2").style("font-size", "12px").text(label(r.m) + (DATA.models[r.m]?.family === "foundation" || DATA.models[r.m]?.family === "deep" ? " *" : ""));
+    const off = r.rel > hi, cx = x(Math.min(r.rel, hi));
+    g.append("line").attr("x1", x(1)).attr("x2", cx).attr("y1", cy).attr("y2", cy).attr("stroke", famVar(r.m)).attr("stroke-opacity", 0.35).attr("stroke-width", 2);
+    if (off) g.append("path").attr("d", d3.symbol(d3.symbolTriangle, 50)()).attr("transform", `translate(${cx},${cy}) rotate(90)`).attr("fill", famVar(r.m));
+    else g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", 5.5).attr("fill", r.mcs ? famVar(r.m) : "var(--card)").attr("stroke", famVar(r.m)).attr("stroke-width", 2);
+    g.append("text").attr("x", f.iw + 44).attr("y", cy).attr("dy", "0.32em").attr("text-anchor", "end").attr("class", i === 0 ? "lab" : "lab-2")
+      .style("font-family", "var(--font-mono)").text(r.rel.toFixed(2));
+    const tipRows = () => [{ color: famVar(r.m), value: r.rel.toFixed(3), label: scope === "avg" ? "mean of four economies" : "relative RMSE" },
+      ...(r.per ? Object.entries(r.per).map(([c, v]) => ({ value: v.toFixed(2), label: ECON[c].name })) : []),
+      { value: scope === "avg" ? `${r.nmcs} of 4` : (r.mcs ? "yes" : "no"), label: "in 75% confidence set" }];
+    g.on("pointermove", ev => showTip(ev, DATA.models[r.m]?.label || r.m, tipRows())).on("pointerleave", hideTip)
+      .on("focus", ev => { const b = ev.currentTarget.getBoundingClientRect(); showTip({ clientX: b.left + lw, clientY: b.bottom }, DATA.models[r.m]?.label || r.m, tipRows()); })
+      .on("blur", hideTip);
+  });
+  f.g.append("text").attr("class", "ref-label").attr("x", x(1) + 5).attr("y", rows.length * rowH + 12).text("no change = 1.0");
+  f.svg.attr("role", "list");
+  renderFindings();
+}
+function renderFindings() {
+  const avg = h => Object.fromEntries(leagueRows(h, "avg").map(r => [r.m, r.rel]));
+  const a3 = avg(3), a12 = avg(12), a24 = avg(24);
+  const bestOf = (a, filt) => Object.entries(a).filter(([m]) => filt(m)).sort((p, q) => p[1] - q[1])[0];
+  const tier1 = m => !m.startsWith("fm:") && !m.startsWith("deep:");
+  const [b3m, b3v] = bestOf(a3, tier1), [b24m, b24v] = bestOf(a24, tier1);
+  const box = $("#findings"); box.replaceChildren();
+  const card = (title, big, text) => el("div", { class: "finding" }, el("h3", { text: title }), el("span", { class: "big", text: big }), el("p", { text }));
+  box.append(
+    card("Combine the models", `${Math.round((1 - b3v) * 100)}% smaller errors`, `${DATA.models[b3m].label} is the best tier-1 forecaster 3 months ahead (${b3v.toFixed(2)} of the no-change error, averaged over the four economies). Pooling many models cancels errors they do not share.`),
+    card("The edge fades with distance", `${Math.round((1 - b24v) * 100)}% at 24 months`, `Two years out the best tier-1 score is ${b24v.toFixed(2)} (${label(b24m)}), and most models sit in the confidence set together. Long-horizon rankings are close calls.`),
+    card("Foundation models: strong but suspect", `${a24["fm:timesfm3_cov"].toFixed(2)} at 24 months`, `TimesFM 3.0 with macro covariates scores best beyond a year (${a12["fm:timesfm3_cov"].toFixed(2)} at 12 months). It was released in August 2026, after every scored forecast, so it may have seen these CPI series in training. Marked * in the table.`),
+    card("Generic deep nets lag", `${a3["deep:lstm"].toFixed(2)} for the LSTM`, `Deep nets trained jointly on 43 inflation series trail the econometric models. At 3 months the LSTM and TiDE do worse than no change, and the best of them, N-HiTS, scores ${a3["deep:nhits"].toFixed(2)}.`));
+}
+
+// ------------------------------------------------------------------ track record
+const surge = [new Date(2021, 0, 1), new Date(2022, 11, 1)];
+function renderTrackSelects() {
+  const c = state.econ, h = state.track.h, avail = Object.keys(DATA.paths[c][h]);
+  for (const [id, key] of [["#track-a", "a"], ["#track-b", "b"]]) {
+    const s = $(id); s.replaceChildren();
+    for (const m of avail) s.append(el("option", { value: m, text: DATA.models[m]?.label || m }));
+    if (!avail.includes(state.track[key])) state.track[key] = avail[0];
+    s.value = state.track[key];
+  }
+}
+function renderTrack() {
+  renderTrackSelects();
+  const c = state.econ, e = ECON[c], h = state.track.h, { a, b } = state.track;
+  $("#track-intro").textContent = `${e.name}: each line is what a model forecast ${h} months earlier for that month, against what happened. Pick any two models.`;
+  const P = DATA.paths[c][h];
+  const A = series(P[a]), B = series(P[b]);
+  const from = d3.min([...A, ...B], p => p.d), to = ym(e.month);
+  const act = series(DATA.history[c]).filter(p => p.d >= from && p.d <= to);
+  const colA = "var(--accent)", colB = "var(--cool)";
+  const legend = $("#track-legend"); legend.replaceChildren(
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: `color:${colA}` }), DATA.models[a]?.label || a),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: `color:${colB}` }), DATA.models[b]?.label || b));
+  const node = $("#track-chart"), narrow = node.clientWidth < 560;
+  const f = frame(node, narrow ? 300 : 380, { t: 22, r: 14, b: 30, l: 42 });
+  node.setAttribute("aria-label", `${e.name}: ${h}-month-ahead forecasts of ${label(a)} and ${label(b)} against actual inflation`);
+  const x = d3.scaleTime().domain([from, to]).range([0, f.iw]);
+  const inr = p => p.d <= to;
+  const ys = niceY(Math.min(...act.map(p => p.v), ...A.map(p => p.v), ...B.map(p => p.v)), Math.max(...act.map(p => p.v), ...A.filter(inr).map(p => p.v), ...B.filter(inr).map(p => p.v)));
+  const y = d3.scaleLinear().domain(ys.domain).range([f.ih, 0]).clamp(true);
+  f.g.append("rect").attr("x", x(surge[0])).attr("width", x(surge[1]) - x(surge[0])).attr("y", 0).attr("height", f.ih).attr("fill", "var(--heat)").attr("opacity", 0.08);
+  f.g.append("text").attr("class", "ref-label").attr("x", x(surge[0]) + 4).attr("y", -8).text("2021–22 SURGE");
+  yGrid(f, y, ys.ticks);
+  xYears(f, x, from, to);
+  const ln = d3.line().defined(p => p.d <= to).x(p => x(p.d)).y(p => y(p.v));
+  f.g.append("path").attr("d", ln(B)).attr("fill", "none").attr("stroke", colB).attr("stroke-width", 1.5).attr("stroke-opacity", 0.9);
+  f.g.append("path").attr("d", ln(A)).attr("fill", "none").attr("stroke", colA).attr("stroke-width", 2);
+  f.g.append("path").attr("d", ln(act)).attr("fill", "none").attr("stroke", "var(--ink)").attr("stroke-width", 1.8);
+  const hair = f.g.append("line").attr("class", "hair").attr("y1", 0).attr("y2", f.ih).style("display", "none");
+  const bis = d3.bisector(p => p.d).center;
+  const at = (s, d) => { const p = s[bis(s, d)]; return p && Math.abs(p.d - d) < 20 * 864e5 ? p.v : null; };
+  f.g.append("rect").attr("width", f.iw).attr("height", f.ih).attr("fill", "transparent")
+    .on("pointermove", ev => {
+      const d0 = x.invert(d3.pointer(ev)[0]), p = act[bis(act, d0)];
+      if (!p) return;
+      hair.style("display", null).attr("x1", x(p.d)).attr("x2", x(p.d));
+      const va = at(A, p.d), vb = at(B, p.d);
+      showTip(ev, fmtM(p.d), [{ color: "var(--ink)", value: pct(p.v, 2), label: "Actual" },
+        { color: colA, value: pct(va, 2), label: `${label(a)}${va != null ? ` (miss ${signed(p.v - va, 2)})` : ""}` },
+        { color: colB, value: pct(vb, 2), label: `${label(b)}${vb != null ? ` (miss ${signed(p.v - vb, 2)})` : ""}` }]);
+    })
+    .on("pointerleave", () => { hair.style("display", "none"); hideTip(); });
+
+  // sub-period table
+  const S = DATA.subperiods[c][h], labels = DATA.subperiodLabels;
+  const full = m => DATA.accuracy.find(r => r.c === c && r.h === h && r.m === m)?.rel;
+  const ms = [...new Set([a, b, "ens:median", "ucsv"])].filter(m => S[m]);
+  const tbl = $("#track-table"); tbl.replaceChildren();
+  const nice = { "2000-07": "2000–07", "2008-20": "2008–20", "2021-22 surge": "2021–22 surge", "2023-": "2023 on" };
+  tbl.append(el("thead", {}, el("tr", {}, el("th", { text: "Model" }), ...labels.map(l => el("th", { text: nice[l] || l })), el("th", { text: "Full sample" }))));
+  const cols = [...labels.map((_, i) => m => S[m][i]), m => full(m)];
+  const best = cols.map(fn => d3.min(ms, m => fn(m) ?? Infinity));
+  const tb = el("tbody");
+  for (const m of ms) tb.append(el("tr", {}, el("td", { text: DATA.models[m]?.label || m }),
+    ...cols.map((fn, i) => { const v = fn(m); return el("td", { class: v === best[i] ? "best" : null, text: v == null ? "–" : v.toFixed(2) }); })));
+  tb.append(el("tr", {}, el("td", { text: "No change" }), ...cols.map(() => el("td", { text: "1.00" }))));
+  tbl.append(tb);
+}
+
+// ------------------------------------------------------------------ drivers
+const BLOCKS = { own: "Own inflation history", slack: "Labour market and activity", money: "Money and interest rates", cost: "Costs and commodities",
+  global: "Other economies", expect: "Expectations", calendar: "Tax calendar" };
+const stars = p => p < 0.01 ? "***" : p < 0.05 ? "**" : p < 0.1 ? "*" : "";
+function renderDrivers() {
+  const h = state.drivers.h, D = DATA.drivers, rows = D[`h${h}`], fit = D[`fit${h}`];
+  $("#drivers-intro").textContent = `Change in inflation over the next ${h} months regressed on 13 standardised drivers, ${fit.US.from.slice(0, 4)}–${fit.US.to.slice(0, 4)}. Each cell is the effect of a one-standard-deviation move, in percentage points, with Newey-West significance stars.`;
+  const neg = d3.color(css("--div-neg")), mid = d3.color(css("--div-mid")), pos = d3.color(css("--div-pos"));
+  const scale = v => d3.interpolateRgb(mid, v < 0 ? neg : pos)(Math.min(1, Math.abs(v) / 1.6) * 0.7);
+  const leg = $("#heat-legend"); leg.replaceChildren();
+  const ramp = el("span", { class: "ramp" });
+  ramp.style.background = `linear-gradient(to right, ${scale(-1.6)}, ${scale(0)}, ${scale(1.6)})`;
+  leg.append(el("span", { text: "Lowers inflation" }), ramp, el("span", { text: "Raises inflation" }), el("span", { text: "· faded cells: not significant at 10%" }));
+  const drivers = [...new Set(rows.map(r => r.driver))], cs = DATA.economies.map(e => e.code);
+  const tbl = $("#heat-table"); tbl.replaceChildren();
+  tbl.append(el("thead", {}, el("tr", {}, el("th", { text: "Driver" }), ...cs.map(c => el("th", { text: ECON[c].name, style: "text-align:center" })))));
+  const tb = el("tbody");
+  for (const d of drivers) {
+    const tr = el("tr", {}, el("td", { text: d }));
+    for (const c of cs) {
+      const r = rows.find(q => q.driver === d && q.c === c);
+      if (!r) { tr.append(el("td", { class: "cell", text: "–", style: "color:var(--ink-3)" })); continue; }
+      const sig = r.p < 0.1;
+      const td = el("td", { class: "cell", tabindex: 0, text: `${signed(r.coef, 2)}${stars(r.p)}` });
+      td.style.background = sig ? scale(r.coef) : scale(r.coef * 0.35);
+      td.style.color = sig ? "var(--ink)" : "var(--ink-3)";
+      const rowsTip = () => [{ value: `${signed(r.coef, 2)} pp`, label: "per standard deviation" }, { value: r.t.toFixed(2), label: "t-statistic" },
+        { value: r.p < 0.001 ? "< 0.001" : r.p.toFixed(3), label: "p-value" }];
+      td.addEventListener("pointermove", ev => showTip(ev, `${d} · ${ECON[c].name}`, rowsTip()));
+      td.addEventListener("pointerleave", hideTip);
+      td.addEventListener("focus", () => { const b = td.getBoundingClientRect(); showTip({ clientX: b.left, clientY: b.bottom }, `${d} · ${ECON[c].name}`, rowsTip()); });
+      td.addEventListener("blur", hideTip);
+      tr.append(td);
+    }
+    tb.append(tr);
+  }
+  tb.append(el("tr", {}, el("td", { class: "muted", text: "R² / months" }), ...cs.map(c => el("td", { class: "cell", text: `${fit[c].r2.toFixed(2)} / ${fit[c].n}`, style: "color:var(--ink-2)" }))));
+  tbl.append(tb);
+
+  const ho = $("#howto"); ho.replaceChildren(el("h3", { text: "How to read it" }));
+  const items = h === 12 ? [
+    ["Spikes fade.", " High inflation today, and headline running above core, predict lower inflation a year on. This is the strongest effect in every economy."],
+    ["Costs pass through.", " Producer prices, oil and supply-chain pressure push inflation up within a year where they are significant."],
+    ["Domestic pressure.", " Wage and money growth matter in the US and UK; expectations matter in Japan and the euro area."],
+    ["Currency.", " A stronger currency lowers inflation in the US and Japan."],
+    ["Policy rate.", " The positive US coefficient reflects the Fed hiking when pressure builds. It is a reaction, not a cause."],
+    ["Caution.", " In-sample regressions with 13 correlated drivers: treat the stars as a guide."],
+  ] : [
+    ["Momentum matters.", " At 3 months the recent 6-month pace turns positive and significant everywhere."],
+    ["Oil moves fast.", " Oil price inflation is significant in all four economies."],
+    ["Spikes still fade.", " Current inflation and headline-minus-core keep their negative signs."],
+    ["Lower fit.", " Short-run changes are noisier, so the R² values are lower."],
+  ];
+  for (const [b, t] of items) ho.append(el("p", {}, el("b", { text: b }), t));
+
+  const B = D.blocks, keys = Object.keys(BLOCKS).filter(k => cs.some(c => B[c]?.[k]));
+  const maxv = d3.max(cs.flatMap(c => keys.map(k => B[c]?.[k] || 0)));
+  const bt = $("#blocks-table"); bt.replaceChildren();
+  bt.append(el("thead", {}, el("tr", {}, el("th", { text: "Predictor group" }), ...cs.map(c => el("th", { text: ECON[c].name })))));
+  const tb2 = el("tbody");
+  for (const k of keys.sort((p, q) => d3.sum(cs, c => B[c]?.[q] || 0) - d3.sum(cs, c => B[c]?.[p] || 0))) {
+    tb2.append(el("tr", {}, el("td", { text: BLOCKS[k] }), ...cs.map(c => {
+      const v = B[c]?.[k] || 0, bar = el("i"); bar.style.width = `${Math.round(v / maxv * 70)}px`;
+      return el("td", {}, el("span", { class: "minibar" }, bar, `${Math.round(v * 100)}%`));
+    })));
+  }
+  bt.append(tb2);
+}
+
+// ------------------------------------------------------------------ method
+function renderMethod() {
+  const gaps = SC.check.map(r => Math.abs(r.additive - r.joint));
+  const box = $("#method-body"); box.replaceChildren();
+  const blockEl = (title, ...paras) => el("div", {}, el("h3", { text: title }), ...paras);
+  box.append(
+    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 72 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed." }),
+      el("p", { text: "Every series enters with its publication lag, so each backtest forecast uses only what was known that month. The figures are today's revised vintages." })),
+    blockEl("Models", el("p", { text: "Tier 1, tested first: random walk, UCSV, ridge, lasso, elastic net, factor models, subset regression, kernel ridge, random forest, gradient boosting, macroeconomic random forest, BART, hemisphere and plain neural nets, pooled versions across economies, and ensembles." }),
+      el("p", { text: "Tier 2: deep nets (N-HiTS, PatchTST, TiDE, LSTM) and zero-shot foundation models (Chronos and TimesFM). Models forecast the change in inflation, so zero means no change." })),
+    blockEl("Scoring", el("ul", {}, el("li", { text: "Monthly origins from 2000 (euro area 2002), expanding windows, refits every 1 to 12 months." }),
+      el("li", { text: "RMSE relative to no change; 75% model confidence set (Hansen, T-max, 2,000 bootstrap draws)." }),
+      el("li", { text: "80% ranges: the 10th and 90th percentiles of the model's own errors over the past ten years." }),
+      el("li", { text: "The live median uses the 13 country models; the backtest median also includes 5 pooled models." }))),
+    blockEl("Scenarios", el("p", { text: "Each of the 13 country models is refitted on all data. A scenario shifts today's predictors the way the shock would show up this month (oil 30% dearer moves its 1-, 3- and 12-month changes by the same amount) and asks every model again." }),
+      el("p", { text: `Levers add up within each model before the median is taken. Checked against solving the six presets jointly, the shortcut is off by at most ${d3.max(gaps).toFixed(2)} pp (median ${median(gaps).toFixed(2)} pp).` })),
+    blockEl("Caveats", el("ul", {}, el("li", { text: "The scenario models capture correlations. A shock moves only the drivers you set." }),
+      el("li", { text: "Foundation models may have seen these series in pretraining; their scores before release are not clean." }),
+      el("li", { text: "Ranges are wide because inflation is hard to forecast more than a few months out." }))),
+    blockEl("Read more", el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/blob/claude/ecstatic-bell-vmmnv3/docs/inflation_report.md", text: "Full backtest report" })),
+      el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/blob/claude/ecstatic-bell-vmmnv3/docs/inflation_drivers.md", text: "Drivers and coefficients" })),
+      el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/tree/claude/ecstatic-bell-vmmnv3/bondpredictor/inflation", text: "Model code" }))));
+  $("#foot-asof").textContent = `Data to ${fmtYM(DATA.economies.map(e => e.month).sort().at(-1))} · built ${DATA.asof}`;
+}
+
+// ------------------------------------------------------------------ boot
+function boot() {
+  const sw = $("#econ-switch");
+  for (const e of DATA.economies) {
+    sw.append(el("button", { type: "button", "data-code": e.code, title: e.name, "aria-pressed": String(e.code === state.econ), text: e.code, onclick: () => setEcon(e.code) }));
+  }
+  segmented($("#range-switch"), RANGES, state.range, v => { state.range = v; renderOutlook(); });
+  segmented($("#scen-h"), H.map(v => ({ value: v, label: `${v} months` })), state.scen.h, v => { state.scen.h = v; renderScenario(); });
+  segmented($("#models-h"), H.map(v => ({ value: v, label: `${v}m` })), state.models.h, v => { state.models.h = v; renderModels(); });
+  segmented($("#models-scope"), SCOPES, state.models.scope, v => { state.models.scope = v; renderModels(); });
+  segmented($("#track-h"), H.map(v => ({ value: v, label: `${v} months` })), state.track.h, v => { state.track.h = v; renderTrack(); });
+  segmented($("#drivers-h"), [{ value: 12, label: "12 months" }, { value: 3, label: "3 months" }], state.drivers.h, v => { state.drivers.h = v; renderDrivers(); });
+  $("#track-a").addEventListener("change", ev => { state.track.a = ev.target.value; renderTrack(); });
+  $("#track-b").addEventListener("change", ev => { state.track.b = ev.target.value; renderTrack(); });
+  $("#scen-reset").addEventListener("click", () => { state.scen.values = {}; state.scen.preset = null; renderPresets(); renderLevers(); renderScenario(); });
+  renderHero(); renderTickets(); renderOverlayChips(); renderOutlook(); renderPresets(); renderLevers(); renderScenario();
+  renderModels(); renderTrack(); renderDrivers(); renderMethod();
+  const finish = guilloche();
+  let w = innerWidth, pending = 0;
+  addEventListener("resize", () => {
+    if (Math.abs(innerWidth - w) < 2) return;
+    w = innerWidth; cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => { renderOutlook(); renderScenario(); renderModels(); renderTrack(); finish(); });
+  });
+  const retheme = () => { renderDrivers(); finish(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+  new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+if (window.d3) boot();
+else document.querySelector("main").prepend(Object.assign(document.createElement("p"), { className: "wrap", textContent: "The charting library did not load. Check your connection and reload the page." }));
+</script>

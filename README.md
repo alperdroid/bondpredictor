@@ -319,7 +319,18 @@ python -m bondpredictor.inflation forecast --jobs 4      # latest forecasts
 python -m bondpredictor.inflation foundation             # tier 2: Chronos / TimesFM zero-shot (downloads weights)
 python -m bondpredictor.inflation deep                   # tier 2: global deep time-series nets (slow; optional)
 python -m bondpredictor.inflation report                 # docs/inflation_report.md (+ .csv)
+python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of the latest forecasts
+python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
 ```
+
+`docs/site/index.html` is a self-contained page (it loads d3 and Google
+Fonts from their CDNs): a fan-chart outlook per economy, a scenario lab, the
+model league table, a backtest replay and the driver coefficients.  The
+scenario lab shifts today's drivers (oil, supply-chain pressure, producer
+prices, the currency, wages, unemployment, expectations, inflation abroad)
+and asks the 13 refitted country models again; levers add up within each
+model before the median is taken, which `scenarios` checks against solving
+each preset jointly (within 0.14 pp in this build).
 
 ### Target and timing
 
@@ -544,6 +555,8 @@ bondpredictor/
     evaluation.py  DM tests, model confidence set, sub-periods, conformal intervals
     robustness.py  re-estimation variants
     report.py      markdown report
+    scenario.py    what-if responses of the refitted models
+    site.py        data and renderer for docs/site
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```
 

@@ -5,6 +5,8 @@
     python -m bondpredictor.inflation robustness   seeds, hyperparameters, windows, samples
     python -m bondpredictor.inflation report       markdown report from saved results
     python -m bondpredictor.inflation forecast     latest forecasts
+    python -m bondpredictor.inflation scenarios    what-if responses of the latest forecasts
+    python -m bondpredictor.inflation site         interactive site (docs/site/index.html)
 """
 
 from __future__ import annotations
@@ -254,6 +256,48 @@ def cmd_forecast(args):
     print(f"wrote {out / 'latest.csv'}")
 
 
+def cmd_scenarios(args):
+    from .scenario import run_scenarios, summarise
+
+    store = load_frames(args)
+    frames = {c: store["frames"][c] for c in args.countries}
+    path = Path(args.out) / "scenarios.pkl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    done = pd.read_pickle(path) if args.resume and path.exists() else {}
+    t0 = time.time()
+
+    def save(key, r):
+        done[key] = r
+        print(f"[{time.time() - t0:7.0f}s] {key}: {'ok' if r else 'no fit'}", flush=True)
+        pd.to_pickle(done, path)
+
+    res = run_scenarios(frames, tuple(args.horizons), n_jobs=args.jobs, progress=save, done=done)
+    pd.to_pickle(res, path)
+    with pd.option_context("display.width", 200, "display.max_rows", 500):
+        print(summarise(res).to_string(index=False, float_format=lambda v: f"{v:.2f}"))
+    print(f"wrote {path} ({len(res)} model fits)")
+
+
+def cmd_site(args):
+    import json
+
+    from .site import site_data, write_site
+
+    store = load_frames(args)
+    res_dir = Path(args.results)
+    results = pd.read_pickle(res_dir / "results.pkl")
+    for extra in ("deep.pkl", "foundation.pkl"):
+        if (res_dir / extra).exists():
+            results = {**results, **pd.read_pickle(res_dir / extra)}
+    scen_path = res_dir / "scenarios.pkl"
+    data = site_data(store, results, pd.read_csv(res_dir / "latest.csv"),
+                     pd.read_pickle(scen_path) if scen_path.exists() else None, pd.read_csv(args.scores),
+                     {c: store["frames"][c] for c in CODES})
+    (res_dir / "site.json").write_text(json.dumps(data))
+    out = write_site(data, Path(args.template), Path(args.out))
+    print(f"wrote {out} ({out.stat().st_size / 1e6:.2f} MB)")
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="bondpredictor.inflation", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -321,6 +365,20 @@ def build_parser():
     f.add_argument("--jobs", type=int, default=1)
     f.add_argument("--out", default="output/inflation")
     f.set_defaults(func=cmd_forecast)
+
+    sc = sub.add_parser("scenarios", parents=[common], help="what-if responses of the latest forecasts")
+    sc.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
+    sc.add_argument("--jobs", type=int, default=1)
+    sc.add_argument("--resume", action="store_true", help="skip model fits already in the output file")
+    sc.add_argument("--out", default="output/inflation")
+    sc.set_defaults(func=cmd_scenarios)
+
+    st = sub.add_parser("site", parents=[common], help="interactive site with forecasts and scenarios")
+    st.add_argument("--results", default="output/inflation")
+    st.add_argument("--scores", default="docs/inflation_report.csv", help="league table written by `report`")
+    st.add_argument("--template", default="docs/site/template.html")
+    st.add_argument("--out", default="docs/site/index.html")
+    st.set_defaults(func=cmd_site)
     return p
 
 
