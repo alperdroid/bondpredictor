@@ -58,7 +58,12 @@ def _progress(t0, sink: dict | None = None, path: Path | None = None, every: int
     done = [0]
 
     def show(key, r):
-        status = "FAILED" if isinstance(r, Exception) else (f"{len(r)} rows" if isinstance(r, pd.DataFrame) else f"{len(r)} economies")
+        if isinstance(r, Exception):
+            status = "FAILED"
+        elif isinstance(r, str):
+            status = r
+        else:
+            status = f"{len(r)} rows" if isinstance(r, pd.DataFrame) else f"{len(r)} economies"
         print(f"[{time.time() - t0:7.0f}s] {key}: {status}", flush=True)
         if sink is None:
             return
