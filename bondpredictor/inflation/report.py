@@ -60,7 +60,7 @@ def md_table(df: pd.DataFrame, kinds: dict | None = None, index_name: str = "") 
     body = []
     for i, row in df.iterrows():
         cells = [_cell(v, kinds.get(c, "2")) if not isinstance(v, str) else v for c, v in row.items()]
-        body.append("| " + " | ".join([str(i)] + cells) + " |")
+        body.append("| " + " | ".join([str(i).replace("|", "\\|")] + cells) + " |")
     return "\n".join([head, sep, *body])
 
 
@@ -229,6 +229,8 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
                                                 "panel:bart", "ens:ml", "ens:ml+ucsv", "ens:median",
                                                 "fm:chronos2_cov", "fm:timesfm3_cov"])
         if not d.empty:
+            rank = {m: i for i, m in enumerate(_order(res))}
+            d = d.loc[sorted(d.index, key=lambda i: (rank.get(i.split(" (")[0], 999), i))]
             d.index = [f"{LABELS.get(i.split(' (')[0], i.split(' (')[0])} ({i.split(' (')[1]}" for i in d.index]
             L += [f"### {NAMES.get(c, c)}", "", md_table(d[["coverage", "width", "interval_score", "n"]], {"n": "i"}, "model"), ""]
     if robust:
