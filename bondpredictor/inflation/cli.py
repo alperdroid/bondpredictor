@@ -206,6 +206,18 @@ def cmd_foundation(args):
     print(f"wrote {path} ({len(res)} forecast series)")
 
 
+def cmd_explain(args):
+    from .explain import drivers_report
+
+    store = load_frames(args)
+    text = drivers_report({c: store["frames"][c] for c in args.countries})
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text)
+    print(text)
+    print(f"\nwrote {out}")
+
+
 def cmd_report(args):
     from .report import build_report
 
@@ -292,6 +304,10 @@ def build_parser():
     fm.add_argument("--threads", type=int, default=4)
     fm.add_argument("--out", default="output/inflation")
     fm.set_defaults(func=cmd_foundation)
+
+    ex = sub.add_parser("explain", parents=[common], help="predictor significance and importance")
+    ex.add_argument("--out", default="docs/inflation_drivers.md")
+    ex.set_defaults(func=cmd_explain)
 
     rep = sub.add_parser("report", parents=[common])
     rep.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
