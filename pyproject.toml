@@ -15,12 +15,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# xlrd reads the NY Fed ACM workbook (.xls); openpyxl reads .xlsx overrides.
+# xlrd reads the NY Fed ACM and GSCPI workbooks (.xls); openpyxl reads .xlsx overrides.
 excel = ["xlrd>=2.0", "openpyxl>=3.1"]
 # Random forest, gradient boosting and neural-net forecasters (bond and inflation models).
 ml = ["scikit-learn>=1.4", "lightgbm>=4.0", "scipy>=1.10", "torch>=2.2"]
-# Tier-2 deep time-series networks for the inflation horse race.
+# Tier-2 deep time-series networks and pretrained foundation models for the inflation horse race.
 deep = ["neuralforecast>=3.0"]
+foundation = ["chronos-forecasting>=2.0", "timesfm @ git+https://github.com/google-research/timesfm.git"]
 dev = ["pytest>=7"]
 
 [project.scripts]

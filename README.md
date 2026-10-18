@@ -1,8 +1,10 @@
 # bondpredictor
 
 Forecasts **government bond excess returns** (holding a long bond instead of
-rolling short bills) for the **United States, Germany and Japan**.  Everything
-is built from **public data**.
+rolling short bills) for the **United States, Germany and Japan**, and
+**consumer-price inflation** for the **United States, United Kingdom, Japan
+and the euro area** (see [Inflation forecasting](#inflation-forecasting-us-uk-japan-and-the-euro-area)).
+Everything is built from **public data**.
 
 It implements the predictors from the bond-return literature, re-estimates
 them in real time, and judges them **only out of sample**: R²_OS against the
@@ -301,12 +303,117 @@ are not reliable at this sample size.  Rerun with GSW data from 1961 for a
 fairer test of the US neural-net results in the literature, whose evidence
 rests on a longer sample.
 
+## Inflation forecasting: US, UK, Japan and the euro area
+
+`bondpredictor.inflation` runs a real-time horse race of **econometric
+machine-learning models** for consumer-price inflation in the **United
+States, United Kingdom, Japan and the euro area**.  Everything is built from
+public data.
+
+```
+pip install -e ".[dev,ml,excel]"            # + ".[deep,foundation]" for the tier-2 models
+python -m bondpredictor.inflation build                  # download + feature frames -> data/processed/inflation.pkl
+python -m bondpredictor.inflation backtest --jobs 4      # tier 1: benchmarks + econometric ML, all horizons, pooled models
+python -m bondpredictor.inflation robustness --jobs 4    # seeds, fixed hyperparameters, rolling window, post-1985 sample
+python -m bondpredictor.inflation forecast --jobs 4      # latest forecasts
+python -m bondpredictor.inflation foundation             # tier 2: Chronos / TimesFM zero-shot (downloads weights)
+python -m bondpredictor.inflation deep                   # tier 2: global deep time-series nets (slow; optional)
+python -m bondpredictor.inflation report                 # docs/inflation_report.md (+ .csv)
+```
+
+### Target and timing
+
+* **Target**: y/y CPI inflation (HICP for the euro area) *h* = 3, 6, 12
+  and 24 months after the latest published print.
+* **Origins** are month-ends from January 2000.  At the end of month *k*
+  the latest CPI print is for *k − 1*.  Every predictor is shifted by its
+  publication lag (`inflation/config.py`), so a row holds only what had
+  been published by then.
+* **Models forecast the change** in the y/y rate.  A zero forecast is the
+  random walk, and tree models are not capped at the inflation levels in
+  their training data.
+* **Seasonality**: y/y rates need no adjustment.  Month-on-month features
+  use a one-sided seasonal filter estimated from past data only
+  (`features.sa_onesided`), because official SA factors are revised with
+  hindsight.  On US CPI it tracks the official SA series closely (0.96
+  correlation of 3-month annualised rates).
+* **Base effects and taxes**: for *h* < 12 part of the target is already
+  known.  `drop` is the annualised rate of the months leaving the 12-month
+  window, and `mech` is the change implied if the next *h* months ran at
+  the recent trend.  Legislated consumption-tax/VAT changes (Japan 1989,
+  1997, 2014, 2019; UK VAT; German VAT in the euro area) enter from the
+  month they were announced.
+* **Training**: expanding window from 1960 where data exist (euro area
+  from 1991), at least ten years.  Linear models are refitted monthly; ML
+  models yearly, with hyperparameters tuned by expanding-window CV with a
+  horizon-length gap.  `tests/test_inflation.py` checks that scrambling
+  all data after an origin leaves its forecast unchanged.
+
+### Data (all reachable without keys)
+
+| | United States | United Kingdom | Japan | Euro area |
+|---|---|---|---|---|
+| CPI target | CPI-U NSA (FRED, 1913–) | CPI (OECD, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
+| Core / components | core, energy, food, services, goods, shelter | core, energy, food, services, goods | ex food & energy, energy, food | ex energy & food, energy, food, services, NEIG |
+| Expectations / price surveys | Michigan, Cleveland Fed, 5y breakeven, Philly Fed prices paid | 10y gilt breakeven (BoE) | Tankan output/input price DIs and firms' inflation outlook (BoJ) | EC consumer and selling-price expectations |
+| Slack | unemployment (level, change, gap), payrolls, claims, wages, IP, capacity utilisation, retail, housing | unemployment, average weekly earnings (ONS), IP, retail, confidence | unemployment, employment, earnings, IP, retail, confidence | unemployment, IP, retail, ESI, confidence |
+| Costs | oil, PPI, import prices, commodities, dollar | oil in GBP, output PPI (ONS, to Jan 2025), REER, GBP/USD | oil in JPY, PPI, import prices, services PPI (BoJ), REER, USD/JPY | oil in EUR, PPI, import prices, NEER, EUR/USD |
+| Money / finance | Fed funds, 10y, term and credit spreads, M2, loans, stocks, house prices | Bank Rate (BoE), 10y gilt, 10y real yield (BoE), money, stocks | call rate, 10y JGB, money, stocks | Euribor, 10y, M3 |
+| Global (all) | median y/y inflation across 20 advanced economies (Ciccarelli–Mojon), its change and dispersion; IMF commodity and food prices; New York Fed supply-chain pressure index (GSCPI); the other three economies' inflation |
+
+Gaps: the UK has no inflation-expectations *survey* (the EC survey dropped
+the UK after Brexit), so the gilt breakeven stands in; ONS suspended its
+producer price index after January 2025; US CPI for October 2025 was never
+collected (federal shutdown) and is interpolated for use as an input, never
+as a target.  Every series is kept on a contiguous calendar, so a missing
+month cannot shift later 12-month changes.
+
+### Models
+
+**Tier 1 – benchmarks and econometric ML** (run first, full robustness):
+
+| | Model | Reference |
+|---|---|---|
+| Benchmarks | random walk; UCSV (particle filter, γ fixed); AR-type regression on own-inflation terms | Atkeson–Ohanian 2001; Stock–Watson 2007 |
+| Shrinkage | ridge; adaptive lasso; elastic net | Medeiros et al. 2021 (JBES) |
+| Factors / combinations | diffusion index (PCA); three-pass regression filter; complete subset regression | Stock–Watson 2002; Kelly–Pruitt 2015; Elliott–Gargano–Timmermann 2013 |
+| Non-linear | kernel ridge; random forest; gradient boosting (LightGBM) | Goulet Coulombe et al. 2022 (JAE); Medeiros et al. 2021 |
+| Macro-specific ML | **Macroeconomic random forest** (generalised time-varying Phillips-curve coefficients); **BART** (Bayesian trees, predictive densities); **hemisphere neural net** ("neural Phillips curve": one sub-network per block, additive, decomposable) and a plain MLP for comparison | Goulet Coulombe 2024 (JAE); Chipman–George–McCulloch 2010, Clark et al. 2023; Goulet Coulombe 2025 (JBES) |
+| Pooled | ridge, boosting, MRF, BART and the hemisphere net estimated on all four economies at once (country-standardised common predictors, country effects) | |
+| Ensembles (fixed in advance) | mean of the six non-linear ML models; half that, half UCSV; median of all tier-1 models | |
+
+**Tier 2 – generic deep learning**:
+
+* pretrained time-series *foundation models*, zero-shot: Chronos-Bolt,
+  Chronos-2, TimesFM 2.5 and TimesFM 3.0 on the inflation history alone, and
+  Chronos-2 and TimesFM 3.0 with five macro series as past covariates (core,
+  energy and oil inflation, the global inflation factor, unemployment);
+* N-HiTS, PatchTST, TiDE and an LSTM (Nixtla `neuralforecast`), univariate
+  but trained globally on ~40 economies' inflation, refitted every two years.
+
+Foundation models may have seen these CPI series in pretraining (their
+release dates run from November 2024 to August 2026), so the report also
+scores them on post-release origins only.
+
+### Evaluation
+
+RMSE relative to the random walk and to UCSV; Diebold–Mariano tests against
+the random walk (HLN-corrected, HAC); the 75% **model confidence set**
+(Hansen–Lunde–Nason, T_max, stationary bootstrap); RMSE by the period being
+forecast (2000–07, 2008–20, the 2021–22 surge, 2023–); 80% interval
+forecasts from rolling conformal intervals (each model's own past errors)
+and BART's posterior, scored by coverage and interval score; and
+re-estimation variants (seeds, fixed hyperparameters, rolling 20-year
+window, training only from 1985).
+
+<!-- inflation-results -->
+
 ## Layout
 
 ```
 bondpredictor/
   config.py      series and sources per country (edit here)
-  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed ACM, MOF, FRED-MD loaders + cache
+  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed, MOF, FRED-MD, OECD, ECB, Eurostat, BoJ, BoE, ONS loaders + cache
   curves.py      Svensson & tabulated curves, par→zero bootstrap, forwards
   returns.py     zero-coupon and par-bond excess returns
   features.py    one-sided predictors (trend inflation, HP gap, inflation uncertainty, realised vol)
@@ -320,6 +427,22 @@ bondpredictor/
   inference.py   Newey–West, Hodrick 1B, null bootstrap
   acm.py         Adrian–Crump–Moench term premium
   cli.py         command line
+  inflation/     inflation forecasting (python -m bondpredictor.inflation)
+    config.py      series and publication lags per economy
+    data.py        loading, splicing, gap handling, cross-country CPI panel
+    features.py    real-time features, one-sided seasonal adjustment, base effects, targets
+    econ.py        shrinkage, factor, subset, kernel-ridge, forest and boosting models
+    mrf.py         macroeconomic random forest
+    bart.py        Bayesian additive regression trees
+    hnn.py         hemisphere neural net and MLP (PyTorch)
+    ucsv.py        Stock-Watson UCSV particle filter
+    backtest.py    real-time expanding-window engine and model zoo
+    panel.py       pooled cross-country models
+    foundation.py  Chronos / TimesFM zero-shot forecasts
+    deep.py        N-HiTS, PatchTST, TiDE, LSTM (neuralforecast)
+    evaluation.py  DM tests, model confidence set, sub-periods, conformal intervals
+    robustness.py  re-estimation variants
+    report.py      markdown report
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```
 
