@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class Series:
-    source: str  # "fred" | "bundesbank" | "oecd" | "ecb" | "eurostat" | "boj" | "csv"
+    source: str  # "fred" | "bundesbank" | "oecd" | "ecb" | "eurostat" | "boj" | "ons" | "nyfed" | "csv"
     key: str
     lag: int = 0  # publication lag, months
     how: str = "last"  # month aggregation for daily/weekly data: "last" | "mean"

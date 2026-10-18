@@ -20,11 +20,11 @@ blocks of the report:
 Own-inflation features (``own``), the global inflation factor (``global``)
 and the tax calendar (``calendar``) are built in ``features.py``.
 
-Sources reachable from a locked-down sandbox in October 2026: FRED, OECD
-SDMX, ECB, Eurostat and the BoJ API.  ONS, the Bank of England, BIS, the New
-York Fed (GSCPI) and Hugging Face were blocked, so the UK has no producer
-prices after 2022 and no inflation-expectations survey (the EC survey dropped
-the UK after Brexit; the BoE/Ipsos survey is on a blocked host).
+Sources: FRED, OECD SDMX, ECB, Eurostat, the BoJ API, ONS and the New York
+Fed.  The Bank of England was not reachable from the build sandbox, so the UK
+has no inflation-expectations survey (the EC survey dropped the UK after
+Brexit; the BoE/Ipsos survey is on the Bank's site), and ONS suspended its
+producer price index after January 2025.
 """
 
 from __future__ import annotations
@@ -54,6 +54,10 @@ def estat(key: str, **kw) -> Series:
 
 def boj(key: str, **kw) -> Series:
     return Series("boj", key, **kw)
+
+
+def ons(path: str, **kw) -> Series:
+    return Series("ons", path, **kw)
 
 
 def oecd_cpi(area: str, item: str = "_T", coicop2018: bool = False, lag: int = 1) -> Series:
@@ -177,12 +181,16 @@ UK = InflationCountry(
     ),
     predictors={
         "unemp": P((kei("GBR", "UNEMP", "PT_LF", "_T", lag=2), fred("LRHUTTTTGBM156S", lag=2)), ["lvl", "d12", "gap"], "slack", "level"),
-        "earnings": P((kei("GBR", "H_EARN", "IX", "C", lag=2), fred("LCEAMN01GBM661S", lag=2)), ["yoy"], "slack"),
+        # Average weekly earnings, whole economy (ONS, 2000-), OECD manufacturing earnings before.
+        "earnings": P((ons("/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/lms", lag=2),
+                       kei("GBR", "H_EARN", "IX", "C", lag=2), fred("LCEAMN01GBM661S", lag=2)), ["yoy"], "slack"),
         "ip": P(kei("GBR", "PRVM", "IX", "BTE", lag=2), ["yoy", "gap_log"], "slack"),
         "retail": P(kei("GBR", "TOVM", "IX", "G47", lag=1), ["yoy"], "slack"),
         "business_conf": P(kei("GBR", "BCICP", "PB", "C", lag=0), ["lvl"], "slack", "level"),
         "consumer_conf": P(kei("GBR", "CCICP", "PB", lag=0), ["lvl"], "slack", "level"),
-        "ppi": P(fred("GBRPPDMMINMEI", lag=1), ["yoy"], "cost"),  # ends 2022-12
+        # ONS output PPI (manufacturing, home sales); ONS suspended PPI after January 2025.
+        "ppi": P((ons("/economy/inflationandpriceindices/timeseries/gb7s/mm22", lag=1), fred("GBRPPDMMINMEI", lag=1)),
+                 ["yoy"], "cost"),
         "reer": P(fred("CCRETT01GBM661N", lag=1), ["yoy"], "cost"),
         "gbpusd": P(fred("DEXUSUK", how="mean"), ["yoy"], "cost"),
         "policy_rate": P(fred("IRSTCI01GBM156N", lag=1), ["lvl", "d12"], "money", "level"),
@@ -282,10 +290,12 @@ EA = InflationCountry(
 
 COUNTRIES: dict[str, InflationCountry] = {"US": US, "UK": UK, "JP": JP, "EA": EA}
 
-# Global block: commodity prices (US$) shared by every economy.
+# Global block: commodity prices (US$) and supply-chain pressure, shared by every economy.
 GLOBAL_PREDICTORS = {
     "commodities": P(fred("PALLFNFINDEXM", lag=1), ["yoy"], "global"),
     "food_commodities": P(fred("PFOODINDEXM", lag=1), ["yoy"], "global"),
+    # New York Fed Global Supply Chain Pressure Index (1998-), published early the next month.
+    "gscpi": P(Series("nyfed", "gscpi", lag=1), ["lvl", "d3"], "cost", "level"),
 }
 
 # Advanced economies whose median inflation is the global inflation factor

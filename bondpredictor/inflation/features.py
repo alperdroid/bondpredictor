@@ -154,6 +154,7 @@ COMMON = {
     "price_exp": {"US": "mich", "JP": "tankan_output_prices", "EA": "consumer_price_exp"},
     "commodities": {c: "commodities" for c in cfg.COUNTRIES},
     "food_commodities": {c: "food_commodities" for c in cfg.COUNTRIES},
+    "gscpi": {c: "gscpi" for c in cfg.COUNTRIES},
 }
 
 GROUP_OF_PREFIX = {"pi": "own", "sa": "own", "core": "own", "headline": "own", "drop": "own", "mech": "own",

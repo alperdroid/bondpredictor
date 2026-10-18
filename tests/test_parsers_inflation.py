@@ -63,3 +63,31 @@ def test_boj_monthly_and_quarterly():
 def test_boj_error_status():
     with pytest.raises(ValueError, match="status 400"):
         parse_boj_csv("STATUS,400\nMESSAGEID,M181005E\nMESSAGE,invalid date\n")
+
+
+def test_ons_csv_keeps_the_monthly_rows():
+    from bondpredictor.data.ons import parse_ons_csv
+
+    s = parse_ons_csv((FIX / "ons_ppi.csv").read_text())
+    assert list(s.index) == [pd.Timestamp("1957-01-01"), pd.Timestamp("1957-02-01"), pd.Timestamp("2025-01-01")]
+    assert s.iloc[-1] == pytest.approx(136.8)
+
+
+def test_gscpi_workbook():
+    import io
+
+    openpyxl = pytest.importorskip("openpyxl")
+    from bondpredictor.data.nyfed import parse_gscpi
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "GSCPI Monthly Data"
+    ws.append(["Date", "GSCPI"])
+    ws.append([None, None])
+    ws.append(["31-Jan-1998", -0.79])
+    ws.append(["30-Sep-2026", 1.28])
+    buf = io.BytesIO()
+    wb.save(buf)
+    s = parse_gscpi(buf.getvalue())
+    assert list(s.index) == [pd.Timestamp("1998-01-01"), pd.Timestamp("2026-09-01")]
+    assert s.iloc[-1] == pytest.approx(1.28)
