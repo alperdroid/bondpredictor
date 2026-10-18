@@ -62,7 +62,7 @@ def add_ensembles(results: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
             e = ml.copy()
             e["forecast"] = 0.5 * ml["forecast"] + 0.5 * u
             out["ens:ml+ucsv"] = e.dropna(subset=["forecast"])
-    others = [m for m in results if m not in BENCHMARKS and not m.startswith(("ens:", "deep:"))]
+    others = [m for m in results if m not in BENCHMARKS and not m.startswith(("ens:", "deep:", "fm:"))]
     med = combo(others, "median")
     if med is not None:
         out["ens:median"] = med

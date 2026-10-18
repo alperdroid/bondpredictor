@@ -186,6 +186,21 @@ def cmd_deep(args):
     print(f"wrote {path} ({len(res)} forecast series)")
 
 
+def cmd_foundation(args):
+    import torch
+
+    from .foundation import run_foundation
+
+    torch.set_num_threads(args.threads)
+    store = load_frames(args)
+    t0 = time.time()
+    res = run_foundation(store, args.countries, names=tuple(args.models), horizons=tuple(args.horizons or [3, 6, 12, 24]),
+                         start=args.start, end=args.end, progress=_progress(t0))
+    path = Path(args.out) / "foundation.pkl"
+    pd.to_pickle(res, path)
+    print(f"wrote {path} ({len(res)} forecast series)")
+
+
 def cmd_report(args):
     from .report import build_report
 
@@ -193,9 +208,10 @@ def cmd_report(args):
     results = pd.read_pickle(Path(args.results) / "results.pkl")
     rob_path = Path(args.results) / "robustness.pkl"
     robust = pd.read_pickle(rob_path) if rob_path.exists() else {}
-    deep_path = Path(args.results) / "deep.pkl"
-    if deep_path.exists():
-        results = {**results, **pd.read_pickle(deep_path)}
+    for extra in ("deep.pkl", "foundation.pkl"):
+        p = Path(args.results) / extra
+        if p.exists():
+            results = {**results, **pd.read_pickle(p)}
     fc_path = Path(args.results) / "latest.csv"
     latest = pd.read_csv(fc_path) if fc_path.exists() else None
     text, tables = build_report(results, robust, store, args.countries, args.horizons, latest, n_boot=args.n_boot)
@@ -264,6 +280,13 @@ def build_parser():
     dp.add_argument("--threads", type=int, default=4)
     dp.add_argument("--out", default="output/inflation")
     dp.set_defaults(func=cmd_deep)
+
+    fm = sub.add_parser("foundation", parents=[common, run], help="tier 2: pretrained foundation models, zero-shot")
+    fm.add_argument("--models", nargs="+", default=["chronos2", "chronos2_cov", "chronos_bolt", "timesfm25", "timesfm3",
+                                                    "timesfm3_cov"])
+    fm.add_argument("--threads", type=int, default=4)
+    fm.add_argument("--out", default="output/inflation")
+    fm.set_defaults(func=cmd_foundation)
 
     rep = sub.add_parser("report", parents=[common])
     rep.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
