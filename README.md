@@ -406,7 +406,98 @@ and BART's posterior, scored by coverage and interval score; and
 re-estimation variants (seeds, fixed hyperparameters, rolling 20-year
 window, training only from 1985).
 
-<!-- inflation-results -->
+### Results (October 2026 build)
+
+Full tables (per economy, Diebold–Mariano tests, model confidence sets,
+sub-periods, intervals, robustness, forecast decompositions, latest
+forecasts): [`docs/inflation_report.md`](docs/inflation_report.md).
+Origins run from January 2000 (euro area 2002) to the last month with a
+realised target; all sources above were reachable for this build.
+
+Mean RMSE relative to the random walk over the four economies (below 1 beats
+"no change"):
+
+| Model | 3m | 6m | 12m | 24m |
+|---|---|---|---|---|
+| UCSV | 0.80 | 0.82 | 0.92 | 0.86 |
+| AR-type, own inflation only | 0.81 | 0.85 | 0.96 | 0.89 |
+| Ridge | 0.75 | 0.82 | 0.94 | 0.95 |
+| Complete subset regression | 0.74 | 0.80 | 0.92 | 0.87 |
+| Kernel ridge | 0.77 | 0.85 | 0.91 | 0.97 |
+| Random forest | 0.82 | 0.90 | 0.95 | 0.91 |
+| LightGBM | 0.83 | 0.91 | 0.97 | 0.96 |
+| Macroeconomic random forest | 0.81 | 0.85 | 0.95 | 0.89 |
+| BART | 1.02 | 1.13 | 1.03 | 1.01 |
+| Hemisphere neural net | 0.82 | 0.89 | 0.97 | 0.93 |
+| Plain neural net (MLP) | 0.78 | 0.82 | 0.89 | 0.93 |
+| Pooled ridge | 0.74 | 0.81 | 0.92 | 0.91 |
+| Pooled MRF | 0.77 | 0.84 | 0.97 | 0.90 |
+| ½ non-linear ML + ½ UCSV | 0.75 | 0.81 | **0.88** | 0.86 |
+| Median of all tier-1 models | **0.73** | **0.80** | **0.88** | 0.89 |
+| TimesFM 3.0, zero-shot | 0.93 | 0.93 | 0.94 | 0.91 |
+| Chronos-2 + macro covariates | 0.89 | 0.90 | 0.88 | 0.83 |
+| TimesFM 3.0 + macro covariates | 0.83 | 0.83 | **0.84** | **0.81** |
+
+What it says:
+
+* **Short horizons belong to the econometric models.**  At 3 and 6 months
+  the median combination, complete subset regression and pooled ridge beat
+  the random walk by 20–27% and every foundation model; the
+  Diebold–Mariano test favours the median over TimesFM 3 + covariates in
+  all four economies at 3 months (p ≤ 0.02).  Base effects and recent
+  momentum do most of the work.
+* **A year or more out, gains are modest and statistically thin.**  The best
+  models are 12–19% better than no change, and almost every model stays in
+  the 75% model confidence set.  TimesFM 3 with macro covariates has the
+  lowest RMSE at 12 and 24 months, but its edge over the econometric
+  combinations is significant only borderline, in the euro area.  UCSV is
+  still hard to beat at 24 months.
+* **Foundation models need the macro data.**  On inflation history alone
+  Chronos and TimesFM barely beat the random walk (0.91–1.08); with five
+  macro covariates they move to the top at long horizons.  Since TimesFM
+  2.5 and 3.0 score the same without covariates, and covariate versions
+  also beat UCSV on post-release origins, the gain looks real rather than
+  memorised pretraining data — but that clean window is short.
+* **Among the econometric ML models**, the macroeconomic random forest is
+  the steadiest across horizons and robustness checks, the MLP is good at
+  12 months, and BART is the weakest everywhere.  BART's ranking is not
+  reliable either: its forecasts change markedly with the random seed
+  (variant correlation ~0.65), a sign that the MCMC is not converging with
+  ~70 predictors.
+* **Nobody forecast the 2021–22 surge** 12 months ahead (relative RMSE
+  ~0.8–1.1 for target months 2021–22; Japan is the partial exception).
+  The models earn their keep in the 2023– disinflation (US hemisphere net
+  0.40, euro-area TimesFM 3 + covariates 0.50), while Japan's exit from
+  deflation breaks most of them after 2023.
+* **Robustness**: dropping the 1970s from training slightly *improves* most
+  models; seeds and hyperparameters barely move MRF, random forest,
+  LightGBM and kernel ridge.  Letting trees forecast the deviation from the
+  mechanical base-effect path cuts their 3-month error sharply (random
+  forest 0.82 → 0.74, LightGBM 0.83 → 0.75), so their short-horizon
+  weakness is about representing that arithmetic, not about the data.
+* **More data did not help.**  Adding the supply-chain index, gilt
+  breakevens, Bank Rate and ONS series changed the same models' RMSE by
+  ±1–2% on average.
+* **Intervals**: rolling conformal 80% intervals cover ~70% of outcomes
+  (the surge broke past error patterns); the foundation models' own
+  quantiles are the best calibrated, BART's posterior covers only ~30%.
+
+Latest forecasts (median of all tier-1 models / TimesFM 3 + covariates):
+
+| | Latest y/y | 3 months | 12 months | 24 months |
+|---|---|---|---|---|
+| US (Sep 2026) | 3.7% | 4.2 / 4.2 (Dec 2026) | 2.7 / 3.4 (Sep 2027) | 2.2 / 2.9 (Sep 2028) |
+| UK (Aug 2026) | 3.2% | 3.5 / 3.4 (Nov 2026) | 3.9 / 3.7 (Aug 2027) | 3.1 / 3.5 (Aug 2028) |
+| Japan (Aug 2026) | 1.9% | 2.4 / 2.0 (Nov 2026) | 3.0 / 2.5 (Aug 2027) | 2.1 / 2.1 (Aug 2028) |
+| Euro area (Sep 2026) | 3.7% | 4.3 / 4.0 (Dec 2026) | 3.8 / 3.7 (Sep 2027) | 2.9 / 2.9 (Sep 2028) |
+
+The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
+months are about ±1.5 pp, so treat these as central scenarios.
+
+Caveats: data are the latest releases shifted by publication lags, not
+real-time vintages (CPI itself is barely revised); foundation-model scores
+before each model's release may benefit from pretraining exposure; and the
+pooled BART remains unreliable.
 
 ## Layout
 

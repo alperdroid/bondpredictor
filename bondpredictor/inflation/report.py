@@ -233,12 +233,12 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
             d = d.loc[sorted(d.index, key=lambda i: (rank.get(i.split(" (")[0], 999), i))]
             d.index = [f"{LABELS.get(i.split(' (')[0], i.split(' (')[0])} ({i.split(' (')[1]}" for i in d.index]
             L += [f"### {NAMES.get(c, c)}", "", md_table(d[["coverage", "width", "interval_score", "n"]], {"n": "i"}, "model"), ""]
-    if robust:
-        L += [f"## Robustness of the econometric ML models, {main_h} months ahead", "",
+    for rh in sorted({k[1] for k in robust}, key=lambda h: (h != main_h, h)):
+        L += [f"## Robustness of the econometric ML models, {rh} months ahead", "",
               "Each variant re-runs one model with one change, scored with its baseline on the same months "
               "(RMSE relative to the random walk).", ""]
         for c in countries:
-            v = _variant_table(robust, results, c, main_h)
+            v = _variant_table(robust, results, c, rh)
             if not v.empty:
                 L += [f"### {NAMES.get(c, c)}", "", md_table(v, index_name="variant"), ""]
     L += [f"## What drives the forecasts ({main_h} months ahead)", ""]
