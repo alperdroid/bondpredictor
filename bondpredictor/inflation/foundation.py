@@ -106,15 +106,8 @@ class _Loaded:
             res = []
             for o in m.predict_batch([t.astype(np.float32) for t in targets], MAX_H, past_only_covariates=past,
                                      return_quantiles=True):
-                q = np.asarray(o.quantiles) if getattr(o, "quantiles", None) is not None else None
-                point = np.asarray(o.point if hasattr(o, "point") else o.mean).reshape(-1)[:MAX_H]
-                if q is None:
-                    res.append(np.stack([point, point, point], axis=-1))
-                    continue
-                q = q.reshape(MAX_H, -1) if q.shape[0] == MAX_H else q.reshape(-1, MAX_H).T
-                levels = np.linspace(0.1, 0.9, q.shape[1]) if q.shape[1] == 9 else np.linspace(0, 1, q.shape[1])
-                idx = [int(np.argmin(np.abs(levels - lv))) for lv in QUANTILES]
-                res.append(q[:, idx])
+                q = np.asarray(o.quantiles)[:MAX_H]  # (h, 9): deciles 0.1 ... 0.9
+                res.append(q[:, [0, 4, 8]])
             return np.stack(res)
         raise ValueError(kind)
 
@@ -132,10 +125,11 @@ def run_foundation(store: dict, codes, names=tuple(MODELS), horizons=(3, 6, 12, 
                    end: str | None = None, max_context: int = 512, progress=None) -> dict:
     loader = _Loaded()
     out = {}
-    end_p = pd.Period(end, "M") if end else store["last_month"]
     for c in codes:
         frame = store["frames"][c][0]
         pi = frame["pi"]
+        # Default: up to the latest CPI print, so the last origin is a live forecast.
+        end_p = pd.Period(end, "M") if end else pi.dropna().index.max()
         idx = frame.index
         origins = [k for k in range(len(idx)) if pd.Period(start, "M") <= idx[k] <= end_p and np.isfinite(pi.iloc[k])]
         first = int(np.argmax(pi.notna().to_numpy()))

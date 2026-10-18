@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from .boe import fetch_boe
 from .boj import fetch_boj
 from .bundesbank import fetch_bundesbank
 from .download import DataUnavailable, Downloader
@@ -31,6 +32,8 @@ def fetch_raw(dl: Downloader, source: str, key: str) -> pd.Series:
         return fetch_eurostat(dl, key)
     if source == "boj":
         return fetch_boj(dl, key)
+    if source == "boe":
+        return fetch_boe(dl, key)
     if source == "ons":
         return fetch_ons(dl, key)
     if source == "nyfed":

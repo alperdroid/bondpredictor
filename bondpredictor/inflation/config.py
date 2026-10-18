@@ -20,11 +20,10 @@ blocks of the report:
 Own-inflation features (``own``), the global inflation factor (``global``)
 and the tax calendar (``calendar``) are built in ``features.py``.
 
-Sources: FRED, OECD SDMX, ECB, Eurostat, the BoJ API, ONS and the New York
-Fed.  The Bank of England was not reachable from the build sandbox, so the UK
-has no inflation-expectations survey (the EC survey dropped the UK after
-Brexit; the BoE/Ipsos survey is on the Bank's site), and ONS suspended its
-producer price index after January 2025.
+Sources: FRED, OECD SDMX, ECB, Eurostat, the BoJ API, ONS, the Bank of
+England and the New York Fed.  For UK inflation expectations only the gilt
+breakeven is used (the EC survey dropped the UK after Brexit), and ONS
+suspended its producer price index after January 2025.
 """
 
 from __future__ import annotations
@@ -58,6 +57,10 @@ def boj(key: str, **kw) -> Series:
 
 def ons(path: str, **kw) -> Series:
     return Series("ons", path, **kw)
+
+
+def boe(code: str, **kw) -> Series:
+    return Series("boe", code, **kw)
 
 
 def oecd_cpi(area: str, item: str = "_T", coicop2018: bool = False, lag: int = 1) -> Series:
@@ -181,6 +184,8 @@ UK = InflationCountry(
     ),
     predictors={
         "unemp": P((kei("GBR", "UNEMP", "PT_LF", "_T", lag=2), fred("LRHUTTTTGBM156S", lag=2)), ["lvl", "d12", "gap"], "slack", "level"),
+        # 10-year implied (breakeven) inflation from gilts, monthly average (BoE, 1985-).
+        "breakeven10": P(boe("IUMAMIZC", lag=0), ["lvl", "d12"], "expect", "level"),
         # Average weekly earnings, whole economy (ONS, 2000-), OECD manufacturing earnings before.
         "earnings": P((ons("/employmentandlabourmarket/peopleinwork/earningsandworkinghours/timeseries/kab9/lms", lag=2),
                        kei("GBR", "H_EARN", "IX", "C", lag=2), fred("LCEAMN01GBM661S", lag=2)), ["yoy"], "slack"),
@@ -193,7 +198,8 @@ UK = InflationCountry(
                  ["yoy"], "cost"),
         "reer": P(fred("CCRETT01GBM661N", lag=1), ["yoy"], "cost"),
         "gbpusd": P(fred("DEXUSUK", how="mean"), ["yoy"], "cost"),
-        "policy_rate": P(fred("IRSTCI01GBM156N", lag=1), ["lvl", "d12"], "money", "level"),
+        "policy_rate": P((boe("IUMBEDR", lag=0), fred("IRSTCI01GBM156N", lag=1)), ["lvl", "d12"], "money", "level"),
+        "real10": P(boe("IUMAMRZC", lag=0), ["lvl"], "money", "level"),
         "gilt10": P(fred("IRLTLT01GBM156N", lag=1), ["lvl"], "money", "level"),
         "money": P(kei("GBR", "MABM", lag=2), ["yoy"], "money"),
         "stocks": P(oecd(OECD_FIN.format(area="GBR", measure="SHARE", unit="IX"), lag=1), ["yoy"], "money"),

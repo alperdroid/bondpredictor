@@ -91,3 +91,12 @@ def test_gscpi_workbook():
     s = parse_gscpi(buf.getvalue())
     assert list(s.index) == [pd.Timestamp("1998-01-01"), pd.Timestamp("2026-09-01")]
     assert s.iloc[-1] == pytest.approx(1.28)
+
+
+def test_boe_csv_and_error_page():
+    from bondpredictor.data.boe import parse_boe_csv
+
+    s = parse_boe_csv((FIX / "boe_breakeven.csv").read_text())
+    assert s.index[0] == pd.Timestamp("1985-01-31") and s.iloc[0] == pytest.approx(7.6138)
+    with pytest.raises(ValueError, match="unexpected response"):
+        parse_boe_csv("<head><title>Object moved</title></head>")
