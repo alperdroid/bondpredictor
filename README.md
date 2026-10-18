@@ -437,6 +437,10 @@ Mean RMSE relative to the random walk over the four economies (below 1 beats
 | TimesFM 3.0, zero-shot | 0.93 | 0.93 | 0.94 | 0.91 |
 | Chronos-2 + macro covariates | 0.89 | 0.90 | 0.88 | 0.83 |
 | TimesFM 3.0 + macro covariates | 0.83 | 0.83 | **0.84** | **0.81** |
+| N-HiTS (global, univariate) | 0.96 | 1.00 | 1.09 | 1.04 |
+| PatchTST (global, univariate) | 0.99 | 0.97 | 0.95 | 0.91 |
+| TiDE (global, univariate) | 1.07 | 1.03 | 0.92 | 0.87 |
+| LSTM (global, univariate) | 2.44 | 1.59 | 1.04 | 0.87 |
 
 What it says:
 
@@ -458,6 +462,12 @@ What it says:
   2.5 and 3.0 score the same without covariates, and covariate versions
   also beat UCSV on post-release origins, the gain looks real rather than
   memorised pretraining data — but that clean window is short.
+* **Generic deep nets add nothing here.**  N-HiTS, PatchTST, TiDE and the
+  LSTM, trained on ~40 economies' inflation histories, are no better than
+  the random walk at short horizons and no better than UCSV (or the
+  univariate foundation models) at long ones.  The LSTM learned little
+  beyond the median of its five-year input window, so it misses every large
+  move.
 * **Among the econometric ML models**, the macroeconomic random forest is
   the steadiest across horizons and robustness checks, the MLP is good at
   12 months, and BART is the weakest everywhere.  BART's ranking is not

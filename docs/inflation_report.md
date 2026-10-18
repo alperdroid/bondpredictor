@@ -34,10 +34,14 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Median of all models | 0.67* | 0.74* | **0.71*** | 0.79* | 0.73 |
 | Chronos-Bolt (zero-shot) | 1.01 | 0.92 | 1.04 | 0.98 | 0.99 |
 | Chronos-2 (zero-shot) | 0.99 | 0.92 | 1.01 | 0.92* | 0.96 |
-| Chronos-2 + macro covariates | 0.79 | 0.91 | 0.95 | 0.93 | 0.89 |
+| Chronos-2 + macro covariates | 0.79 | 0.91 | 0.95 | 0.93* | 0.89 |
 | TimesFM 2.5 (zero-shot) | 0.95 | 0.90 | 0.96 | 0.97 | 0.95 |
-| TimesFM 3.0 (zero-shot) | 0.94 | 0.89 | 0.96 | 0.92 | 0.93 |
+| TimesFM 3.0 (zero-shot) | 0.94 | 0.89 | 0.96 | 0.92* | 0.93 |
 | TimesFM 3.0 + macro covariates | 0.78* | 0.82* | 0.85* | 0.86* | 0.83 |
+| N-HiTS (tier 2) | 1.08 | 0.93* | 0.86* | 0.96* | 0.96 |
+| PatchTST (tier 2) | 0.99 | 0.98 | 0.98 | 0.98 | 0.99 |
+| TiDE (tier 2) | 1.10 | 1.10 | 1.01 | 1.09 | 1.07 |
+| LSTM (tier 2) | 2.00 | 3.06 | 1.93 | 2.78 | 2.44 |
 
 ## 6 months ahead: RMSE relative to the random walk
 
@@ -53,7 +57,7 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Three-pass regression filter | 0.81* | 1.01* | 0.99* | 0.83* | 0.91 |
 | Complete subset regression | 0.81* | 0.76* | 0.80* | 0.81* | 0.80 |
 | Kernel ridge (RBF) | 0.86* | 0.81* | 0.80* | 0.95* | 0.85 |
-| Random forest | 0.90* | 0.83* | 0.86* | 1.02 | 0.90 |
+| Random forest | 0.90* | 0.83* | 0.86* | 1.02* | 0.90 |
 | Gradient boosting (LightGBM) | 0.86* | 0.84* | 0.93* | 1.01* | 0.91 |
 | Macroeconomic random forest | 0.83* | 0.81* | 0.84* | 0.91* | 0.85 |
 | BART | 1.02 | 1.21* | 1.10* | 1.17* | 1.13 |
@@ -73,6 +77,10 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | TimesFM 2.5 (zero-shot) | 0.95 | 0.90* | 0.93* | 0.98* | 0.94 |
 | TimesFM 3.0 (zero-shot) | 0.97 | 0.89* | 0.94* | 0.92* | 0.93 |
 | TimesFM 3.0 + macro covariates | 0.84* | 0.82* | 0.81* | 0.84* | 0.83 |
+| N-HiTS (tier 2) | 1.21 | 0.93* | 0.87* | 0.99* | 1.00 |
+| PatchTST (tier 2) | 0.98 | 0.96* | 0.97* | 0.97* | 0.97 |
+| TiDE (tier 2) | 1.00 | 1.04* | 1.03 | 1.04* | 1.03 |
+| LSTM (tier 2) | 1.39 | 1.84* | 1.39 | 1.71* | 1.58 |
 
 ## 12 months ahead: RMSE relative to the random walk
 
@@ -84,7 +92,7 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Ridge | 1.00* | 0.89* | 0.89* | 0.99* | 0.94 |
 | Adaptive lasso | 1.07 | 1.02* | 0.98* | 1.00* | 1.02 |
 | Elastic net | 1.00* | 0.99* | 1.00* | 0.93* | 0.98 |
-| Diffusion index (PCA) | 0.97* | 1.19 | 0.82* | 0.91* | 0.97 |
+| Diffusion index (PCA) | 0.97* | 1.19* | 0.82* | 0.91* | 0.97 |
 | Three-pass regression filter | 1.00* | 1.21* | 0.90* | 0.93* | 1.01 |
 | Complete subset regression | 0.94* | 0.92* | 0.95* | 0.88* | 0.92 |
 | Kernel ridge (RBF) | 0.94* | 0.89* | 0.87* | 0.94* | 0.91 |
@@ -108,6 +116,10 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | TimesFM 2.5 (zero-shot) | 0.92* | 0.93* | 0.94* | 0.97* | 0.94 |
 | TimesFM 3.0 (zero-shot) | 0.94* | 0.94* | 0.94* | 0.95* | 0.94 |
 | TimesFM 3.0 + macro covariates | 0.86* | 0.86* | **0.81*** | **0.84*** | 0.84 |
+| N-HiTS (tier 2) | 1.37 | 1.02* | 0.93* | 1.04* | 1.09 |
+| PatchTST (tier 2) | 0.95* | 0.96* | 0.95* | 0.96* | 0.95 |
+| TiDE (tier 2) | 0.91* | 0.94* | 0.92* | 0.92* | 0.92 |
+| LSTM (tier 2) | 0.98* | 1.15* | 0.97* | 1.06* | 1.04 |
 
 ## 24 months ahead: RMSE relative to the random walk
 
@@ -143,6 +155,10 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | TimesFM 2.5 (zero-shot) | 0.87* | 0.90* | 0.92* | 0.90* | 0.90 |
 | TimesFM 3.0 (zero-shot) | 0.86* | 0.97* | 0.93* | 0.88* | 0.91 |
 | TimesFM 3.0 + macro covariates | **0.77*** | **0.85*** | 0.86* | **0.75*** | 0.81 |
+| N-HiTS (tier 2) | 1.20 | 0.96* | 0.97* | 1.03* | 1.04 |
+| PatchTST (tier 2) | 0.90* | 0.91* | 0.93* | 0.89* | 0.91 |
+| TiDE (tier 2) | 0.85* | 0.87* | 0.91* | 0.84* | 0.87 |
+| LSTM (tier 2) | 0.82* | 0.90* | 0.92* | 0.83* | 0.87 |
 
 ## Detail by economy, 12 months ahead
 
@@ -156,7 +172,7 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | UCSV (Stock-Watson) | 1.83 | 0.89 | 1.00 | 1.28 | +1.32 | 0.187 | 1.000 | yes |
 | AR-type, own inflation only | 2.03 | 0.99 | 1.11 | 1.48 | +0.25 | 0.803 | 1.000 | yes |
 | Ridge | 2.05 | 1.00 | 1.12 | 1.49 | +0.06 | 0.951 | 1.000 | yes |
-| Adaptive lasso | 2.21 | 1.07 | 1.21 | 1.68 | -1.31 | 0.190 | 0.107 |  |
+| Adaptive lasso | 2.21 | 1.07 | 1.21 | 1.68 | -1.31 | 0.190 | 0.102 |  |
 | Elastic net | 2.07 | 1.00 | 1.13 | 1.56 | -0.08 | 0.934 | 1.000 | yes |
 | Diffusion index (PCA) | 2.00 | 0.97 | 1.09 | 1.43 | +0.38 | 0.706 | 1.000 | yes |
 | Three-pass regression filter | 2.06 | 1.00 | 1.13 | 1.51 | -0.03 | 0.977 | 1.000 | yes |
@@ -170,7 +186,7 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Plain neural net (MLP) | 1.77 | 0.86 | 0.96 | 1.38 | +1.85 | 0.065 | 1.000 | yes |
 | Pooled ridge | 1.94 | 0.94 | 1.06 | 1.42 | +1.49 | 0.135 | 1.000 | yes |
 | Pooled boosting | 1.93 | 0.94 | 1.05 | 1.45 | +1.44 | 0.150 | 1.000 | yes |
-| Pooled MRF | 2.05 | 0.99 | 1.12 | 1.53 | +0.13 | 0.899 | 0.363 | yes |
+| Pooled MRF | 2.05 | 0.99 | 1.12 | 1.53 | +0.13 | 0.899 | 0.373 | yes |
 | Pooled BART | 2.33 | 1.13 | 1.27 | 1.67 | -0.95 | 0.342 | 1.000 | yes |
 | Pooled hemisphere net | 1.80 | 0.87 | 0.98 | 1.36 | +1.31 | 0.191 | 1.000 | yes |
 | Mean of non-linear ML | 1.75 | 0.85 | 0.96 | 1.36 | +2.13 | 0.033 | 1.000 | yes |
@@ -182,6 +198,10 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | TimesFM 2.5 (zero-shot) | 1.89 | 0.92 | 1.03 | 1.39 | +1.81 | 0.070 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.93 | 0.94 | 1.06 | 1.40 | +1.88 | 0.060 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.76 | 0.86 | 0.96 | 1.27 | +2.17 | 0.030 | 1.000 | yes |
+| N-HiTS (tier 2) | 2.82 | 1.37 | 1.54 | 1.99 | -2.75 | 0.006 | 0.033 |  |
+| PatchTST (tier 2) | 1.96 | 0.95 | 1.07 | 1.43 | +2.04 | 0.041 | 1.000 | yes |
+| TiDE (tier 2) | 1.86 | 0.91 | 1.02 | 1.34 | +1.37 | 0.172 | 1.000 | yes |
+| LSTM (tier 2) | 2.01 | 0.98 | 1.10 | 1.39 | +0.19 | 0.846 | 1.000 | yes |
 
 RMSE relative to the random walk by the month being forecast:
 
@@ -217,6 +237,10 @@ RMSE relative to the random walk by the month being forecast:
 | TimesFM 2.5 (zero-shot) | 1.04 | 0.94 | 0.96 | 0.72 |
 | TimesFM 3.0 (zero-shot) | 1.02 | 0.95 | 0.95 | 0.83 |
 | TimesFM 3.0 + macro covariates | 0.83 | 0.84 | 1.01 | 0.63 |
+| N-HiTS (tier 2) | 0.97 | 1.52 | 1.39 | 1.10 |
+| PatchTST (tier 2) | 0.97 | 0.94 | 1.02 | 0.86 |
+| TiDE (tier 2) | 0.95 | 0.87 | 1.11 | 0.50 |
+| LSTM (tier 2) | 0.76 | 0.91 | 1.29 | 0.60 |
 
 ### United Kingdom (2000-01 – 2025-09 origins)
 
@@ -230,12 +254,12 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Ridge | 1.52 | 0.89 | 0.95 | 1.14 | +1.21 | 0.226 | 1.000 | yes |
 | Adaptive lasso | 1.74 | 1.02 | 1.08 | 1.20 | -2.16 | 0.030 | 1.000 | yes |
 | Elastic net | 1.70 | 0.99 | 1.06 | 1.25 | +0.07 | 0.946 | 1.000 | yes |
-| Diffusion index (PCA) | 2.03 | 1.19 | 1.26 | 1.55 | -1.55 | 0.121 | 0.182 |  |
+| Diffusion index (PCA) | 2.03 | 1.19 | 1.26 | 1.55 | -1.55 | 0.121 | 0.266 | yes |
 | Three-pass regression filter | 2.08 | 1.21 | 1.29 | 1.65 | -1.23 | 0.218 | 1.000 | yes |
 | Complete subset regression | 1.58 | 0.92 | 0.98 | 1.20 | +0.73 | 0.464 | 1.000 | yes |
 | Kernel ridge (RBF) | 1.53 | 0.89 | 0.95 | 1.15 | +1.01 | 0.314 | 1.000 | yes |
 | Random forest | 1.68 | 0.98 | 1.04 | 1.20 | +0.54 | 0.592 | 1.000 | yes |
-| Gradient boosting (LightGBM) | 1.83 | 1.07 | 1.14 | 1.35 | -1.57 | 0.117 | 0.423 | yes |
+| Gradient boosting (LightGBM) | 1.83 | 1.07 | 1.14 | 1.35 | -1.57 | 0.117 | 1.000 | yes |
 | Macroeconomic random forest | 1.64 | 0.96 | 1.02 | 1.16 | +0.55 | 0.585 | 1.000 | yes |
 | BART | 1.83 | 1.07 | 1.14 | 1.35 | -0.63 | 0.526 | 1.000 | yes |
 | Hemisphere neural net | 1.66 | 0.97 | 1.03 | 1.30 | +0.27 | 0.784 | 1.000 | yes |
@@ -254,6 +278,10 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | TimesFM 2.5 (zero-shot) | 1.59 | 0.93 | 0.99 | 1.08 | +1.35 | 0.176 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.62 | 0.94 | 1.00 | 1.10 | +1.21 | 0.228 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.48 | 0.86 | 0.92 | 0.98 | +1.29 | 0.197 | 1.000 | yes |
+| N-HiTS (tier 2) | 1.74 | 1.02 | 1.08 | 1.17 | -0.13 | 0.897 | 1.000 | yes |
+| PatchTST (tier 2) | 1.64 | 0.96 | 1.02 | 1.08 | +1.10 | 0.270 | 1.000 | yes |
+| TiDE (tier 2) | 1.61 | 0.94 | 1.00 | 1.05 | +0.55 | 0.580 | 1.000 | yes |
+| LSTM (tier 2) | 1.96 | 1.15 | 1.22 | 1.26 | -0.76 | 0.449 | 1.000 | yes |
 
 RMSE relative to the random walk by the month being forecast:
 
@@ -289,6 +317,10 @@ RMSE relative to the random walk by the month being forecast:
 | TimesFM 2.5 (zero-shot) | 1.11 | 1.03 | 0.93 | 0.83 |
 | TimesFM 3.0 (zero-shot) | 1.05 | 1.03 | 0.92 | 0.90 |
 | TimesFM 3.0 + macro covariates | 1.29 | 0.93 | 0.97 | 0.59 |
+| N-HiTS (tier 2) | 1.15 | 1.15 | 1.11 | 0.75 |
+| PatchTST (tier 2) | 0.98 | 0.97 | 1.01 | 0.88 |
+| TiDE (tier 2) | 1.05 | 0.94 | 1.08 | 0.72 |
+| LSTM (tier 2) | 1.30 | 1.03 | 1.23 | 1.11 |
 
 ### Japan (2000-01 – 2025-09 origins)
 
@@ -320,12 +352,16 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Mean of non-linear ML | 1.22 | 0.86 | 1.02 | 0.89 | +1.32 | 0.186 | 1.000 | yes |
 | ½ non-linear ML + ½ UCSV | 1.16 | 0.82 | 0.96 | 0.85 | +2.00 | 0.045 | 1.000 | yes |
 | Median of all models | 1.18 | 0.83 | 0.98 | 0.88 | +2.13 | 0.033 | 1.000 | yes |
-| Chronos-Bolt (zero-shot) | 1.49 | 1.05 | 1.24 | 1.09 | -1.02 | 0.310 | 0.784 | yes |
+| Chronos-Bolt (zero-shot) | 1.49 | 1.05 | 1.24 | 1.09 | -1.02 | 0.310 | 0.815 | yes |
 | Chronos-2 (zero-shot) | 1.38 | 0.98 | 1.15 | 1.02 | +0.67 | 0.501 | 1.000 | yes |
 | Chronos-2 + macro covariates | 1.23 | 0.87 | 1.03 | 0.91 | +2.47 | 0.014 | 1.000 | yes |
 | TimesFM 2.5 (zero-shot) | 1.33 | 0.94 | 1.11 | 0.97 | +2.16 | 0.031 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.33 | 0.94 | 1.11 | 0.99 | +1.76 | 0.079 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.14 | 0.81 | 0.95 | 0.85 | +2.51 | 0.012 | 1.000 | yes |
+| N-HiTS (tier 2) | 1.31 | 0.93 | 1.09 | 0.95 | +0.93 | 0.354 | 1.000 | yes |
+| PatchTST (tier 2) | 1.34 | 0.95 | 1.11 | 0.98 | +1.95 | 0.052 | 1.000 | yes |
+| TiDE (tier 2) | 1.30 | 0.92 | 1.09 | 0.96 | +1.26 | 0.208 | 1.000 | yes |
+| LSTM (tier 2) | 1.37 | 0.97 | 1.14 | 0.97 | +0.27 | 0.790 | 1.000 | yes |
 
 RMSE relative to the random walk by the month being forecast:
 
@@ -361,6 +397,10 @@ RMSE relative to the random walk by the month being forecast:
 | TimesFM 2.5 (zero-shot) | 0.95 | 0.95 | 0.90 | 0.93 |
 | TimesFM 3.0 (zero-shot) | 0.99 | 0.93 | 0.88 | 1.07 |
 | TimesFM 3.0 + macro covariates | 0.93 | 0.79 | 0.72 | 0.96 |
+| N-HiTS (tier 2) | 1.04 | 0.87 | 0.85 | 1.24 |
+| PatchTST (tier 2) | 0.97 | 0.94 | 0.95 | 0.98 |
+| TiDE (tier 2) | 0.90 | 0.86 | 0.98 | 1.11 |
+| LSTM (tier 2) | 0.93 | 0.77 | 0.98 | 1.63 |
 
 ### Euro area (2002-01 – 2025-10 origins)
 
@@ -381,7 +421,7 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Random forest | 1.95 | 0.98 | 0.98 | 1.34 | +0.21 | 0.835 | 1.000 | yes |
 | Gradient boosting (LightGBM) | 1.91 | 0.96 | 0.96 | 1.31 | +0.47 | 0.641 | 1.000 | yes |
 | Macroeconomic random forest | 1.92 | 0.97 | 0.97 | 1.25 | +0.21 | 0.836 | 1.000 | yes |
-| BART | 2.29 | 1.15 | 1.16 | 1.66 | -1.85 | 0.064 | 0.267 | yes |
+| BART | 2.29 | 1.15 | 1.16 | 1.66 | -1.85 | 0.064 | 0.343 | yes |
 | Hemisphere neural net | 1.83 | 0.92 | 0.92 | 1.28 | +0.92 | 0.356 | 1.000 | yes |
 | Plain neural net (MLP) | 1.83 | 0.92 | 0.92 | 1.28 | +0.79 | 0.430 | 1.000 | yes |
 | Pooled ridge | 1.84 | 0.92 | 0.93 | 1.21 | +1.15 | 0.249 | 1.000 | yes |
@@ -398,6 +438,10 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | TimesFM 2.5 (zero-shot) | 1.93 | 0.97 | 0.98 | 1.24 | +0.57 | 0.567 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.89 | 0.95 | 0.95 | 1.22 | +0.81 | 0.416 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.68 | 0.84 | 0.85 | 1.07 | +1.30 | 0.192 | 1.000 | yes |
+| N-HiTS (tier 2) | 2.07 | 1.04 | 1.05 | 1.42 | -0.33 | 0.745 | 1.000 | yes |
+| PatchTST (tier 2) | 1.90 | 0.96 | 0.96 | 1.25 | +1.16 | 0.247 | 1.000 | yes |
+| TiDE (tier 2) | 1.83 | 0.92 | 0.93 | 1.19 | +0.71 | 0.476 | 1.000 | yes |
+| LSTM (tier 2) | 2.11 | 1.06 | 1.07 | 1.36 | -0.33 | 0.740 | 1.000 | yes |
 
 RMSE relative to the random walk by the month being forecast:
 
@@ -433,6 +477,10 @@ RMSE relative to the random walk by the month being forecast:
 | TimesFM 2.5 (zero-shot) | 1.20 | 0.94 | 1.04 | 0.90 |
 | TimesFM 3.0 (zero-shot) | 0.94 | 1.02 | 1.01 | 0.81 |
 | TimesFM 3.0 + macro covariates | 0.97 | 0.93 | 0.99 | 0.50 |
+| N-HiTS (tier 2) | 1.45 | 1.34 | 1.09 | 0.64 |
+| PatchTST (tier 2) | 0.95 | 0.95 | 1.02 | 0.88 |
+| TiDE (tier 2) | 0.97 | 0.93 | 1.09 | 0.63 |
+| LSTM (tier 2) | 1.07 | 0.99 | 1.25 | 0.83 |
 
 ## Foundation models: pretraining leakage check
 
