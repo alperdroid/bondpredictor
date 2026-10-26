@@ -3,6 +3,7 @@
     bondpredictor build      download data and write the monthly panel
     bondpredictor insample   predictive regressions with Hodrick/NW/bootstrap
     bondpredictor backtest   real-time out-of-sample evaluation of the model zoo
+    bondpredictor relval     cross-country relative value across 10-17 bond markets
     bondpredictor forecast   latest forecasts from one model
     bondpredictor termpremium  ACM term premium for a country
 """
@@ -141,6 +142,25 @@ def cmd_robustness(args):
     print(f"\nwrote {path}")
 
 
+def cmd_relval(args):
+    from . import relval
+
+    dl = Downloader(cache_dir=args.cache, offline=args.offline, max_age_days=args.max_age)
+    timing = None
+    fpath, dpath = Path(args.forecasts), Path(args.data)
+    if fpath.exists() and dpath.exists():
+        timing = relval.timing_portfolio(pd.read_pickle(dpath), pd.read_pickle(fpath), model=args.timing_model)
+    extended = () if args.no_extended else relval.EURO_EXTRA
+    st = relval.study(dl, relval.G10, extended, start=args.start, n_perm=args.n_perm, timing_returns=timing)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "relval.md").write_text(st.report)
+    st.main.to_csv(out / "relval_summary.csv")
+    pd.DataFrame({s: r["ret"] for s, r in st.returns.items()}).to_csv(out / "relval_returns.csv")
+    print(st.report)
+    print(f"\nwrote {out}/relval.md, relval_summary.csv, relval_returns.csv")
+
+
 def cmd_forecast(args):
     from .backtest import run_backtest, run_panel_backtest
     from .pipeline import country_specs, panel_spec
@@ -239,6 +259,16 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--reuse-variants", action="store_true", help="reuse robustness_variants.pkl from --out")
     r.add_argument("--out", default="output")
     r.set_defaults(func=cmd_robustness)
+
+    rv = sub.add_parser("relval", parents=[common], help="cross-country relative value (value, carry, momentum)")
+    rv.add_argument("--start", default="1980-01", help="first signal month")
+    rv.add_argument("--n-perm", type=int, default=1000, help="random rankings for the placebo test")
+    rv.add_argument("--no-extended", action="store_true", help="skip the 17-market robustness universe")
+    rv.add_argument("--forecasts", default="output/ml/forecasts.pkl",
+                    help="backtest forecasts for the duration-timing combination (skipped if missing)")
+    rv.add_argument("--timing-model", default="slope")
+    rv.add_argument("--out", default="output/relval")
+    rv.set_defaults(func=cmd_relval)
 
     f = sub.add_parser("forecast", parents=[common, model], help="latest forecast")
     f.add_argument("--model", default="slope")

@@ -18,6 +18,7 @@ python -m bondpredictor build                  # download + build data/processed
 python -m bondpredictor insample --country US --bootstrap 500
 python -m bondpredictor backtest --ml --jobs 4 --out output   # linear + ML zoo, all countries, pooled panel
 python -m bondpredictor robustness --forecasts output/forecasts.pkl --jobs 4 --out output
+python -m bondpredictor relval --forecasts output/forecasts.pkl --out output/relval   # cross-country relative value
 python -m bondpredictor forecast --model curve # latest forecast per country
 python -m bondpredictor termpremium --country DE
 ```
@@ -301,6 +302,78 @@ are not reliable at this sample size.  Rerun with GSW data from 1961 for a
 fairer test of the US neural-net results in the literature, whose evidence
 rests on a longer sample.
 
+## Cross-country relative value
+
+Timing three highly correlated markets is close to a single bet on the
+global term premium, so it has little breadth.  `relval.py` takes a
+different bet.  Each month it ranks 10 government bond markets (US, Canada,
+UK, Germany, Japan, Australia, New Zealand, Sweden, Switzerland, Norway).  It
+goes long the attractive half and short the unattractive half, with each
+side carrying the same duration risk.  Returns are local excess returns of a
+10-year par bond, which equal currency-hedged returns under covered interest
+parity (Asness–Moskowitz–Pedersen 2013; Koijen et al. 2018).  Nothing is
+fitted.
+
+* **Signals:** value (10y yield minus year-on-year inflation), 5-year yield
+  reversal, carry (10y minus 3-month rate), 12-month momentum, inflation
+  trend, and an equal-weight value/carry/momentum composite.
+* **Data:** OECD 10-year yields, 3-month and call-money rates, and CPI (HICP
+  for EU/EEA countries, the GDP deflator for Japan after 2021), all from
+  FRED.  Inflation is held for up to 12 months after a source stops.
+* **Look-ahead in monthly averages.**  The OECD yields are monthly averages.
+  A signal formed at the end of month t is therefore traded at month t+1's
+  average price and closed at month t+2's (gradual execution, like TWAP),
+  so the return shares no month with the signal.  The "BIASED" robustness
+  row drops this lag: it would have flattered carry (0.47 vs 0.30) and the
+  composite (0.44 vs 0.21).
+* **Tests:**
+  * a placebo test of 1,000 random cross-country rankings;
+  * Hansen SPA across all six signals;
+  * sub-periods and leave-one-market-out;
+  * z-score instead of rank weights, no volatility scaling, 3-month holding;
+  * 17 markets (adding France, Italy, Spain, Netherlands, Belgium, Austria,
+    Denmark);
+  * costs of 5 and 10 bp per unit of turnover.
+
+Results, 10 markets, signals Jan 1980 – Jul 2026 (full output in
+[`docs/relval_report.md`](docs/relval_report.md)):
+
+| Signal | Sharpe | t (NW) | Placebo p | Sharpe net 5 bp | Sharpe from 1990 | Sharpe, 17 markets |
+|---|---|---|---|---|---|---|
+| Value (real yield) | 0.29 | 1.8 | 0.020 | 0.21 | 0.48 | 0.43 |
+| Carry | 0.30 | 1.8 | 0.018 | 0.24 | 0.49 | 0.47 |
+| Value/carry/momentum composite | 0.21 | 1.3 | 0.069 | 0.13 | 0.37 | 0.38 |
+| Inflation trend | 0.16 | 1.0 | 0.133 | 0.04 | 0.30 | 0.29 |
+| Momentum | −0.23 | −1.4 | 0.945 | −0.32 | −0.33 | −0.17 |
+| 5-year reversal | −0.18 | −1.1 | 0.897 | −0.23 | −0.39 | −0.36 |
+
+What this shows:
+
+1. **Value and carry are real but modest.**
+   * Both beat random rankings (placebo p ≈ 0.02).
+   * Both are positive in every sub-period since 1990.
+   * Both stay positive whichever market is dropped (0.15–0.34).
+   * Both are stronger with more markets and from 1990 on.
+2. **The multiple-testing correction is borderline over the full sample.**
+   Across the six signals, SPA p is 0.11 from 1980 and 0.007 from 1990.  The
+   1990 start matches the duration-timing backtest but was not pre-specified
+   here, so read the full-sample p as the honest one.
+3. **Momentum and the 5-year reversal fail** in this universe and are best
+   left out.  So is the composite, which momentum drags down.
+4. **It diversifies duration timing.**  The correlation with the
+   three-market slope-timing portfolio is about zero.  Equal-risk
+   combinations raise the Sharpe ratio from 0.42 (timing alone, 1990–2026)
+   to 0.66 with value or 0.62 with carry.
+5. **Costs matter.**  Turnover is about 7× notional a year, so 5 bp per unit
+   traded takes 0.06–0.08 off the Sharpe ratio.
+
+Caveats: returns between monthly averages are smoother than month-end
+returns.  That is the real P&L of gradual execution, but a strategy traded
+at month-ends would show roughly 20% higher volatility.  Pre-1990 data cover
+fewer markets and include periods when "10-year" OECD yields were other
+long maturities.  Euro-area spreads in the 17-market version carry credit
+risk.
+
 ## Layout
 
 ```
@@ -315,6 +388,7 @@ bondpredictor/
   models.py      OLS, ridge, lasso, PCR, forecast combination (numpy only)
   ml.py          random forest, gradient boosting, neural-net ensembles (scikit-learn)
   robustness.py  Diebold–Mariano, SPA / Reality Check, sub-period and re-estimation checks
+  relval.py      cross-country relative value: value, carry, momentum across 10–17 bond markets
   backtest.py    expanding-window country and pooled-panel backtests
   evaluation.py  R²_OS, Clark–West, timing strategy, CER
   inference.py   Newey–West, Hodrick 1B, null bootstrap
