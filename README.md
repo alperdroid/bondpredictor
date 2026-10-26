@@ -19,6 +19,7 @@ python -m bondpredictor insample --country US --bootstrap 500
 python -m bondpredictor backtest --ml --jobs 4 --out output   # linear + ML zoo, all countries, pooled panel
 python -m bondpredictor robustness --forecasts output/forecasts.pkl --jobs 4 --out output
 python -m bondpredictor relval --forecasts output/forecasts.pkl --out output/relval   # cross-country relative value
+python -m bondpredictor curves --forecasts output/forecasts.pkl --out output/curves   # steepeners and butterflies
 python -m bondpredictor forecast --model curve # latest forecast per country
 python -m bondpredictor termpremium --country DE
 ```
@@ -374,12 +375,84 @@ fewer markets and include periods when "10-year" OECD yields were other
 long maturities.  Euro-area spreads in the 17-market version carry credit
 risk.
 
+## Yield-curve trades
+
+`curvetrades.py` bets on the *shape* of the curve instead of its level.  It
+uses duration-neutral positions on month-end zero curves: GSW for the US,
+the Bundesbank for Germany, and the Bank of England for the UK (1970-).
+
+* **Trades per market:**
+  * a 2s10s steepener (long the 2-year, short the 10-year, weights 1/2 and −1/10);
+  * a long-end steepener (5s30s in the US, 5s20s in Germany and the UK);
+  * a 2s5s10s butterfly (long the 5-year, short half of each wing).
+
+  That makes nine bets.  Each is risk-scaled by its 36-month volatility, and
+  the portfolio averages them.
+* **Signals** (positions in [−2, 2], nothing fitted):
+  * *carry*: carry plus roll-down if the curve stays put;
+  * *value*: mean reversion of slope or curvature against its 10-year history;
+  * *momentum*: the trade's own 12-month return;
+  * *policy*: hiking cycles flatten curves, measured on money-market rates;
+  * *combo*: their average.
+* **Fitting noise.**  A yield mis-fitted at month-end enters both the signal
+  and the return measured from that month-end, so noise can look like
+  skill.  The main specification therefore trades with a **one-month delay**
+  (signal at t, held from t+1 to t+2).  The undelayed result is shown
+  alongside.  In the US it replicates on returns re-measured on the
+  Treasury's own constant-maturity curve, an independent fit.
+
+Results, signals Jan 1980 – Aug 2026 (full output in
+[`docs/curves_report.md`](docs/curves_report.md)):
+
+| Signal | Sharpe (1-month delay) | t (NW) | Timing placebo p | Net 0.5 bp | Net 1 bp | Sharpe, no delay |
+|---|---|---|---|---|---|---|
+| Combo | **0.49** | 3.4 | 0.018 | 0.39 | 0.30 | 0.70 |
+| Carry | 0.29 | 2.0 | 0.31 | 0.20 | 0.11 | 0.46 |
+| Policy | 0.25 | 1.7 | 0.064 | 0.22 | 0.20 | 0.36 |
+| Value | 0.13 | 1.0 | 0.25 | 0.06 | −0.01 | 0.11 |
+| Momentum | 0.13 | 1.0 | 0.41 | 0.05 | −0.04 | 0.27 |
+
+What this shows:
+
+1. **The combination works and survives the tests.**
+   * Sharpe is 0.49 with the conservative delay (t = 3.4).
+   * It beats random time shifts of its own positions (placebo p = 0.018).
+   * It survives the correction across the five signals (SPA p = 0.001 from
+     1980, 0.014 from 1990).
+   * After costs it is 0.39 at 0.5 bp and 0.30 at 1 bp per unit traded.
+2. **It is not fitting noise.**  On independent Treasury constant-maturity
+   returns, the US combo earns 0.63 without the delay (0.56 on GSW) and 0.44
+   with it (0.37 on GSW).
+3. **Carry is mostly a risk premium, not timing.**  Its placebo p of 0.31
+   means randomly shifted positions earn about as much.  It pays for
+   steadily holding trades that earn on average.  Policy is the strongest
+   pure timing signal.
+4. **The edge has faded.**  The combo's Sharpe ratio by sub-period is 0.74
+   (1990s), 0.59 (2000–07), 0.57 (2008–15), 0.00 (2016–21) and 0.06
+   (2022–).  Since 2016 only the policy signal has kept working (0.52 and
+   0.57).
+5. **Where it works.**  Steepeners do better than butterflies (0.46 vs 0.26).
+   The best trades are US 5s30s (0.52), German 2s10s (0.37), the UK
+   butterfly (0.36) and US 2s10s (0.34).  UK 5s20s earns nothing.
+6. **It adds to the other strategies.**  Its correlation is 0.29 with
+   duration timing and −0.08 with cross-country value.  An equal-risk mix of
+   all three earns 0.74 over 1990–2026, against 0.66 for timing plus
+   relative value alone.
+
+Caveats:
+
+* German and UK results can't be checked on an independent curve the way
+  the US results were.
+* The 1970s BoE long end is erratic, though the evaluation starts in 1980.
+* The recent fade means the full-sample Sharpe ratio overstates what the
+  combination has earned lately.
+
 ## Layout
 
 ```
 bondpredictor/
   config.py      series and sources per country (edit here)
-  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed ACM, MOF, FRED-MD loaders + cache
+  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed ACM, MOF, Bank of England, FRED-MD loaders + cache
   curves.py      Svensson & tabulated curves, par→zero bootstrap, forwards
   returns.py     zero-coupon and par-bond excess returns
   features.py    one-sided predictors (trend inflation, HP gap, inflation uncertainty, realised vol)
@@ -389,6 +462,7 @@ bondpredictor/
   ml.py          random forest, gradient boosting, neural-net ensembles (scikit-learn)
   robustness.py  Diebold–Mariano, SPA / Reality Check, sub-period and re-estimation checks
   relval.py      cross-country relative value: value, carry, momentum across 10–17 bond markets
+  curvetrades.py yield-curve trades: steepeners and butterflies in the US, Germany and UK
   backtest.py    expanding-window country and pooled-panel backtests
   evaluation.py  R²_OS, Clark–West, timing strategy, CER
   inference.py   Newey–West, Hodrick 1B, null bootstrap

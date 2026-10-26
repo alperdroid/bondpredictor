@@ -4,6 +4,7 @@
     bondpredictor insample   predictive regressions with Hodrick/NW/bootstrap
     bondpredictor backtest   real-time out-of-sample evaluation of the model zoo
     bondpredictor relval     cross-country relative value across 10-17 bond markets
+    bondpredictor curves     yield-curve trades (steepeners, butterflies) in the US, Germany and UK
     bondpredictor forecast   latest forecasts from one model
     bondpredictor termpremium  ACM term premium for a country
 """
@@ -161,6 +162,28 @@ def cmd_relval(args):
     print(f"\nwrote {out}/relval.md, relval_summary.csv, relval_returns.csv")
 
 
+def cmd_curves(args):
+    from . import curvetrades, relval
+
+    dl = Downloader(cache_dir=args.cache, offline=args.offline, max_age_days=args.max_age)
+    timing = rv = None
+    fpath, dpath, rpath = Path(args.forecasts), Path(args.data), Path(args.relval_returns)
+    if fpath.exists() and dpath.exists():
+        timing = relval.timing_portfolio(pd.read_pickle(dpath), pd.read_pickle(fpath), model=args.timing_model)
+    if rpath.exists():
+        rv = pd.read_csv(rpath, index_col=0)
+        rv.index = pd.PeriodIndex(rv.index, freq="M")
+    st = curvetrades.study(dl, start=args.start, n_perm=args.n_perm, lag=0 if args.no_delay else 1,
+                           timing_returns=timing, relval_returns=rv)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "curves.md").write_text(st.report)
+    st.main.to_csv(out / "curves_summary.csv")
+    pd.DataFrame({s: r["ret"] for s, r in st.returns.items()}).to_csv(out / "curves_returns.csv")
+    print(st.report)
+    print(f"\nwrote {out}/curves.md, curves_summary.csv, curves_returns.csv")
+
+
 def cmd_forecast(args):
     from .backtest import run_backtest, run_panel_backtest
     from .pipeline import country_specs, panel_spec
@@ -269,6 +292,16 @@ def build_parser() -> argparse.ArgumentParser:
     rv.add_argument("--timing-model", default="slope")
     rv.add_argument("--out", default="output/relval")
     rv.set_defaults(func=cmd_relval)
+
+    cv = sub.add_parser("curves", parents=[common], help="yield-curve trades: steepeners and butterflies")
+    cv.add_argument("--start", default="1980-01", help="first signal month")
+    cv.add_argument("--n-perm", type=int, default=1000, help="random time shifts for the placebo test")
+    cv.add_argument("--no-delay", action="store_true", help="trade at the signal month-end (exposed to fitting noise)")
+    cv.add_argument("--forecasts", default="output/ml/forecasts.pkl", help="for the duration-timing combination")
+    cv.add_argument("--relval-returns", default="output/relval/relval_returns.csv", help="for the combination")
+    cv.add_argument("--timing-model", default="slope")
+    cv.add_argument("--out", default="output/curves")
+    cv.set_defaults(func=cmd_curves)
 
     f = sub.add_parser("forecast", parents=[common, model], help="latest forecast")
     f.add_argument("--model", default="slope")

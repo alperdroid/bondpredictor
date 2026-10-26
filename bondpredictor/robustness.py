@@ -216,7 +216,7 @@ def _fmt(df: pd.DataFrame, digits: int = 2) -> str:
     def kind(col: str) -> str:
         if re.search(r"(^|\s)p(\s|$)|p-value|Reality Check", col):
             return "p"
-        if "Sharpe" in col or "turnover" in col or "corr" in col:
+        if any(k in col for k in ("Sharpe", "turnover", "corr", "/yr", "hit rate")):
             return "plain"
         return "signed"
 
