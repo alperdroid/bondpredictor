@@ -324,10 +324,22 @@ def cmd_transforms(args):
     t0 = time.time()
     screen_path = out / "transform_screen.pkl"
     stale = screen_path.exists() and pd.read_pickle(screen_path).get("version") != SCREEN_VERSION
-    if args.stage == "screen" or not screen_path.exists() or stale:
+    if args.stage == "screen" or (args.stage == "compare" and (not screen_path.exists() or stale)):
         res = run_screen(data, store, tuple(CODES), tuple(args.horizons), progress=_progress(t0))
         pd.to_pickle(res, screen_path)
         print(f"wrote {screen_path} ({len(res['table'])} candidates)")
+    if args.stage == "report":
+        from .transform_search import report
+
+        tables = [out / f"transform_compare_{c}_table.csv" for c in CODES]
+        compare = pd.concat([pd.read_csv(t) for t in tables if t.exists()]) if any(t.exists() for t in tables) else None
+        latest_path = out / "transform_latest_US.csv"
+        text = report(pd.read_pickle(screen_path), compare, store["frames"],
+                      pd.read_csv(latest_path) if latest_path.exists() else None)
+        Path(args.report).write_text(text)
+        print(text)
+        print(f"wrote {args.report}")
+        return
     if args.stage != "compare":
         return
     table = pd.read_pickle(screen_path)["table"]
@@ -427,7 +439,8 @@ def build_parser():
     sc.set_defaults(func=cmd_scenarios)
 
     tr = sub.add_parser("transforms", parents=[common], help="search over predictor transformations")
-    tr.add_argument("stage", choices=["screen", "compare"])
+    tr.add_argument("stage", choices=["screen", "compare", "report"])
+    tr.add_argument("--report", default="docs/inflation_transforms.md")
     tr.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
     tr.add_argument("--sets", nargs="+", default=["current", "core_anchor", "top1", "top3", "library", "lags"])
     tr.add_argument("--models", nargs="+", default=["ridge", "adalasso", "enet", "krr", "rf", "lgbm"])

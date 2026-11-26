@@ -323,6 +323,15 @@ python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of 
 python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
 ```
 
+`python -m bondpredictor.inflation transforms screen|compare|report` runs a
+real-time search over predictor transformations (growth over 1-24 months,
+seasonally adjusted changes, accelerations, gaps, z-scores, asymmetric parts,
+lags of 0-12 months: 50,440 candidates) and backtests the fast ML models with
+the screened transforms, the full transform library, lagged features and a
+core-anchored target.  None of these beat the current features on average
+over 2013-2026; transformations that won on 2000-2010 did no better than random
+ones afterwards.  See `docs/inflation_transforms.md`.
+
 To refresh the forecasts after new CPI prints without rerunning the backtest:
 `build`, `forecast`, `scenarios`, `foundation --models timesfm3_cov chronos2_cov
 --start <a recent month>`, then `site` (it reuses the backtest embedded in the

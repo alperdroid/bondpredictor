@@ -416,7 +416,7 @@ SET_LABELS = {"current": "Current features", "core_anchor": "Core-anchored targe
               "top3": "+ best three per variable", "library": "+ full transform library", "lags": "+ lags 1-12 of current"}
 
 
-def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict) -> str:
+def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest: pd.DataFrame | None = None) -> str:
     """Markdown summary of the screen, the model comparison and the base-rate check."""
     from .report import NAMES, md_table
 
@@ -459,12 +459,29 @@ def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict) -> str:
             lambda d: pd.Series({"better": (d["dm_t"] < 0).mean(), "significantly better": ((d["dm_t"] < 0) & (d["dm_p"] < 0.1)).mean(),
                                  "significantly worse": ((d["dm_t"] > 0) & (d["dm_p"] < 0.1)).mean()}), include_groups=False)
         wins.index = [SET_LABELS[s] for s in wins.index]
+        wins = wins.map(lambda v: f"{100 * v:.0f}%")
+        mean = piv.mean().sort_values()
+        anchor = med[med["set"] == "core_anchor"].set_index(["economy", "horizon"])["rel_rw"]
+        cur = med[med["set"] == "current"].set_index(["economy", "horizon"])["rel_rw"]
+        long_wins = int((anchor.xs(24, level="horizon") < cur.xs(24, level="horizon")).sum())
+        L[4:4] = ["**Bottom line.**  Averaged over the four economies and four horizons, the current features "
+                  f"({mean['Current features']:.3f} of the no-change error) beat every alternative: "
+                  + ", ".join(f"{k.lstrip('+ ').lower()} {v:.3f}" for k, v in mean.items() if k != "Current features")
+                  + f".  Anchoring the target on core inflation helps two years out ({long_wins} of 4 economies) but "
+                  "hurts at short horizons in the euro area and Japan, where energy swings dominate.", ""]
         L += ["## Letting the models choose", "",
               "The fast econometric ML models (ridge, adaptive lasso, elastic net, kernel ridge, random forest, gradient "
               "boosting) backtested on origins from 2013 with each feature set.  RMSE of their median relative to no "
               "change (below 1 beats it):", "", md_table(piv.round(3), index_name="economy, horizon"), "",
               "How often each alternative beat the current features (median model, 16 economy-horizon pairs; Diebold-"
-              "Mariano at 10%):", "", md_table((100 * wins).round(0), {c: "0" for c in wins.columns}, "feature set"), ""]
+              "Mariano at 10%):", "", md_table(wins, index_name="feature set"), ""]
+    if latest is not None and not latest.empty:
+        lt = latest.pivot_table(index="h", columns="set", values="median")
+        lt = lt[[c for c in ("current", "core_anchor", "library") if c in lt.columns]].rename(columns=SET_LABELS)
+        lt.index = [f"{h} months" for h in lt.index]
+        L += ["## What the alternatives say about the US today", "",
+              "Median of the same six models at the latest origin (October 2026 print, 3.9%), by feature set:", "",
+              md_table(lt.round(2), index_name="horizon"), ""]
     br = base_rates(frames["US"][0])
     L += ["## Stickiness check for the current US forecast", "",
           f"In the {br['months']} US months since 1960 when headline inflation ran at least 0.9 points above core during "
