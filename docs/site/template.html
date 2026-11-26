@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Inflation Forecast Lab</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Inflation forecasts for the US, UK, Japan and euro area from 34 econometric ML, deep learning and foundation models, with a scenario lab.">
@@ -59,6 +64,10 @@
 }
 
 * { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
@@ -260,6 +269,8 @@ footer .wrap { padding-block: 22px 40px; display: flex; flex-wrap: wrap; gap: 8p
 #tip .row span { color: var(--ink-2); }
 #tip .row i { display: block; width: 14px; border-top: 2px solid; }
 </style>
+</head>
+<body>
 
 <header class="bar">
   <div class="wrap">
@@ -841,7 +852,7 @@ function renderScenario() {
   $("#ro-delta").textContent = ppv(dlt);
   const others = cur.n - cur.up - cur.down;
   $("#ro-agree").textContent = Object.values(vals).some(v => v)
-    ? `${cur.up} of ${cur.n} models raise the forecast, ${cur.down} lower it${others ? ` and ${others} barely move` : ""}.`
+    ? `${cur.up} of ${cur.n} models raise the forecast, ${cur.down} lower it${others ? ` and ${others} barely ${others === 1 ? "moves" : "move"}` : ""}.`
     : "Move a slider or pick a scenario to see how the forecast responds.";
   const legend = $("#scen-legend"); legend.replaceChildren(
     el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
@@ -1142,7 +1153,8 @@ function renderMethod() {
     blockEl("Read more", el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/blob/claude/ecstatic-bell-vmmnv3/docs/inflation_report.md", text: "Full backtest report" })),
       el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/blob/claude/ecstatic-bell-vmmnv3/docs/inflation_drivers.md", text: "Drivers and coefficients" })),
       el("p", {}, el("a", { href: "https://github.com/alperdroid/bondpredictor/tree/claude/ecstatic-bell-vmmnv3/bondpredictor/inflation", text: "Model code" }))));
-  $("#foot-asof").textContent = `Data to ${fmtYM(DATA.economies.map(e => e.month).sort().at(-1))} · built ${DATA.asof}`;
+  const bt = DATA.backtestAsof && DATA.backtestAsof !== DATA.asof ? ` · backtest run ${DATA.backtestAsof}` : "";
+  $("#foot-asof").textContent = `Data to ${fmtYM(DATA.economies.map(e => e.month).sort().at(-1))} · forecasts built ${DATA.asof}${bt}`;
 }
 
 // ------------------------------------------------------------------ boot
@@ -1176,3 +1188,5 @@ function boot() {
 if (window.d3) boot();
 else document.querySelector("main").prepend(Object.assign(document.createElement("p"), { className: "wrap", textContent: "The charting library did not load. Check your connection and reload the page." }));
 </script>
+</body>
+</html>

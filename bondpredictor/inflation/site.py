@@ -4,6 +4,11 @@
 inflation history, the latest forecasts with 80% bands, the backtest paths,
 the accuracy league table, sub-period scores, driver coefficients and the
 scenario responses.  ``render`` drops it into the page template.
+
+A refresh after new data needs no new backtest: given ``previous`` (the data
+of the last built page, see ``previous_data``) and no backtest results, the
+backtest paths and sub-period scores are kept, and the 80% bands keep their
+widths around the new median forecasts.
 """
 
 from __future__ import annotations
@@ -84,9 +89,10 @@ def _bands(r: pd.DataFrame, n: int = 120) -> dict:
 
 
 def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict | None, scores: pd.DataFrame,
-              frames_for_drivers: dict | None = None, asof: str | None = None) -> dict:
+              frames_for_drivers: dict | None = None, asof: str | None = None, previous: dict | None = None) -> dict:
     out = {"asof": asof or str(pd.Timestamp.today().date()), "economies": [], "history": {}, "latest": {},
            "paths": {}, "subperiods": {}, "accuracy": [], "models": {}}
+    reused = False
     out["subperiodLabels"] = list(SUBPERIODS)
     for c in ECONOMIES:
         hist = _history(store, c)
@@ -98,8 +104,16 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
             res = collect(results, c, h)
             lat = latest[(latest.country == c) & (latest.horizon == h)].set_index("model")
             med = float(lat.loc["ens:median", "forecast"])
+            backtest = "ens:median" in res
+            if not backtest and previous is None:
+                raise ValueError(f"no backtest results for {c} h={h} and no previous site data to reuse")
+            if backtest:
+                width = _bands(res["ens:median"])
+            else:
+                old = previous["latest"][c][str(h)]
+                width = {k: v - old["median"] for k, v in old["bands"].items()}
             entry = {"target": str(lat["target_month"].iloc[0]), "median": _r(med),
-                     "bands": {k: _r(med + v) for k, v in _bands(res["ens:median"]).items()},
+                     "bands": {k: _r(med + v) for k, v in width.items()},
                      "models": {m: _r(lat.loc[m, "forecast"]) for m in LATEST_MODELS if m in lat.index}}
             for m in ("fm:timesfm3_cov", "fm:chronos2_cov"):
                 r = res.get(m)
@@ -109,6 +123,11 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
                     if m == "fm:timesfm3_cov":
                         entry["tfmBand"] = [_r(row["q10"]), _r(row["q90"])]
             out["latest"][c][h] = entry
+            if not backtest:
+                reused = True
+                out["paths"][c][h] = previous["paths"][c][str(h)]
+                out["subperiods"][c][h] = previous["subperiods"][c][str(h)]
+                continue
             out["paths"][c][h] = {}
             for m in PATH_MODELS:
                 r = res.get(m)
@@ -125,6 +144,7 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
                                 "n": int(row["N"]), "start": row["start"]})
     for m in ORDER:
         out["models"][m] = {"label": LABELS[m], "short": SHORT[m], "family": family(m)}
+    out["backtestAsof"] = (previous.get("backtestAsof") or previous["asof"]) if reused else out["asof"]
     if frames_for_drivers:
         out["drivers"] = drivers_data(frames_for_drivers)
     if scenarios:
@@ -175,6 +195,16 @@ def scenario_data(responses: dict) -> dict:
                 out["check"].append({"c": c, "h": h, "preset": p.key, "joint": _r(joint - base, 3),
                                      "additive": _r(add - base, 3)})
     return out
+
+
+def previous_data(html: str) -> dict:
+    """The data embedded in a page built by ``render``."""
+    marker = "const DATA = "
+    i = html.find(marker)
+    if i < 0:
+        raise ValueError("no embedded site data found")
+    data, _ = json.JSONDecoder().raw_decode(html, i + len(marker))
+    return data
 
 
 def render(template: str, data: dict) -> str:

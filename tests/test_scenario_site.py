@@ -52,3 +52,22 @@ def test_render_embeds_data_safely():
     assert "</script><b>" not in html and '"note":"<\\/script><b>"' in html
     with pytest.raises(ValueError, match="placeholder"):
         render("<p>no data here</p>", {})
+
+
+def test_previous_data_round_trips_through_the_page():
+    from bondpredictor.inflation.site import previous_data
+
+    data = {"asof": "2026-10-18", "paths": {"US": {"12": {"ens:median": {"start": "2001-01", "values": [1.5, None]}}}},
+            "note": "</script>"}
+    page = render("<p>x</p><script>const DATA = /*__DATA__*/null;\nboot();</script>", data)
+    assert previous_data(page) == data
+
+
+def test_replace_latest_keeps_the_backtest_sections():
+    from bondpredictor.inflation.report import replace_latest
+
+    old = "# Report\n\n## 12 months ahead\n\ntable\n\n## Latest forecasts\n\nold numbers\n"
+    new = replace_latest(old, ["## Latest forecasts", "", "new numbers", ""])
+    assert new == "# Report\n\n## 12 months ahead\n\ntable\n\n## Latest forecasts\n\nnew numbers\n"
+    with pytest.raises(ValueError):
+        replace_latest("# Report\n", ["x"])

@@ -907,78 +907,78 @@ Macroeconomic random forest: average time-varying coefficients (pp of forecast c
 
 Every model refitted on all realised data and applied at each economy's latest CPI print.
 
-### United States: latest print 2026-09, y/y 3.67%
+### United States: latest print 2026-10, y/y 3.94%
 
-| model | h=3 (2026-12) | h=6 (2027-03) | h=12 (2027-09) | h=24 (2028-09) |
+| model | h=3 (2027-01) | h=6 (2027-04) | h=12 (2027-10) | h=24 (2028-10) |
 |---|---|---|---|---|
-| Random walk (no change) | 3.67 | 3.67 | 3.67 | 3.67 |
-| UCSV (Stock-Watson) | 4.02 | 3.66 | 3.36 | 3.36 |
-| Ridge | 4.17 | 3.63 | 2.76 | 2.06 |
-| Complete subset regression | 4.05 | 3.69 | 3.36 | 3.07 |
-| Kernel ridge (RBF) | 4.22 | 3.58 | 2.87 | 1.62 |
-| Gradient boosting (LightGBM) | 4.01 | 3.04 | 2.62 | 2.36 |
-| Macroeconomic random forest | 4.12 | 3.17 | 2.21 | 2.65 |
-| Hemisphere neural net | 4.11 | 3.74 | 2.72 | 2.46 |
-| Plain neural net (MLP) | 4.33 | 3.87 | 2.73 | 1.83 |
-| Mean of non-linear ML | 4.12 | 3.42 | 2.72 | 2.15 |
-| ½ non-linear ML + ½ UCSV | 4.07 | 3.54 | 3.04 | 2.76 |
-| Median of all models | 4.17 | 3.59 | 2.73 | 2.18 |
-| TimesFM 3.0 + macro covariates | 4.18 | 3.91 | 3.41 | 2.95 |
-| TimesFM 3.0 + covariates, 80% band | 3.4 to 5.0 | 2.8 to 5.1 | 2.0 to 5.0 | 1.4 to 4.9 |
+| Random walk (no change) | 3.94 | 3.94 | 3.94 | 3.94 |
+| UCSV (Stock-Watson) | 4.18 | 3.17 | 3.39 | 3.39 |
+| Ridge | 3.35 | 2.07 | 1.69 | 2.09 |
+| Complete subset regression | 3.88 | 3.08 | 3.02 | 2.40 |
+| Kernel ridge (RBF) | 3.31 | 2.20 | 1.35 | 1.67 |
+| Gradient boosting (LightGBM) | 2.85 | 1.93 | 1.19 | 2.59 |
+| Macroeconomic random forest | 3.81 | 3.09 | 2.75 | 2.74 |
+| Hemisphere neural net | 3.31 | 2.51 | 1.82 | 1.83 |
+| Plain neural net (MLP) | 3.23 | 2.35 | 1.75 | 1.84 |
+| Mean of non-linear ML | 3.31 | 2.47 | 1.84 | 2.59 |
+| ½ non-linear ML + ½ UCSV | 3.74 | 2.82 | 2.61 | 2.99 |
+| Median of all models | 3.33 | 2.30 | 1.75 | 2.40 |
+| TimesFM 3.0 + macro covariates | 3.66 | 3.39 | 3.12 | 2.88 |
+| TimesFM 3.0 + covariates, 80% band | 2.9 to 4.3 | 2.4 to 4.4 | 1.9 to 4.5 | 1.4 to 4.6 |
 
-### United Kingdom: latest print 2026-08, y/y 3.19%
+### United Kingdom: latest print 2026-10, y/y 3.59%
 
-| model | h=3 (2026-11) | h=6 (2027-02) | h=12 (2027-08) | h=24 (2028-08) |
+| model | h=3 (2027-01) | h=6 (2027-04) | h=12 (2027-10) | h=24 (2028-10) |
 |---|---|---|---|---|
-| Random walk (no change) | 3.19 | 3.19 | 3.19 | 3.19 |
-| UCSV (Stock-Watson) | 3.64 | 3.85 | 4.04 | 4.04 |
-| Ridge | 3.51 | 3.74 | 3.95 | 3.59 |
-| Complete subset regression | 3.66 | 3.89 | 4.10 | 3.75 |
-| Kernel ridge (RBF) | 3.66 | 3.98 | 4.47 | 3.41 |
-| Gradient boosting (LightGBM) | 3.53 | 3.66 | 3.10 | 2.13 |
-| Macroeconomic random forest | 3.41 | 3.40 | 3.09 | 2.47 |
-| Hemisphere neural net | 3.75 | 4.12 | 3.82 | 2.90 |
-| Plain neural net (MLP) | 3.68 | 3.99 | 3.92 | 3.17 |
-| Mean of non-linear ML | 3.49 | 3.68 | 3.51 | 2.25 |
-| ½ non-linear ML + ½ UCSV | 3.56 | 3.76 | 3.77 | 3.14 |
-| Median of all models | 3.53 | 3.83 | 3.86 | 3.05 |
-| TimesFM 3.0 + macro covariates | 3.41 | 3.66 | 3.65 | 3.47 |
-| TimesFM 3.0 + covariates, 80% band | 2.8 to 4.3 | 2.7 to 5.1 | 2.2 to 6.1 | 1.8 to 6.6 |
+| Random walk (no change) | 3.59 | 3.59 | 3.59 | 3.59 |
+| UCSV (Stock-Watson) | 4.04 | 4.11 | 4.15 | 4.15 |
+| Ridge | 3.76 | 3.89 | 3.90 | 3.59 |
+| Complete subset regression | 3.97 | 4.10 | 4.01 | 3.37 |
+| Kernel ridge (RBF) | 3.78 | 3.94 | 3.83 | 3.21 |
+| Gradient boosting (LightGBM) | 3.82 | 4.05 | 3.06 | 2.59 |
+| Macroeconomic random forest | 3.81 | 3.66 | 3.35 | 3.02 |
+| Hemisphere neural net | 3.53 | 3.58 | 3.49 | 2.89 |
+| Plain neural net (MLP) | 3.60 | 3.95 | 3.47 | 2.85 |
+| Mean of non-linear ML | 3.69 | 3.78 | 2.74 | 2.66 |
+| ½ non-linear ML + ½ UCSV | 3.86 | 3.95 | 3.44 | 3.40 |
+| Median of all models | 3.81 | 3.94 | 3.49 | 2.98 |
+| TimesFM 3.0 + macro covariates | 3.69 | 3.78 | 3.58 | 3.31 |
+| TimesFM 3.0 + covariates, 80% band | 3.1 to 4.5 | 2.8 to 5.2 | 2.2 to 5.8 | 1.6 to 6.3 |
 
-### Japan: latest print 2026-08, y/y 1.88%
+### Japan: latest print 2026-10, y/y 2.36%
 
-| model | h=3 (2026-11) | h=6 (2027-02) | h=12 (2027-08) | h=24 (2028-08) |
+| model | h=3 (2027-01) | h=6 (2027-04) | h=12 (2027-10) | h=24 (2028-10) |
 |---|---|---|---|---|
-| Random walk (no change) | 1.88 | 1.88 | 1.88 | 1.88 |
-| UCSV (Stock-Watson) | 1.94 | 2.98 | 2.09 | 2.09 |
-| Ridge | 2.52 | 2.98 | 2.29 | 1.69 |
-| Complete subset regression | 2.25 | 3.04 | 3.09 | 2.19 |
-| Kernel ridge (RBF) | 2.49 | 3.28 | 3.08 | 1.99 |
-| Gradient boosting (LightGBM) | 1.89 | 2.65 | 3.26 | 1.87 |
-| Macroeconomic random forest | 2.24 | 2.47 | 2.63 | 1.70 |
-| Hemisphere neural net | 2.32 | 2.87 | 3.31 | 2.13 |
-| Plain neural net (MLP) | 2.57 | 3.43 | 4.15 | 3.05 |
-| Mean of non-linear ML | 2.27 | 2.72 | 2.92 | 1.95 |
-| ½ non-linear ML + ½ UCSV | 2.10 | 2.85 | 2.50 | 2.02 |
-| Median of all models | 2.41 | 2.87 | 2.96 | 2.13 |
-| TimesFM 3.0 + macro covariates | 2.05 | 2.59 | 2.50 | 2.12 |
-| TimesFM 3.0 + covariates, 80% band | 1.4 to 2.8 | 1.6 to 3.8 | 1.1 to 4.2 | 0.3 to 4.3 |
+| Random walk (no change) | 2.36 | 2.36 | 2.36 | 2.36 |
+| UCSV (Stock-Watson) | 2.71 | 3.13 | 2.27 | 2.27 |
+| Ridge | 2.70 | 2.86 | 2.61 | 2.09 |
+| Complete subset regression | 2.85 | 3.13 | 3.12 | 2.83 |
+| Kernel ridge (RBF) | 2.71 | 2.86 | 2.55 | 1.88 |
+| Gradient boosting (LightGBM) | 2.60 | 2.74 | 2.76 | 1.94 |
+| Macroeconomic random forest | 2.78 | 2.86 | 2.64 | 1.63 |
+| Hemisphere neural net | 2.38 | 2.61 | 2.45 | 2.42 |
+| Plain neural net (MLP) | 2.59 | 2.98 | 2.94 | 2.29 |
+| Mean of non-linear ML | 2.64 | 2.63 | 2.32 | 1.82 |
+| ½ non-linear ML + ½ UCSV | 2.68 | 2.88 | 2.29 | 2.04 |
+| Median of all models | 2.71 | 2.86 | 2.61 | 2.29 |
+| TimesFM 3.0 + macro covariates | 2.64 | 2.64 | 2.46 | 2.03 |
+| TimesFM 3.0 + covariates, 80% band | 1.9 to 3.5 | 1.6 to 3.9 | 1.0 to 4.2 | 0.2 to 4.1 |
 
-### Euro area: latest print 2026-09, y/y 3.71%
+### Euro area: latest print 2026-10, y/y 3.95%
 
-| model | h=3 (2026-12) | h=6 (2027-03) | h=12 (2027-09) | h=24 (2028-09) |
+| model | h=3 (2027-01) | h=6 (2027-04) | h=12 (2027-10) | h=24 (2028-10) |
 |---|---|---|---|---|
-| Random walk (no change) | 3.71 | 3.71 | 3.71 | 3.71 |
-| UCSV (Stock-Watson) | 4.34 | 4.34 | 4.13 | 4.13 |
-| Ridge | 4.47 | 4.87 | 4.73 | 3.19 |
-| Complete subset regression | 4.21 | 4.21 | 3.62 | 2.16 |
-| Kernel ridge (RBF) | 4.33 | 4.61 | 4.53 | 3.51 |
-| Gradient boosting (LightGBM) | 4.34 | 4.34 | 3.03 | 2.70 |
-| Macroeconomic random forest | 4.18 | 4.05 | 3.07 | 2.49 |
-| Hemisphere neural net | 4.24 | 4.52 | 3.74 | 2.93 |
-| Plain neural net (MLP) | 4.33 | 4.51 | 3.97 | 2.45 |
-| Mean of non-linear ML | 4.28 | 3.85 | 2.99 | 2.83 |
-| ½ non-linear ML + ½ UCSV | 4.31 | 4.09 | 3.56 | 3.48 |
-| Median of all models | 4.33 | 4.39 | 3.83 | 2.93 |
-| TimesFM 3.0 + macro covariates | 4.02 | 4.21 | 3.67 | 2.91 |
-| TimesFM 3.0 + covariates, 80% band | 3.3 to 4.9 | 3.1 to 5.8 | 2.1 to 6.2 | 1.1 to 5.5 |
+| Random walk (no change) | 3.95 | 3.95 | 3.95 | 3.95 |
+| UCSV (Stock-Watson) | 4.72 | 3.96 | 4.12 | 4.12 |
+| Ridge | 4.10 | 3.69 | 3.30 | 3.29 |
+| Complete subset regression | 4.35 | 3.65 | 3.18 | 1.95 |
+| Kernel ridge (RBF) | 4.04 | 3.69 | 3.17 | 2.38 |
+| Gradient boosting (LightGBM) | 4.12 | 2.67 | 2.14 | 1.98 |
+| Macroeconomic random forest | 4.21 | 3.47 | 3.24 | 2.48 |
+| Hemisphere neural net | 3.89 | 3.41 | 3.01 | 2.30 |
+| Plain neural net (MLP) | 3.94 | 3.48 | 2.78 | 2.14 |
+| Mean of non-linear ML | 4.15 | 3.29 | 2.80 | 2.53 |
+| ½ non-linear ML + ½ UCSV | 4.43 | 3.63 | 3.46 | 3.33 |
+| Median of all models | 4.10 | 3.65 | 3.17 | 2.48 |
+| TimesFM 3.0 + macro covariates | 3.88 | 3.92 | 3.40 | 2.76 |
+| TimesFM 3.0 + covariates, 80% band | 3.2 to 4.6 | 2.9 to 5.1 | 1.9 to 5.2 | 1.0 to 5.0 |

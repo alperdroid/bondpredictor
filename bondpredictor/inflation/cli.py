@@ -221,8 +221,16 @@ def cmd_explain(args):
 
 
 def cmd_report(args):
-    from .report import build_report
+    from .report import build_report, latest_section, replace_latest
 
+    if args.latest_only:  # new data: refresh the latest-forecast tables, keep the backtest sections
+        res_dir, out = Path(args.results), Path(args.out)
+        fm = pd.read_pickle(res_dir / "foundation.pkl") if (res_dir / "foundation.pkl").exists() else {}
+        lines = latest_section(pd.read_csv(res_dir / "latest.csv"), fm, args.countries)
+        out.write_text(replace_latest(out.read_text(), lines))
+        print("\n".join(lines))
+        print(f"\nupdated the latest forecasts in {out}")
+        return
     store = load_frames(args)
     results = pd.read_pickle(Path(args.results) / "results.pkl")
     rob_path = Path(args.results) / "robustness.pkl"
@@ -281,18 +289,24 @@ def cmd_scenarios(args):
 def cmd_site(args):
     import json
 
-    from .site import site_data, write_site
+    from .site import previous_data, site_data, write_site
 
     store = load_frames(args)
     res_dir = Path(args.results)
-    results = pd.read_pickle(res_dir / "results.pkl")
-    for extra in ("deep.pkl", "foundation.pkl"):
-        if (res_dir / extra).exists():
-            results = {**results, **pd.read_pickle(res_dir / extra)}
+    results = {}
+    for name in ("results.pkl", "deep.pkl", "foundation.pkl"):
+        if (res_dir / name).exists():
+            results = {**results, **pd.read_pickle(res_dir / name)}
+    # Without a backtest on disk, keep the backtest parts of the page built last time.
+    prev_path = Path(args.previous or args.out)
+    previous = None
+    if not (res_dir / "results.pkl").exists():
+        previous = previous_data(prev_path.read_text())
+        print(f"no {res_dir / 'results.pkl'}: reusing the backtest from {prev_path}")
     scen_path = res_dir / "scenarios.pkl"
     data = site_data(store, results, pd.read_csv(res_dir / "latest.csv"),
                      pd.read_pickle(scen_path) if scen_path.exists() else None, pd.read_csv(args.scores),
-                     {c: store["frames"][c] for c in CODES})
+                     {c: store["frames"][c] for c in CODES}, previous=previous)
     (res_dir / "site.json").write_text(json.dumps(data))
     out = write_site(data, Path(args.template), Path(args.out))
     print(f"wrote {out} ({out.stat().st_size / 1e6:.2f} MB)")
@@ -358,6 +372,7 @@ def build_parser():
     rep.add_argument("--results", default="output/inflation")
     rep.add_argument("--n-boot", type=int, default=2000)
     rep.add_argument("--out", default="docs/inflation_report.md")
+    rep.add_argument("--latest-only", action="store_true", help="only refresh the latest-forecast section of --out")
     rep.set_defaults(func=cmd_report)
 
     f = sub.add_parser("forecast", parents=[common])
@@ -378,6 +393,7 @@ def build_parser():
     st.add_argument("--scores", default="docs/inflation_report.csv", help="league table written by `report`")
     st.add_argument("--template", default="docs/site/template.html")
     st.add_argument("--out", default="docs/site/index.html")
+    st.add_argument("--previous", default=None, help="page whose backtest to reuse when results.pkl is missing (default: --out)")
     st.set_defaults(func=cmd_site)
     return p
 

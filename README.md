@@ -323,6 +323,12 @@ python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of 
 python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
 ```
 
+To refresh the forecasts after new CPI prints without rerunning the backtest:
+`build`, `forecast`, `scenarios`, `foundation --models timesfm3_cov chronos2_cov
+--start <a recent month>`, then `site` (it reuses the backtest embedded in the
+last built page when `output/inflation/results.pkl` is missing) and
+`report --latest-only`.
+
 `docs/site/index.html` is a self-contained page (it loads d3 and Google
 Fonts from their CDNs): a fan-chart outlook per economy, a scenario lab, the
 model league table, a backtest replay and the driver coefficients.  The
@@ -330,7 +336,7 @@ scenario lab shifts today's drivers (oil, supply-chain pressure, producer
 prices, the currency, wages, unemployment, expectations, inflation abroad)
 and asks the 13 refitted country models again; levers add up within each
 model before the median is taken, which `scenarios` checks against solving
-each preset jointly (within 0.14 pp in this build).
+each preset jointly (within 0.26 pp in the November 2026 refresh).
 
 ### Target and timing
 
@@ -503,14 +509,15 @@ What it says:
   (the surge broke past error patterns); the foundation models' own
   quantiles are the best calibrated, BART's posterior covers only ~30%.
 
-Latest forecasts (median of all tier-1 models / TimesFM 3 + covariates):
+Latest forecasts, refreshed on 26 November 2026 with the October prints (median of the 13 tier-1 country
+models / TimesFM 3 + covariates; the backtest results above are from the October build):
 
 | | Latest y/y | 3 months | 12 months | 24 months |
 |---|---|---|---|---|
-| US (Sep 2026) | 3.7% | 4.2 / 4.2 (Dec 2026) | 2.7 / 3.4 (Sep 2027) | 2.2 / 2.9 (Sep 2028) |
-| UK (Aug 2026) | 3.2% | 3.5 / 3.4 (Nov 2026) | 3.9 / 3.7 (Aug 2027) | 3.1 / 3.5 (Aug 2028) |
-| Japan (Aug 2026) | 1.9% | 2.4 / 2.0 (Nov 2026) | 3.0 / 2.5 (Aug 2027) | 2.1 / 2.1 (Aug 2028) |
-| Euro area (Sep 2026) | 3.7% | 4.3 / 4.0 (Dec 2026) | 3.8 / 3.7 (Sep 2027) | 2.9 / 2.9 (Sep 2028) |
+| US (Oct 2026) | 3.9% | 3.3 / 3.7 (Jan 2027) | 1.8 / 3.1 (Oct 2027) | 2.4 / 2.9 (Oct 2028) |
+| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.0 / 3.3 (Oct 2028) |
+| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.3 / 2.0 (Oct 2028) |
+| Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
 
 The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
 months are about ±1.5 pp, so treat these as central scenarios.
