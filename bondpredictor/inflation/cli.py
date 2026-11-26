@@ -312,6 +312,43 @@ def cmd_site(args):
     print(f"wrote {out} ({out.stat().st_size / 1e6:.2f} MB)")
 
 
+def cmd_transforms(args):
+    from ..data import Downloader as DL
+    from .data import build_data
+    from .transform_search import compare_table, run_compare, run_screen
+
+    store = load_frames(args)
+    data = build_data(tuple(CODES), dl=DL(offline=True), end=str(store["last_month"]))
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    screen_path = out / "transform_screen.pkl"
+    if args.stage == "screen" or not screen_path.exists():
+        res = run_screen(data, store, tuple(CODES), tuple(args.horizons), progress=_progress(t0))
+        pd.to_pickle(res, screen_path)
+        print(f"wrote {screen_path} ({len(res['table'])} candidates)")
+    if args.stage != "compare":
+        return
+    table = pd.read_pickle(screen_path)["table"]
+    tag = "_".join(args.countries)
+    res = run_compare(data, store, table, args.countries, tuple(args.horizons), tuple(args.sets), tuple(args.models),
+                      n_jobs=args.jobs, progress=_progress(t0))
+    pd.to_pickle(res, out / f"transform_compare_{tag}.pkl")
+    long = pd.concat([r.assign(economy=c, horizon=h, set=s, model=m).reset_index()[
+        ["economy", "horizon", "set", "model", "date", "forecast", "rw", "actual"]]
+        for (c, h, s, m), r in res.items() if isinstance(r, pd.DataFrame) and not r.empty])
+    long["date"] = long["date"].astype(str)
+    long.to_csv(out / f"transform_compare_{tag}.csv.gz", index=False)
+    t = compare_table(res)
+    t.to_csv(out / f"transform_compare_{tag}_table.csv", index=False)
+    with pd.option_context("display.width", 200, "display.max_rows", 500):
+        print(t.pivot_table(index=["economy", "horizon", "model"], columns="set", values="rel_rw").round(3).to_string())
+    print("BEGIN COMPARE TABLE CSV")
+    print(t.to_csv(index=False, float_format="%.4f"), end="")
+    print("END COMPARE TABLE CSV")
+    print(f"wrote {out / f'transform_compare_{tag}.csv.gz'} and the table")
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="bondpredictor.inflation", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -387,6 +424,15 @@ def build_parser():
     sc.add_argument("--resume", action="store_true", help="skip model fits already in the output file")
     sc.add_argument("--out", default="output/inflation")
     sc.set_defaults(func=cmd_scenarios)
+
+    tr = sub.add_parser("transforms", parents=[common], help="search over predictor transformations")
+    tr.add_argument("stage", choices=["screen", "compare"])
+    tr.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
+    tr.add_argument("--sets", nargs="+", default=["current", "core_anchor", "top1", "top3", "library", "lags"])
+    tr.add_argument("--models", nargs="+", default=["ridge", "adalasso", "enet", "krr", "rf", "lgbm"])
+    tr.add_argument("--jobs", type=int, default=1)
+    tr.add_argument("--out", default="output/inflation")
+    tr.set_defaults(func=cmd_transforms)
 
     st = sub.add_parser("site", parents=[common], help="interactive site with forecasts and scenarios")
     st.add_argument("--results", default="output/inflation")

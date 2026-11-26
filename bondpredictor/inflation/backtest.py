@@ -55,7 +55,7 @@ class Spec:
     window: int | None = None  # rolling window in months (None = expanding)
     train_start: str = "1960-01"
     tier: int = 1  # 1 = econometric ML and benchmarks, 2 = generic deep learning
-    offset: str | None = None  # forecast the target minus this predictor (e.g. "mech"), then add it back
+    offset: str | None = None  # forecast the target minus this predictor (e.g. "mech"; "-name" subtracts minus it), then add it back
 
 
 def design(frame: pd.DataFrame, groups: dict[str, str], h: int):
@@ -111,7 +111,11 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
     if spec.features is not None:
         X = X[[c for c in spec.features if c in X]]
     y = (tgt - pi).to_numpy()
-    off = X[spec.offset].to_numpy(dtype=float) if spec.offset else np.zeros(len(X))
+    if spec.offset:
+        sign, col = (-1.0, spec.offset[1:]) if spec.offset.startswith("-") else (1.0, spec.offset)
+        off = sign * X[col].to_numpy(dtype=float)
+    else:
+        off = np.zeros(len(X))
     y = y - off
     idx = frame.index
     first = idx.searchsorted(pd.Period(start, "M"))

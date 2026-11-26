@@ -71,3 +71,41 @@ def test_replace_latest_keeps_the_backtest_sections():
     assert new == "# Report\n\n## 12 months ahead\n\ntable\n\n## Latest forecasts\n\nnew numbers\n"
     with pytest.raises(ValueError):
         replace_latest("# Report\n", ["x"])
+
+
+def test_recursive_ols_matches_brute_force_and_ignores_later_rows():
+    from bondpredictor.inflation.transform_search import recursive_ols
+
+    rng = np.random.default_rng(3)
+    n, h = 300, 12
+    Z = np.column_stack([np.ones(n), rng.normal(size=(n, 3))])
+    Z[rng.random(n) < 0.1, 2] = np.nan
+    y = Z[:, 1] * 0.5 - np.nan_to_num(Z[:, 2]) + rng.normal(size=n)
+    y[rng.random(n) < 0.05] = np.nan
+    origins = np.arange(150, n)
+    got = recursive_ols(Z, y, origins, h, t0=10, min_train=60, ridge=0.0)
+    for i, k in enumerate(origins[::17]):
+        rows = np.arange(10, k - h + 1)
+        rows = rows[np.isfinite(Z[rows]).all(axis=1) & np.isfinite(y[rows])]
+        if not np.isfinite(Z[k]).all():
+            continue
+        beta, *_ = np.linalg.lstsq(Z[rows], y[rows], rcond=None)
+        assert got[np.searchsorted(origins, k)] == pytest.approx(Z[k] @ beta)
+    later = y.copy()
+    later[200 - h + 1:] = 99.0  # targets not yet published at origin 200
+    assert recursive_ols(Z, later, np.array([200]), h, t0=10)[0] == pytest.approx(recursive_ols(Z, y, np.array([200]), h, t0=10)[0])
+
+
+def test_candidate_transforms_use_only_the_past():
+    from bondpredictor.inflation.transform_search import base_transforms
+
+    rng = np.random.default_rng(4)
+    idx = pd.period_range("1990-01", periods=240, freq="M")
+    price = pd.Series(100 * np.exp(np.cumsum(0.002 + 0.01 * rng.normal(size=240))), index=idx)
+    rate = pd.Series(np.cumsum(rng.normal(size=240)), index=idx)
+    k = 180
+    for s, kind in ((price, "price"), (rate, "level")):
+        full = base_transforms(s, kind)
+        cut = base_transforms(s.iloc[: k + 1], kind)
+        for name, x in full.items():
+            pd.testing.assert_series_equal(x.iloc[: k + 1], cut[name], check_names=False)
