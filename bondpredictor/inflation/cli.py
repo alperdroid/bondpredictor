@@ -315,7 +315,7 @@ def cmd_site(args):
 def cmd_transforms(args):
     from ..data import Downloader as DL
     from .data import build_data
-    from .transform_search import compare_table, run_compare, run_screen
+    from .transform_search import SCREEN_VERSION, compare_table, run_compare, run_screen
 
     store = load_frames(args)
     data = build_data(tuple(CODES), dl=DL(offline=True), end=str(store["last_month"]))
@@ -323,7 +323,8 @@ def cmd_transforms(args):
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     screen_path = out / "transform_screen.pkl"
-    if args.stage == "screen" or not screen_path.exists():
+    stale = screen_path.exists() and pd.read_pickle(screen_path).get("version") != SCREEN_VERSION
+    if args.stage == "screen" or not screen_path.exists() or stale:
         res = run_screen(data, store, tuple(CODES), tuple(args.horizons), progress=_progress(t0))
         pd.to_pickle(res, screen_path)
         print(f"wrote {screen_path} ({len(res['table'])} candidates)")

@@ -37,7 +37,10 @@ combinations of the benchmark terms (for example 12-month CPI growth) are
 dropped as aliases.
 
 Which candidates exist is decided on the full sample (at least 60
-observations, price or level), which changes no candidate's values.
+observations, price or level), which changes no candidate's values.  The
+benchmark uses complete rows only; ``run_backtest``'s AR model mean-imputes
+missing early values instead, so their forecasts coincide for the US, UK and
+Japan but not for the euro area, whose data start in 1991.
 """
 
 from __future__ import annotations
@@ -51,6 +54,7 @@ from . import config as cfg
 from .backtest import AR_FEATURES, design
 from .features import sa_onesided
 
+SCREEN_VERSION = 2  # bump when the scoring changes, so a stale screen file is not reused
 FIRST_ORIGIN = "2000-01"
 TRAIN_START = "1960-01"  # as Spec.train_start
 MIN_COVERED = 60
@@ -261,7 +265,7 @@ def run_screen(data, store: dict, codes=("US", "UK", "JP", "EA"), horizons=(3, 6
             gains[(c, h)] = extra
             if progress:
                 progress((c, h), f"{len(t)} candidates")
-    return {"table": pd.concat(tables, ignore_index=True), "gains": gains}
+    return {"table": pd.concat(tables, ignore_index=True), "gains": gains, "version": SCREEN_VERSION}
 
 
 # ------------------------------------------------------------------ multivariate comparison
@@ -363,3 +367,109 @@ def compare_table(results: dict) -> pd.DataFrame:
             t = d.mean() / _nw_se(d, max(h - 1, 0))
             row["dm_t"], row["dm_p"] = float(t), float(math.erfc(abs(t) / math.sqrt(2.0)))
     return pd.DataFrame(rows)
+
+
+# ------------------------------------------------------------------ analysis
+
+def transfer_table(table: pd.DataFrame) -> pd.DataFrame:
+    """Rank correlation between selection-sample and holdout MSE ratios, by economy and horizon."""
+    S = table.dropna(subset=["select_ratio", "holdout_ratio"])
+    return S.groupby(["economy", "horizon"]).apply(
+        lambda d: d["select_ratio"].rank().corr(d["holdout_ratio"].rank()), include_groups=False).unstack()
+
+
+def realtime_selection(table: pd.DataFrame, gains: dict, min_track: int = 60) -> pd.DataFrame:
+    """Per economy, horizon and variable: holdout gain of re-choosing the transform every month.
+
+    At each origin the chosen candidate is the one with the largest cumulative loss gain over
+    origins whose targets were published by then (at least ``min_track`` of them).
+    """
+    rows = []
+    for (c, h), g in gains.items():
+        when, gain = g["origins"], g["gains"]
+        pos = np.array([(p - when[0]).n for p in when])
+        last = np.searchsorted(pos, pos - h, side="right") - 1
+        hold = when >= pd.Period(HOLDOUT_START, "M")
+        meta = table[(table["economy"] == c) & (table["horizon"] == h) & ~table["alias"]]
+        for var, names in meta.groupby("var")["name"]:
+            E = np.vstack([gain[n] for n in names]).astype(float)
+            cum = np.cumsum(E, axis=1)
+            pick = np.where(last >= min_track - 1, np.argmax(cum[:, np.maximum(last, 0)], axis=0), -1)
+            chosen = np.where(pick >= 0, E[np.maximum(pick, 0), np.arange(len(when))], 0.0)
+            rows.append({"economy": c, "horizon": h, "var": var, "mean_gain": float(chosen[hold].mean())})
+    return pd.DataFrame(rows)
+
+
+def base_rates(frame: pd.DataFrame, gap_min: float = 0.9, oil_min: float = 25.0, start: str = "1960-01") -> dict:
+    """What happened over the next 12 months when headline ran well above core during an oil surge."""
+    ref = lambda s: s.set_axis(s.index - 1)  # known-at month -> reference month of the print
+    pi, core, oil = ref(frame["pi"]), ref(frame["core"]), ref(frame["oil_yoy"])
+    df = pd.DataFrame({"pi": pi, "core": core, "gap": pi - core, "oil": oil,
+                       "d12": pi.shift(-12) - pi, "core_d12": core.shift(-12) - core}).loc[start:]
+    hit = df[(df["gap"] >= gap_min) & (df["oil"] >= oil_min) & df["d12"].notna()]
+    return {"months": len(hit), "median_change": float(hit["d12"].median()), "mean_change": float(hit["d12"].mean()),
+            "share_fall_2pp": float((hit["d12"] <= -2).mean()), "median_core_change": float(hit["core_d12"].median()),
+            "now": df.iloc[-1][["pi", "core", "gap", "oil"]].to_dict(), "now_month": str(df.index[-1])}
+
+
+SET_LABELS = {"current": "Current features", "core_anchor": "Core-anchored target", "top1": "+ best transform per variable",
+              "top3": "+ best three per variable", "library": "+ full transform library", "lags": "+ lags 1-12 of current"}
+
+
+def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict) -> str:
+    """Markdown summary of the screen, the model comparison and the base-rate check."""
+    from .report import NAMES, md_table
+
+    T, G = screen_res["table"], screen_res["gains"]
+    S = T[~T["alias"]].dropna(subset=["select_ratio", "holdout_ratio"])
+    top = S.sort_values("select_ratio").groupby(["economy", "horizon", "var"]).head(1)
+    sig = S[S["select_cw_t"] > 1.645]
+    rt = realtime_selection(T, G)
+    L = ["<!-- Generated by `python -m bondpredictor.inflation transforms report`. -->", "",
+         "# Do predictor transformations matter?", "",
+         f"Every raw predictor got a library of candidate transformations ({len(T):,} candidates over four economies "
+         f"and four horizons; {int(T['alias'].sum())} exact aliases of the benchmark dropped).  Each was added to the "
+         "own-inflation benchmark and scored out of sample in real time: chosen on forecast origins 2000-2010, judged "
+         "on origins from 2013.", "",
+         "## One variable at a time", "",
+         f"* **Early winners do not stay winners.**  The best transformation of each variable on 2000-2010 beat the "
+         f"benchmark on 2013-2026 in {100 * (top['holdout_ratio'] < 1).mean():.0f}% of cases; a random candidate did so in "
+         f"{100 * (S['holdout_ratio'] < 1).mean():.0f}%.",
+         f"* **Significance does not persist.**  Of the {len(sig):,} candidates significant on 2000-2010 (Clark-West, "
+         f"5% one-sided), {100 * (sig['holdout_cw_t'] > 1.645).mean():.0f}% were significant again on 2013-2026, against "
+         f"{100 * (S['holdout_cw_t'] > 1.645).mean():.0f}% of all candidates.",
+         f"* **Re-choosing every month does not help.**  Picking each variable's transformation by its track record to "
+         f"date gave a positive holdout gain for {100 * (rt['mean_gain'] > 0).mean():.0f}% of variables.", "",
+         "Rank correlation between a candidate's 2000-2010 and 2013-2026 scores (near zero: past performance does not "
+         "predict future performance):", "",
+         md_table(transfer_table(T).rename(index=NAMES).round(2), index_name="economy"), ""]
+    fam = S.groupby("transform")["holdout_ratio"].agg(median="median", beats=lambda s: (s < 1).mean())
+    lag = S.groupby("lag")["holdout_ratio"].agg(median="median", beats=lambda s: (s < 1).mean())
+    L += ["Holdout MSE relative to the benchmark by transformation (median over variables, economies and horizons) "
+          "and share of candidates that beat the benchmark.  The differences are small; short-run changes do a "
+          "little better than levels and long gaps.", "",
+          md_table(fam.sort_values("median").round(3).rename(columns={"beats": "share < 1"}), index_name="transformation"), "",
+          "By extra delay (months):", "", md_table(lag.round(3).rename(columns={"beats": "share < 1"}), index_name="lag"), ""]
+    if compare is not None and not compare.empty:
+        med = compare[compare["model"] == "median"]
+        piv = med.pivot_table(index=["economy", "horizon"], columns="set", values="rel_rw")
+        piv = piv[[s for s in SETS if s in piv.columns]].rename(columns=SET_LABELS)
+        piv.index = [f"{NAMES.get(c, c)}, {h}m" for c, h in piv.index]
+        wins = med[med["set"] != "current"].groupby("set").apply(
+            lambda d: pd.Series({"better": (d["dm_t"] < 0).mean(), "significantly better": ((d["dm_t"] < 0) & (d["dm_p"] < 0.1)).mean(),
+                                 "significantly worse": ((d["dm_t"] > 0) & (d["dm_p"] < 0.1)).mean()}), include_groups=False)
+        wins.index = [SET_LABELS[s] for s in wins.index]
+        L += ["## Letting the models choose", "",
+              "The fast econometric ML models (ridge, adaptive lasso, elastic net, kernel ridge, random forest, gradient "
+              "boosting) backtested on origins from 2013 with each feature set.  RMSE of their median relative to no "
+              "change (below 1 beats it):", "", md_table(piv.round(3), index_name="economy, horizon"), "",
+              "How often each alternative beat the current features (median model, 16 economy-horizon pairs; Diebold-"
+              "Mariano at 10%):", "", md_table((100 * wins).round(0), {c: "0" for c in wins.columns}, "feature set"), ""]
+    br = base_rates(frames["US"][0])
+    L += ["## Stickiness check for the current US forecast", "",
+          f"In the {br['months']} US months since 1960 when headline inflation ran at least 0.9 points above core during "
+          f"an oil surge of 25% or more, inflation fell a median {abs(br['median_change']):.1f} points over the next "
+          f"year; it fell 2 points or more {100 * br['share_fall_2pp']:.0f}% of the time, and core moved a median "
+          f"{br['median_core_change']:+.1f} points.  In {br['now_month']} headline was {br['now']['pi']:.1f}%, core "
+          f"{br['now']['core']:.1f}% and oil {br['now']['oil']:+.0f}% on the year.", ""]
+    return "\n".join(L)
