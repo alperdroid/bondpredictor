@@ -108,7 +108,7 @@ Core inflation was already an input.  The core-anchored target above changes wha
 | Japan | 0.18 | 0.34 | 0.96 | 1.00 |
 | Euro area | 0.01 | 0.16 | 0.74 | 1.00 |
 
-Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano p < 0.1 against the current features).  The US underlying measures are the Atlanta Fed sticky-price core and flexible-price CPI, the Cleveland Fed median and trimmed-mean CPI and the Dallas Fed trimmed-mean PCE, each with its publication lag.
+Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano p < 0.1 against the current features, better or worse).  The US underlying measures are the Atlanta Fed sticky-price core and flexible-price CPI, the Cleveland Fed median and trimmed-mean CPI and the Dallas Fed trimmed-mean PCE, each with its publication lag.
 
 | economy, horizon | Current features | Estimated core anchor | + US underlying inflation | + US underlying, estimated anchor |
 |---|---|---|---|---|
@@ -116,6 +116,14 @@ Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano 
 | Euro area, 6m | 0.882 | 0.969* |  |  |
 | Euro area, 12m | 0.909 | 0.981 |  |  |
 | Euro area, 24m | 0.824 | 0.783* |  |  |
+| Japan, 3m | 0.702 | 0.740 |  |  |
+| Japan, 6m | 0.748 | 0.789 |  |  |
+| Japan, 12m | 0.865 | 1.016 |  |  |
+| Japan, 24m | 0.999 | 1.013 |  |  |
+| United Kingdom, 3m | 0.733 | 0.739 |  |  |
+| United Kingdom, 6m | 0.765 | 0.789* |  |  |
+| United Kingdom, 12m | 0.907 | 0.872 |  |  |
+| United Kingdom, 24m | 0.891 | 0.778* |  |  |
 | United States, 3m | 0.588 | 0.597 | 0.602 | 0.607 |
 | United States, 6m | 0.760 | 0.772 | 0.754 | 0.764 |
 | United States, 12m | 0.932 | 0.931 | 0.898 | 0.905 |
