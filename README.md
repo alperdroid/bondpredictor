@@ -447,6 +447,9 @@ the US underlying-inflation measures (`docs/inflation_report.md`,
 `results/inflation/`).  Averaged over the four economies the median of all
 models scores 0.73 / 0.80 / 0.88 / 0.84 of the no-change RMSE at 3 / 6 / 12 / 24
 months (October: 0.73 / 0.80 / 0.88 / 0.89); only the 24-month column changed.
+The generic deep nets were rerun as well and still trail: PatchTST 0.98 /
+0.97 / 0.95 / 0.91, TiDE 1.08 / 1.03 / 0.92 / 0.87, N-HiTS 0.96 / 0.99 / 1.09 /
+1.04 and the LSTM 2.39 / 1.56 / 1.03 / 0.86.
 Two further results:
 
 * **Professional forecasters are still ahead.**  On the same dates and
