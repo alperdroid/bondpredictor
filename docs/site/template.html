@@ -483,6 +483,11 @@ const quant = (a, q) => d3.quantile([...a].sort(d3.ascending), q);
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const famVar = m => `var(--fam-${{ benchmark: "benchmark", linear: "linear", nonlinear: "nonlinear", ensemble: "ensemble", foundation: "tier2", deep: "tier2" }[DATA.models[m]?.family || "benchmark"]})`;
 const label = m => DATA.models[m]?.short || m;
+// Each economy's headline forecast: the combination where it won the backtest, else the median of the models.
+const HEAD = c => DATA.headline?.[c] || { model: "ens:median", short: "Median model", what: "the median of 13 econometric ML models" };
+const PLACE = { US: "the US", UK: "the UK", JP: "Japan", EA: "the euro area" };
+const listOf = a => a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} and ${a.at(-1)}`;
+const PART = { nowcast: "nowcast models", bottom_up: "bottom-up", "nowcast+survey_anchor": "survey-anchored" };
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -568,7 +573,9 @@ const state = {
   track: { h: 12, a: "ens:median", b: "ucsv" },
   drivers: { h: 12 },
 };
+state.track.a = HEAD(state.econ).model;
 function setEcon(c) {
+  if (state.track.a === HEAD(state.econ).model) state.track.a = HEAD(c).model;
   state.econ = c; store.set("infl-econ", c);
   for (const b of $("#econ-switch").children) b.setAttribute("aria-pressed", String(b.dataset.code === c));
   renderTickets(); renderOutlook(); renderLevers(); renderScenario(); renderTrack();
@@ -582,11 +589,11 @@ function renderHero() {
   const t = c => fmtYM(L(c)["12"].target);
   const lead = $("#hero-lead");
   lead.replaceChildren(
-    "Inflation has picked up in all four economies this year. The median of 13 econometric ML models sees US inflation at ",
-    el("strong", { text: `${pct(L("US")["12"].median)} by ${t("US")}` }), ", the UK at ",
-    el("strong", { text: pct(L("UK")["12"].median) }), ", Japan at ", el("strong", { text: pct(L("JP")["12"].median) }),
-    " and the euro area at ", el("strong", { text: pct(L("EA")["12"].median) }),
-    ` a year from now. Every forecast below comes from a horse race of ${new Set(DATA.accuracy.map(r => r.m)).size} models, backtested on each month since 2000.`);
+    "Inflation has picked up in all four economies this year. The headline forecasts see US inflation at ",
+    el("strong", { text: `${pct(L("US")["12"].headline)} by ${t("US")}` }), ", the UK at ",
+    el("strong", { text: pct(L("UK")["12"].headline) }), ", Japan at ", el("strong", { text: pct(L("JP")["12"].headline) }),
+    " and the euro area at ", el("strong", { text: pct(L("EA")["12"].headline) }),
+    ` a year from now. ${[...d3.group(DATA.economies, e => HEAD(e.code).what)].map(([what, es], i) => `${i ? "and" : "They are"} ${what} for ${listOf(es.map(e => PLACE[e.code]))}`).join(", ")}: in each economy, whichever did better in a horse race of ${new Set(DATA.accuracy.map(r => r.m)).size} models, backtested on each month since 2000.`);
 }
 function renderTickets() {
   const wrap = $("#tickets"); wrap.replaceChildren();
@@ -594,7 +601,7 @@ function renderTickets() {
     const L12 = DATA.latest[e.code]["12"];
     const svg = d3.create("svg").attr("class", "spark").attr("viewBox", "0 0 240 46").attr("preserveAspectRatio", "none").attr("aria-hidden", "true");
     const hist = series(DATA.history[e.code]).slice(-36);
-    const fc = [{ d: ym(e.month), v: e.value }, ...H.map(h => ({ d: ym(DATA.latest[e.code][h].target), v: DATA.latest[e.code][h].median }))];
+    const fc = [{ d: ym(e.month), v: e.value }, ...H.map(h => ({ d: ym(DATA.latest[e.code][h].target), v: DATA.latest[e.code][h].headline }))];
     const all = [...hist, ...fc];
     const x = d3.scaleTime().domain([hist[0].d, fc.at(-1).d]).range([2, 236]);
     const y = d3.scaleLinear().domain(d3.extent(all, p => p.v)).range([42, 6]);
@@ -603,12 +610,12 @@ function renderTickets() {
     svg.append("path").attr("d", ln(hist)).attr("fill", "none").attr("stroke", "var(--ink-2)").attr("stroke-width", 1.6).attr("vector-effect", "non-scaling-stroke");
     svg.append("path").attr("d", ln(fc)).attr("fill", "none").attr("stroke", "var(--accent)").attr("stroke-width", 1.6).attr("stroke-dasharray", "3 2").attr("vector-effect", "non-scaling-stroke");
     const b = el("button", { class: "ticket", type: "button", "aria-pressed": String(e.code === state.econ),
-      "aria-label": `${e.name}: ${pct(e.value)} in ${fmtYM(e.month)}, forecast ${pct(L12.median)} by ${fmtYM(L12.target)}. Show in outlook.`,
+      "aria-label": `${e.name}: ${pct(e.value)} in ${fmtYM(e.month)}, forecast ${pct(L12.headline)} by ${fmtYM(L12.target)}. Show in outlook.`,
       onclick: () => { setEcon(e.code); $("#outlook").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" }); } },
       el("span", { class: "t-head" }, el("span", { class: "t-name", text: e.name }), el("span", { class: "t-code", text: e.code })),
       el("span", { class: "t-now" }, el("b", { text: pct(e.value) }), el("small", { text: `${e.index}, ${fmtYM(e.month)}` })),
       svg.node(),
-      el("span", { class: "t-next" }, "Median model:", el("b", { text: pct(L12.median) }), `by ${fmtYM(L12.target)}`),
+      el("span", { class: "t-next" }, `${HEAD(e.code).short}:`, el("b", { text: pct(L12.headline) }), `by ${fmtYM(L12.target)}`),
       el("span", { class: "t-range", text: `80% range ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}` }));
     wrap.append(b);
   }
@@ -687,23 +694,25 @@ function renderOutlook() {
   const c = state.econ, e = ECON[c], Lc = DATA.latest[c], L12 = Lc["12"];
   $("#outlook-title").textContent = e.name;
   const lead = $("#outlook-lead");
-  lead.replaceChildren(`${e.index} inflation was `, el("b", { text: pct(e.value) }), ` in ${fmtYM(e.month)}. The median model sees `,
-    el("b", { text: pct(L12.median) }), ` in ${fmtYM(L12.target)}, with an 80% range of ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}. The ranges come from the model's own errors over the past ten years, so the 2021–22 surge stretches them upwards.`);
+  const parts = Object.entries(L12.parts || {});
+  lead.replaceChildren(`${e.index} inflation was `, el("b", { text: pct(e.value) }), ` in ${fmtYM(e.month)}. The ${HEAD(c).short.toLowerCase()} sees `,
+    el("b", { text: pct(L12.headline) }), ` in ${fmtYM(L12.target)}, with an 80% range of ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}. The ranges come from the model's own errors over the past ten years, so the 2021–22 surge stretches them upwards.`,
+    ...(parts.length ? [` Its parts: ${listOf(parts.map(([k, v]) => `${PART[k] || k} ${pct(v)}`))}; the median of the 13 models is ${pct(L12.models["ens:median"])}.`] : []));
   const legend = $("#outlook-legend"); legend.replaceChildren(
     el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
-    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--accent)" }), "Median model"),
+    el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--accent)" }), HEAD(c).short),
     el("span", {}, Object.assign(el("i", { class: "key-band" }), { style: "background:color-mix(in srgb, var(--accent) 34%, transparent)" }), "50% range"),
     el("span", {}, Object.assign(el("i", { class: "key-band" }), { style: "background:color-mix(in srgb, var(--accent) 15%, transparent)" }), "80% range"));
 
   const node = $("#outlook-chart");
   const narrow = node.clientWidth < 560;
   const f = frame(node, narrow ? 330 : 420, { t: 26, r: narrow ? 46 : 70, b: 30, l: 42 });
-  node.setAttribute("aria-label", `${e.name} inflation since ${state.range} with median forecast and 50% and 80% ranges to ${fmtYM(Lc["24"].target)}`);
+  node.setAttribute("aria-label", `${e.name} inflation since ${state.range} with the headline forecast and 50% and 80% ranges to ${fmtYM(Lc["24"].target)}`);
   const from = new Date(+state.range, 0, 1);
   const hist = series(DATA.history[c]).filter(p => p.d >= from);
   const last = { d: ym(e.month), v: e.value };
   const fan = [{ d: last.d, v: last.v, q10: last.v, q25: last.v, q75: last.v, q90: last.v },
-    ...H.map(h => ({ h, d: ym(Lc[h].target), v: Lc[h].median, ...Lc[h].bands }))];
+    ...H.map(h => ({ h, d: ym(Lc[h].target), v: Lc[h].headline, ...Lc[h].bands }))];
   const ov = OVERLAYS.filter(o => state.overlays.has(o.m)).flatMap(o => H.map(h => ({ ...o, h, d: ym(Lc[h].target), v: Lc[h].models[o.m] })).filter(p => p.v != null));
   const xEnd = addM(fan.at(-1).d, 2);
   const x = d3.scaleTime().domain([from, xEnd]).range([0, f.iw]);
@@ -747,7 +756,7 @@ function renderOutlook() {
       } else {
         p = fan.slice(1).reduce((a, b) => Math.abs(b.d - d0) < Math.abs(a.d - d0) ? b : a);
         title = `${fmtM(p.d)} · ${p.h} months ahead`;
-        rows = [{ color: "var(--accent)", value: pct(p.v, 2), label: "Median model" },
+        rows = [{ color: "var(--accent)", value: pct(p.v, 2), label: HEAD(c).short },
           { value: `${pct(p.q25)} to ${pct(p.q75)}`, label: "50% range" }, { value: `${pct(p.q10)} to ${pct(p.q90)}`, label: "80% range" },
           ...ov.filter(o => o.h === p.h).map(o => ({ color: famVar(o.m), value: pct(o.v, 2), label: label(o.m) }))];
       }
@@ -760,12 +769,12 @@ function renderOutlook() {
   // table
   const sel = OVERLAYS.filter(o => state.overlays.has(o.m));
   const tbl = $("#outlook-table"); tbl.replaceChildren();
-  tbl.append(el("thead", {}, el("tr", {}, el("th", { text: "Horizon" }), el("th", { text: "Target month" }), el("th", { text: "Median" }),
+  tbl.append(el("thead", {}, el("tr", {}, el("th", { text: "Horizon" }), el("th", { text: "Target month" }), el("th", { text: HEAD(c).short }),
     el("th", { text: "50% range" }), el("th", { text: "80% range" }), ...sel.map(o => el("th", { text: label(o.m) })))));
   const tb = el("tbody");
   for (const h of H) {
     const L = Lc[h];
-    tb.append(el("tr", {}, el("td", { text: `${h} months` }), el("td", { text: fmtYM(L.target) }), el("td", { class: "best", text: pct(L.median, 2) }),
+    tb.append(el("tr", {}, el("td", { text: `${h} months` }), el("td", { text: fmtYM(L.target) }), el("td", { class: "best", text: pct(L.headline, 2) }),
       el("td", { text: `${pct(L.bands.q25)} to ${pct(L.bands.q75)}` }), el("td", { text: `${pct(L.bands.q10)} to ${pct(L.bands.q90)}` }),
       ...sel.map(o => el("td", { text: pct(L.models[o.m], 2) }))));
   }
@@ -795,8 +804,8 @@ function scenarioAt(c, h, values) {
   const base = ms.map(m => R[m].base);
   const delta = ms.map(m => Object.entries(values).reduce((s, [k, v]) => s + (v ? interp(LEVER[k].grid, R[m].curves[k], v) : 0), 0));
   const scen = base.map((b, i) => b + delta[i]);
-  const shift = DATA.latest[c][h].median - median(base);
-  return { base: DATA.latest[c][h].median, value: median(scen) + shift, lo: quant(scen, 0.25) + shift, hi: quant(scen, 0.75) + shift,
+  const shift = DATA.latest[c][h].headline - median(base);
+  return { base: DATA.latest[c][h].headline, value: median(scen) + shift, lo: quant(scen, 0.25) + shift, hi: quant(scen, 0.75) + shift,
     up: delta.filter(d => d > 0.05).length, down: delta.filter(d => d < -0.05).length, n: ms.length };
 }
 function leverEffect(c, h, k, v) {
@@ -989,12 +998,21 @@ function renderFindings() {
     card("Combine the models", `${Math.round((1 - b3v) * 100)}% smaller errors`, `${DATA.models[b3m].label} is the best tier-1 forecaster 3 months ahead (${b3v.toFixed(2)} of the no-change error, averaged over the four economies). Pooling many models cancels errors they do not share.`),
     card("The edge fades with distance", `${Math.round((1 - b24v) * 100)}% at 24 months`, `Two years out the best tier-1 score is ${b24v.toFixed(2)} (${label(b24m)}), and most models sit in the confidence set together. Long-horizon rankings are close calls.`),
     card("Foundation models: strong but suspect", `${a24["fm:timesfm3_cov"].toFixed(2)} at 24 months`, `TimesFM 3.0 with macro covariates scores best beyond a year (${a12["fm:timesfm3_cov"].toFixed(2)} at 12 months). It was released in August 2026, after every scored forecast, so it may have seen these CPI series in training. Marked * in the table.`),
+    ...(() => {
+      const won = DATA.economies.filter(e => HEAD(e.code).model === "ens:combined"), kept = DATA.economies.filter(e => HEAD(e.code).model !== "ens:combined");
+      if (!won.length) return [];
+      const rel = (c, m) => DATA.accuracy.find(r => r.c === c && r.h === 12 && r.m === m)?.rel, c0 = won[0].code;
+      if (rel(c0, "ens:combined") == null || rel(c0, "ens:median") == null) return [];
+      const text = `In ${listOf(won.map(e => PLACE[e.code]))}, the headline is now an average of three forecasts: models that also see a nowcast of the month not yet published, a bottom-up model of energy, food, core goods and services, and models anchored on the professional forecasters' path where a survey exists. Twelve months ahead it scores ${rel(c0, "ens:combined").toFixed(2)} of the no-change error in ${PLACE[c0]} against ${rel(c0, "ens:median").toFixed(2)} for the median of all models.` +
+        (kept.length ? ` In ${listOf(kept.map(e => PLACE[e.code]))} it did not beat the median in both halves of the backtest, so the median stays.` : "");
+      return [card("Three views beat one", `${rel(c0, "ens:combined").toFixed(2)} vs ${rel(c0, "ens:median").toFixed(2)}`, text)];
+    })(),
     ...(DATA.surveys && DATA.surveys.length ? [(() => {
       const us = DATA.surveys.find(r => r.c === "US" && r.h === 12), ea = DATA.surveys.find(r => r.c === "EA" && r.h === 24);
       const ahead = DATA.surveys.filter(r => r.survey < r.model).length;
-      const bits = [us ? `US 12 months: ${us.survey.toFixed(2)} for the Survey of Professional Forecasters against ${us.model.toFixed(2)} for the median model` : null,
-        ea ? `euro area 24 months: ${ea.survey.toFixed(2)} for the ECB survey against ${ea.model.toFixed(2)}` : null].filter(Boolean).join("; ");
-      return card("The professionals are still ahead", `${ahead} of ${DATA.surveys.length} comparisons`, `Scored on the same dates and targets, surveys of professional forecasters beat the median model in ${ahead} of ${DATA.surveys.length} cases (${bits}). Closing that gap is the current work.`);
+      const bits = [us ? `US 12 months: ${us.survey.toFixed(2)} for the Survey of Professional Forecasters against ${us.model.toFixed(2)} for the median model${us.combined != null ? ` and ${us.combined.toFixed(2)} for the combined model` : ""}` : null,
+        ea ? `euro area 24 months: ${ea.survey.toFixed(2)} for the ECB survey against ${ea.model.toFixed(2)}${ea.combined != null ? ` and ${ea.combined.toFixed(2)} for the combined model` : ""}` : null].filter(Boolean).join("; ");
+      return card("The professionals are still ahead", `${ahead} of ${DATA.surveys.length} comparisons`, `Scored on the same dates and targets, surveys of professional forecasters beat the median model in ${ahead} of ${DATA.surveys.length} cases (${bits}). ${DATA.surveys.some(r => r.combined != null) ? "The combined model, which uses the survey as one input, closes part of the gap." : "Closing that gap is the current work."}`);
     })()] : []),
     ...(a3["deep:lstm"] != null && a3["deep:nhits"] != null ? [card("Generic deep nets lag", `${a3["deep:lstm"].toFixed(2)} for the LSTM`, `Deep nets trained jointly on 43 inflation series trail the econometric models. At 3 months the LSTM scores ${a3["deep:lstm"].toFixed(2)} of the no-change error and N-HiTS ${a3["deep:nhits"].toFixed(2)}.`)] : []));
 }
@@ -1144,14 +1162,16 @@ function renderMethod() {
   const box = $("#method-body"); box.replaceChildren();
   const blockEl = (title, ...paras) => el("div", {}, el("h3", { text: title }), ...paras);
   box.append(
-    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 93 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure, and for the US sticky, median, trimmed-mean and flexible inflation. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed." }),
+    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area; CPIH, which adds owner-occupiers' housing costs, for the UK) plus 58 to 93 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure, and for the US sticky, median, trimmed-mean and flexible inflation. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed; for the US combined forecast also weekly pump prices (EIA), CPI components, rents (Zillow) and the Survey of Professional Forecasters." }),
       el("p", { text: "Every series enters with its publication lag, so each backtest forecast uses only what was known that month. The figures are today's revised vintages." })),
     blockEl("Models", el("p", { text: "Tier 1, tested first: random walk, UCSV, ridge, lasso, elastic net, factor models, subset regression, kernel ridge, random forest, gradient boosting, macroeconomic random forest, BART, hemisphere and plain neural nets, pooled versions across economies, and ensembles." }),
-      el("p", { text: "Tier 2: deep nets (N-HiTS, PatchTST, TiDE, LSTM) and zero-shot foundation models (Chronos and TimesFM). Models forecast the change in inflation, so zero means no change." })),
+      el("p", { text: "Tier 2: deep nets (N-HiTS, PatchTST, TiDE, LSTM) and zero-shot foundation models (Chronos and TimesFM). Models forecast the change in inflation, so zero means no change." }),
+      el("p", { text: "Combined forecast: the average of three medians of six fast models. One set also sees a nowcast of the month not yet published, from this month's pump and oil prices. One forecasts energy, food, core goods and services separately and adds them up. One forecasts the deviation from the professional forecasters' expected path. It becomes an economy's headline only where it beat the median of the models at most horizons in both halves of the backtest." })),
     blockEl("Scoring", el("ul", {}, el("li", { text: "Monthly origins from 2000 (euro area 2002), expanding windows, refits every 1 to 12 months." }),
       el("li", { text: "RMSE relative to no change; 75% model confidence set (Hansen, T-max, 2,000 bootstrap draws)." }),
       el("li", { text: "80% ranges: the 10th and 90th percentiles of the model's own errors over the past ten years." }),
       el("li", { text: "The live median uses the 13 country models; the backtest median also includes 5 pooled models." }),
+      el("li", { text: "A scenario moves the headline by the median response of the 13 country models." }),
       el("li", { text: "Twenty-four months ahead the ML models forecast relative to headline moved towards core inflation, and the US models also use sticky, median and trimmed-mean inflation." }))),
     blockEl("Scenarios", el("p", { text: "Each of the 13 country models is refitted on all data. A scenario shifts today's predictors the way the shock would show up this month (oil 30% dearer moves its 1-, 3- and 12-month changes by the same amount) and asks every model again." }),
       el("p", { text: `Levers add up within each model before the median is taken. Checked against solving the six presets jointly, the shortcut is off by at most ${d3.max(gaps).toFixed(2)} pp (median ${median(gaps).toFixed(2)} pp).` })),

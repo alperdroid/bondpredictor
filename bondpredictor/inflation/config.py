@@ -173,6 +173,8 @@ UK = InflationCountry(
     code="UK",
     name="United Kingdom",
     oecd_code="GBR",
+    # The OECD's all-items index for the UK is CPIH (the CPI plus owner occupiers' housing costs and council
+    # tax) from 1988, not the CPI the Bank of England targets; the two differed by up to 1.3 pp in 2022-23.
     cpi=(oecd_cpi("GBR"),),
     core=(oecd_cpi("GBR", "_TXCP01_NRG"),),
     components={

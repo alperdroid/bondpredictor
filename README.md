@@ -315,7 +315,8 @@ pip install -e ".[dev,ml,excel]"            # + ".[deep,foundation]" for the tie
 python -m bondpredictor.inflation build                  # download + feature frames -> data/processed/inflation.pkl
 python -m bondpredictor.inflation backtest --jobs 4      # tier 1: benchmarks + econometric ML, all horizons, pooled models
 python -m bondpredictor.inflation robustness --jobs 4    # seeds, fixed hyperparameters, rolling window, post-1985 sample
-python -m bondpredictor.inflation forecast --jobs 4      # latest forecasts
+python -m bondpredictor.inflation pilot --jobs 4         # nowcast, bottom-up and survey-path models (six fast models)
+python -m bondpredictor.inflation forecast --jobs 4      # latest forecasts, incl. the combined forecast where it is the headline
 python -m bondpredictor.inflation foundation             # tier 2: Chronos / TimesFM zero-shot (downloads weights)
 python -m bondpredictor.inflation deep                   # tier 2: global deep time-series nets (slow; optional)
 python -m bondpredictor.inflation report                 # docs/inflation_report.md (+ .csv)
@@ -379,7 +380,7 @@ each preset jointly (within 0.26 pp in the November 2026 refresh).
 
 | | United States | United Kingdom | Japan | Euro area |
 |---|---|---|---|---|
-| CPI target | CPI-U NSA (FRED, 1913–) | CPI (OECD, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
+| CPI target | CPI-U NSA (FRED, 1913–) | CPIH (the OECD's UK headline: CPI plus owner occupiers' housing costs, 1988–; earlier OECD CPI, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
 | Core / components | core, energy, food, services, goods, shelter | core, energy, food, services, goods | ex food & energy, energy, food | ex energy & food, energy, food, services, NEIG |
 | Underlying inflation | sticky- and flexible-price CPI (Atlanta Fed), median and trimmed-mean CPI (Cleveland Fed), trimmed-mean PCE (Dallas Fed) | – | – | – |
 | Expectations / price surveys | Michigan, Cleveland Fed, 5y breakeven, Philly Fed prices paid | 10y gilt breakeven (BoE) | Tankan output/input price DIs and firms' inflation outlook (BoJ) | EC consumer and selling-price expectations |
@@ -458,12 +459,35 @@ Two further results:
   and the ECB survey beats it for the euro area (0.88 against 0.92 at 12
   months, 0.72 against 0.78 at 24), and averaging the model with the survey
   does not beat the survey.
-* **A US pilot closes about half of that gap** (`docs/inflation_pilot.md`):
-  the average of direct models with a gasoline-based nowcast, a bottom-up
-  model of energy, food, core goods and core services, and models anchored on
-  the survey path scores 0.60 / 0.75 / 0.82 / 0.79 against 0.66 / 0.83 / 0.91 /
-  0.86 for the current features (six fast models), better in both halves of
-  the sample at every horizon.  It is not yet part of the live forecasts.
+* **A combination of three views is now the US headline**
+  (`docs/inflation_pilot.md`, `bondpredictor/inflation/combined.py`).  It
+  averages the medians of six fast models run three ways: with a nowcast of
+  the month not yet published (from this month's pump and oil prices) among
+  the predictors; bottom-up (energy, food, core goods and core services
+  forecast separately and added up); and forecasting the deviation from the
+  professional forecasters' path.  It scores 0.60 / 0.75 / 0.82 / 0.79 at
+  3 / 6 / 12 / 24 months against 0.68 / 0.81 / 0.88 / 0.84 for the median of all
+  models, is better than the same six models without the new information in
+  both halves of the sample at every horizon, and is the best US model at
+  3, 6 and 12 months.  Against the Survey of Professional Forecasters it
+  scores 0.64 / 0.76 / 0.82 (survey: 0.65 / 0.70 / 0.77).
+* **The same recipe did not win elsewhere.**  With pump prices for the UK
+  and the euro area and component indices for all three (CPIH aggregates,
+  HICP aggregates; energy, food and the rest for Japan), the bottom-up and
+  nowcast models improve on the six fast models (UK and Japan: bottom-up
+  0.88 against 0.94 and 0.79 against 0.87 at 12 months; euro area: the
+  pump-price nowcast gains 1-3% up to 6 months), but none beats the median of
+  all 18 models on average over the horizons, alone or averaged with it.
+  The median stays the headline in the UK, Japan and the euro area.  The
+  adoption rule and every number are in `docs/inflation_pilot.md`.
+* **The UK series is CPIH.**  The OECD's all-items index for the UK, the
+  target here since the first build, is CPIH (the CPI plus owner occupiers'
+  housing costs and council tax), not the CPI the Bank of England targets.
+  The two are within 0.01 pp in October 2026 but differed by up to 1.3 pp in
+  2022-23.  Tables and the site now say CPIH.
+* **Japan has no pump-price nowcast.**  The ministry's weekly retail price
+  file is refused to automated clients and e-Stat needs an application ID,
+  so the Japanese nowcast uses crude oil in yen, which adds nothing.
 
 The robustness tables of the October configuration are kept in
 `docs/inflation_robustness.md`.  The text below describes the October build.
@@ -554,12 +578,13 @@ What it says:
   (the surge broke past error patterns); the foundation models' own
   quantiles are the best calibrated, BART's posterior covers only ~30%.
 
-Latest forecasts, 27 November 2026, data to October (median of the 13 tier-1 country models / TimesFM 3 +
-covariates):
+Latest forecasts, 27 November 2026, data to October (headline / TimesFM 3 +
+covariates; the headline is the combined forecast for the US and the median
+of the 13 tier-1 country models elsewhere, UK figures are CPIH):
 
 | | Latest y/y | 3 months | 12 months | 24 months |
 |---|---|---|---|---|
-| US (Oct 2026) | 3.9% | 3.4 / 3.7 (Jan 2027) | 2.0 / 3.1 (Oct 2027) | 2.2 / 2.9 (Oct 2028) |
+| US (Oct 2026) | 3.9% | 3.5 / 3.7 (Jan 2027) | 2.1 / 3.1 (Oct 2027) | 2.5 / 2.9 (Oct 2028) |
 | UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.2 / 3.3 (Oct 2028) |
 | Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.4 / 2.0 (Oct 2028) |
 | Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
@@ -611,7 +636,8 @@ bondpredictor/
     site.py        data and renderer for docs/site
     transform_search.py  real-time search over predictor transformations
     surveys.py     professional forecasters as a yardstick
-    pilot.py       nowcast, survey path and bottom-up pilots
+    pilot.py       nowcast, survey path and bottom-up models; the rule for adopting them
+    combined.py    the combined forecast (the US headline) and its live version
     recursive.py   recursive least squares
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```

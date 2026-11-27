@@ -12,10 +12,13 @@ see ``pilot.py`` for how each is built):
   from the professional forecasters' expected path.
 
 ``PARTS`` lists the parts used in each economy.  An economy is listed only if
-the combination beat the median of that economy's models at most horizons, in
-both halves of the backtest (``docs/inflation_pilot.md``); elsewhere the
-median of the models stays the headline.  At an origin where a part has no
-forecast yet (too little history), the parts that exist are averaged.
+the combination passed the rule in ``pilot.adoption``: better than the same six
+models without the new information over the full backtest and in both halves
+at three or more of the four horizons, and better than the median of all
+models on average (``docs/inflation_pilot.md``).  Only the US passed; in the
+UK, Japan and the euro area the median of the models stays the headline.  At
+an origin where a part has no forecast yet (too little history), the parts
+that exist are averaged.
 """
 
 from __future__ import annotations

@@ -423,18 +423,76 @@ def rebuild_bottom_up(results: dict, store: dict, dl: Downloader) -> dict:
 
 SET_LABELS = {"current": "Current", "nowcast": "+ nowcast", "survey": "+ survey path as predictor",
               "survey_anchor": "Anchored on survey path", "nowcast+survey_anchor": "Nowcast, anchored on survey path",
-              "bottom_up": "Bottom-up", "combined": "Combined (three-way average)"}
+              "bottom_up": "Bottom-up", "nowcast_bottom_up": "Nowcast and bottom-up, averaged",
+              "combined": "Combined (three-way average)"}
 COMBINED = ("nowcast", "bottom_up", "nowcast+survey_anchor")
+ECONOMY_ORDER = ("US", "UK", "JP", "EA")
+# Combinations a headline can be made of, most diversified first: name -> the sets whose medians are averaged.
+CANDIDATES = {"combined": COMBINED, "nowcast_bottom_up": ("nowcast", "bottom_up"), "bottom_up": ("bottom_up",),
+              "nowcast": ("nowcast",)}
 
 
 def medians(results: dict, code: str, h: int) -> pd.DataFrame:
-    """Median across models of each set's forecasts, plus ``combined`` where its three parts exist."""
+    """Median across models of each set's forecasts, plus the averages of sets where all their parts exist."""
     sets = sorted({s for (c, hh, s, _) in results if (c, hh) == (code, h) and not s.startswith("comp:")})
     F = pd.DataFrame({s: pd.DataFrame({m: r["forecast"] for (c, hh, ss, m), r in results.items()
                                        if (c, hh, ss) == (code, h, s)}).median(axis=1) for s in sets})
-    if set(COMBINED) <= set(F.columns):
-        F["combined"] = F[list(COMBINED)].mean(axis=1, skipna=False)
+    for name in ("nowcast_bottom_up", "combined"):
+        if set(CANDIDATES[name]) <= set(F.columns):
+            F[name] = F[list(CANDIDATES[name])].mean(axis=1, skipna=False)
     return F
+
+
+def _economies(results: dict) -> list[str]:
+    codes = {k[0] for k in results}
+    return [c for c in ECONOMY_ORDER if c in codes] + sorted(codes - set(ECONOMY_ORDER))
+
+
+def adoption(results: dict, baseline: dict, code: str, split: str = "2013-01") -> tuple[str | None, pd.DataFrame]:
+    """Which combination, if any, replaces the median of the models as an economy's headline.
+
+    The rule, fixed before the results were seen: take the first of ``CANDIDATES`` that (a) has a lower
+    RMSE than the six models on the current features over the full sample and in both sub-periods at
+    three or more of the four horizons, and (b) has a lower RMSE than the live headline, the median of
+    all models (``baseline``: {(economy, horizon, model): frame}), on average over the horizons.
+    Returns the winner and one row per candidate and horizon.
+    """
+    import math
+
+    from .evaluation import target_month
+
+    rows, winner = [], None
+    cut = pd.Period(split, "M")
+    for name in CANDIDATES:
+        wins, vs_live, n_h = 0, [], 0
+        for h in sorted({hh for (c, hh, _, _) in results if c == code}):
+            F = medians(results, code, h)
+            live = baseline.get((code, h, "ens:median"))
+            if name not in F or "current" not in F or live is None:
+                continue
+            d = pd.concat([F[[name, "current"]], live["forecast"].rename("live"), live[["actual", "rw"]]], axis=1).dropna()
+            if len(d) < 48:
+                continue
+            tm = target_month(d.index, h)
+            rel = lambda x, col: math.sqrt(((x["actual"] - x[col]) ** 2).mean() / ((x["actual"] - x["rw"]) ** 2).mean())
+            parts = {"all": d, "first": d[tm < cut], "second": d[tm >= cut]}
+            row = {"economy": code, "candidate": name, "horizon": h, "n": len(d), "from": str(d.index.min())}
+            for k, x in parts.items():
+                row[f"{k}:candidate"], row[f"{k}:current"] = rel(x, name), rel(x, "current")
+            row["all:live"] = rel(d, "live")
+            row["beats current"] = all(row[f"{k}:candidate"] < row[f"{k}:current"] for k in parts)
+            rows.append(row)
+            n_h += 1
+            wins += row["beats current"]
+            vs_live.append(row["all:candidate"] / row["all:live"])
+        ratio = float(np.mean(vs_live)) if vs_live else np.nan
+        ok = n_h == 4 and wins >= 3 and ratio < 1.0
+        if ok and winner is None:
+            winner = name
+        for r in rows:
+            if r["candidate"] == name:
+                r.update({"wins": wins, "vs median": ratio, "adopted": winner == name})
+    return winner, pd.DataFrame(rows)
 
 
 def score_sets(results: dict, code: str, split: str = "2013-01") -> pd.DataFrame:
@@ -466,18 +524,75 @@ def score_sets(results: dict, code: str, split: str = "2013-01") -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
-def report(results: dict, store: dict, surveys: dict | None = None) -> str:
-    """Markdown summary of the pilot backtest."""
+def blend_wins(results: dict, baseline: dict, code: str, name: str, split: str = "2013-01") -> int:
+    """Horizons at which half the candidate plus half the median of all models beats that median everywhere.
+
+    "Everywhere": over the full sample and in both sub-periods.
+    """
+    from .evaluation import target_month
+
+    wins, cut = 0, pd.Period(split, "M")
+    for h in sorted({hh for (c, hh, _, _) in results if c == code}):
+        F, live = medians(results, code, h), baseline.get((code, h, "ens:median"))
+        if name not in F or live is None:
+            continue
+        d = pd.concat([F[name].rename("c"), live["forecast"].rename("live"), live["actual"]], axis=1).dropna()
+        tm = target_month(d.index, h)
+        mse = lambda x, f: float(((x["actual"] - f) ** 2).mean())
+        wins += all(mse(x, 0.5 * x["c"] + 0.5 * x["live"]) < mse(x, x["live"]) for x in (d, d[tm < cut], d[tm >= cut]))
+    return wins
+
+
+def report(results: dict, store: dict, surveys: dict | None = None, baseline: dict | None = None) -> str:
+    """Markdown summary of the pilot backtest; with ``baseline`` (the main backtest), which economies adopt what."""
     from .report import NAMES, md_table
     from .surveys import us_comparison
 
     L = ["<!-- Generated by `python -m bondpredictor.inflation pilot --report`. -->", "",
-         "# Pilot: nowcast, survey path and bottom-up", "",
+         "# Nowcast, survey path and bottom-up", "",
          "Median of six fast models (ridge, adaptive lasso, elastic net, kernel ridge, random forest, gradient "
-         "boosting), monthly origins from 2000, RMSE relative to no change (below 1 beats it).  Sub-periods are by the "
-         "month being forecast.  `*` marks a Diebold-Mariano p-value below 0.1 against the current features "
-         "(full sample, better or worse).", ""]
-    for code in sorted({c for (c, _, _, _) in results}):
+         "boosting), monthly origins from 2000, RMSE relative to no change (below 1 beats it).  Each economy's sets "
+         "are scored on the months for which all of them have forecasts (the bottom-up model needs ten years of "
+         "component data: from 2007 in the euro area).  Sub-periods are by the month being forecast.  `*` marks a "
+         "Diebold-Mariano p-value below 0.1 against the current features (full sample, better or worse).", "",
+         "The nowcast uses pump prices in the US, the UK and the euro area, and crude oil in yen in Japan, where no "
+         "pump-price source accepts automated downloads.  The UK index is CPIH, the OECD's headline for the UK.", ""]
+    if baseline:
+        L += ["## What becomes the headline", "",
+              "Rule, fixed before the UK, Japan and euro-area runs: the first combination below that beats the six "
+              "models on the current features over the full sample and in both halves at three or more of the four "
+              "horizons, and beats the median of all models (the previous headline) on average over the horizons.  "
+              "Candidates in order: the three-way average where a survey exists, nowcast and bottom-up averaged, "
+              "bottom-up alone, nowcast alone.  Where nothing passes, the best candidate was also averaged "
+              "half-and-half with the median of all models, a check added after the first results.", ""]
+        for code in _economies(results):
+            winner, t = adoption(results, baseline, code)
+            if t.empty:
+                continue
+            cols = {"candidate": "all:candidate", "current": "all:current", "median of all models": "all:live",
+                    "candidate, to 2012": "first:candidate", "current, to 2012": "first:current",
+                    "candidate, 2013 on": "second:candidate", "current, 2013 on": "second:current"}
+            show = pd.DataFrame({"from": t["from"], "n": t["n"].astype(int).astype(str),
+                                 **{k: t[v] for k, v in cols.items()},
+                                 "beats current": ["yes" if v else "" for v in t["beats current"]]})
+            show.index = [f"{SET_LABELS[c]}, {h} months" for c, h in zip(t["candidate"], t["horizon"])]
+            notes = []
+            for name, g in t.groupby("candidate", sort=False):
+                r = g.iloc[0]
+                gap = 100.0 * (r["vs median"] - 1.0)
+                notes.append(f"* {SET_LABELS[name]}: beats the current features at {int(r['wins'])} of {len(g)} horizons; "
+                             f"RMSE {abs(gap):.1f}% {'below' if gap < 0 else 'above'} the median of all models on average"
+                             + (": **adopted**." if r["adopted"] else "."))
+            verdict = (f"**{SET_LABELS[winner]}** becomes the headline." if winner
+                       else "No candidate passes both tests: the median of the models stays the headline.")
+            if not winner:
+                first = t.sort_values(["wins", "vs median"], ascending=[False, True])["candidate"].iloc[0]
+                notes.append(f"* Half \"{SET_LABELS[first]}\" and half the median of all models: beats that median over the "
+                             f"full sample and both halves at {blend_wins(results, baseline, code, first)} of 4 horizons, so "
+                             "not adopted either.")
+            L += [f"### {NAMES.get(code, code)}", "", verdict, "", *notes, "",
+                  md_table(show, {k: "3" for k in cols}, "candidate, horizon"), ""]
+    for code in _economies(results):
         t = score_sets(results, code)
         cols = [s for s in SET_LABELS if s in t.columns]
         show = t[["horizon", "period", "n"]].copy()
@@ -487,21 +602,25 @@ def report(results: dict, store: dict, surveys: dict | None = None) -> str:
                                    for i, v in enumerate(t[s])]
         show.index = [f"{h} months, {per}" for h, per in zip(show.pop("horizon"), show.pop("period"))]
         L += [f"## {NAMES.get(code, code)}", "", md_table(show, index_name="horizon, sample"), ""]
-    comps = sorted({s[5:] for (c, _, s, _) in results if c == "US" and s.startswith("comp:")})
-    if comps:
+    comp_tables = []
+    for code in [c for c in _economies(results) if any(k[0] == c and k[2].startswith("comp:") for k in results)]:
         rows = {}
-        for comp in comps:
+        for comp in sorted({s[5:] for (c, _, s, _) in results if c == code and s.startswith("comp:")}):
             row = {}
             for h in HORIZONS:
-                rs = {m: r for (c, hh, s, m), r in results.items() if (c, hh, s) == ("US", h, f"comp:{comp}")}
+                rs = {m: r for (c, hh, s, m), r in results.items() if (c, hh, s) == (code, h, f"comp:{comp}")
+                      and isinstance(r, pd.DataFrame) and not r.empty}
                 if rs:
                     f = pd.DataFrame({m: r["forecast"] for m, r in rs.items()}).median(axis=1)
                     d = pd.concat([f.rename("f"), next(iter(rs.values()))[["actual", "rw"]]], axis=1).dropna()
                     row[f"{h} months"] = float(np.sqrt(((d["actual"] - d["f"]) ** 2).mean() / ((d["actual"] - d["rw"]) ** 2).mean()))
             rows[comp.replace("_", " ")] = row
-        L += ["## US components", "",
+        if rows:
+            comp_tables += [f"### {NAMES.get(code, code)}", "", md_table(pd.DataFrame(rows).T.round(3), index_name="component"), ""]
+    if comp_tables:
+        L += ["## Components", "",
               "How well each component's own y/y inflation is forecast, relative to no change in that component:", "",
-              md_table(pd.DataFrame(rows).T.round(3), index_name="component"), ""]
+              *comp_tables]
     if surveys is not None and any(c == "US" for (c, _, _, _) in results):
         res = {}
         for h in HORIZONS:
@@ -519,7 +638,7 @@ def report(results: dict, store: dict, surveys: dict | None = None) -> str:
               "Quarterly survey dates from 2000, y/y inflation in the last month of the target quarter:", "",
               md_table(show.round(3), index_name="horizon"), ""]
     last = {}
-    for code in sorted({c for (c, _, _, _) in results}):
+    for code in _economies(results):
         for h in HORIZONS:
             F = medians(results, code, h)
             if not F.empty:

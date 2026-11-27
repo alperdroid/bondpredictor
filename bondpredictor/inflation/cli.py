@@ -427,7 +427,15 @@ def cmd_pilot(args):
         from .pilot import report
         from .surveys import load_surveys
 
-        text = report(pd.read_pickle(out / "pilot.pkl"), store, load_surveys(DL(cache_dir=args.cache, max_age_days=args.max_age)))
+        base_path = out.parent / "results.pkl"
+        baseline = {}
+        if base_path.exists():  # the main backtest, with its ensembles: the yardstick for adopting a combination
+            from .report import collect
+
+            main = pd.read_pickle(base_path)
+            baseline = {(c, h, m): r for c in args.countries for h in args.horizons for m, r in collect(main, c, h).items()}
+        text = report(pd.read_pickle(out / "pilot.pkl"), store, load_surveys(DL(cache_dir=args.cache, max_age_days=args.max_age)),
+                      baseline)
         Path(args.report).write_text(text)
         print(text)
         print(f"wrote {args.report}")

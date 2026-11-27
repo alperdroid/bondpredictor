@@ -2,7 +2,7 @@
 
 # Inflation forecasts with econometric machine learning
 
-Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the latest published print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start in 1990), each using only data published by then.  Expanding training window from 1960 where data exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative to headline moved towards core (see the README).  RMSE is relative to the random walk (no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set (Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  All models of one economy and horizon are scored on the same months.
+Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the latest published print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start in 1990), each using only data published by then.  Expanding training window from 1960 where data exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative to headline moved towards core (see the README).  The combined forecast (see `combined.py`) averages models that use a nowcast, a bottom-up model of components and models anchored on the professional forecasters' path; it is listed for the economies where it is the headline.  The UK index is CPIH, the OECD's headline for the UK.  RMSE is relative to the random walk (no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set (Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  All models of one economy and horizon are scored on the same months.
 
 ## 3 months ahead: RMSE relative to the random walk
 
@@ -13,7 +13,7 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | AR-type, own inflation only | 0.80* | 0.81* | 0.79* | 0.83* | 0.81 |
 | Ridge | 0.66* | 0.81* | 0.78* | 0.80* | 0.76 |
 | Adaptive lasso | 0.67* | 0.81* | 0.86* | 0.80* | 0.79 |
-| Elastic net | **0.64*** | 0.85* | 0.75* | 0.78* | 0.76 |
+| Elastic net | 0.64* | 0.85* | 0.75* | 0.78* | 0.76 |
 | Diffusion index (PCA) | 0.73* | 0.92 | 0.75* | 0.81* | 0.80 |
 | Three-pass regression filter | 0.72* | 0.97 | 0.84* | 0.83* | 0.84 |
 | Complete subset regression | 0.74* | **0.73*** | 0.74* | 0.77* | 0.74 |
@@ -32,6 +32,7 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Mean of non-linear ML | 0.72* | 0.77* | 0.78* | 0.88* | 0.79 |
 | ½ non-linear ML + ½ UCSV | 0.70* | 0.75* | 0.75* | 0.83* | 0.76 |
 | Median of all models | 0.68* | 0.74* | **0.71*** | 0.78* | 0.73 |
+| Combined: nowcast, bottom-up, survey path | **0.60*** |  |  |  |  |
 | Chronos-Bolt (zero-shot) | 1.01 | 0.92 | 1.04 | 0.98* | 0.99 |
 | Chronos-2 (zero-shot) | 0.99 | 0.92 | 1.01 | 0.92* | 0.96 |
 | Chronos-2 + macro covariates | 0.79 | 0.91 | 0.95 | 0.92* | 0.89 |
@@ -69,8 +70,9 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Pooled BART | 0.95* | 1.12 | 1.00* | 1.07* | 1.04 |
 | Pooled hemisphere net | 0.80* | 0.91* | 0.81* | 0.91* | 0.86 |
 | Mean of non-linear ML | 0.85* | 0.79* | 0.81* | 0.97* | 0.85 |
-| ½ non-linear ML + ½ UCSV | **0.79*** | 0.77* | 0.76* | 0.88* | 0.80 |
+| ½ non-linear ML + ½ UCSV | 0.79* | 0.77* | 0.76* | 0.88* | 0.80 |
 | Median of all models | 0.81* | 0.78* | **0.75*** | 0.87* | 0.80 |
+| Combined: nowcast, bottom-up, survey path | **0.75*** |  |  |  |  |
 | Chronos-Bolt (zero-shot) | 1.03 | 0.91* | 1.05 | 0.98* | 0.99 |
 | Chronos-2 (zero-shot) | 1.00 | 0.92* | 1.00 | 0.92* | 0.96 |
 | Chronos-2 + macro covariates | 0.86* | 0.90* | 0.90* | 0.93* | 0.90 |
@@ -108,8 +110,9 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Pooled BART | 1.02* | 1.08* | 1.03* | 1.10* | 1.06 |
 | Pooled hemisphere net | 0.92* | 1.00* | 0.95* | 1.04* | 0.98 |
 | Mean of non-linear ML | 0.86* | 0.94* | 0.87* | 0.95* | 0.90 |
-| ½ non-linear ML + ½ UCSV | **0.86*** | 0.91* | 0.83* | 0.95* | 0.89 |
+| ½ non-linear ML + ½ UCSV | 0.86* | 0.91* | 0.83* | 0.95* | 0.89 |
 | Median of all models | 0.88* | 0.90* | 0.83* | 0.90* | 0.88 |
+| Combined: nowcast, bottom-up, survey path | **0.82*** |  |  |  |  |
 | Chronos-Bolt (zero-shot) | 1.06* | 0.99* | 1.05* | 1.00* | 1.03 |
 | Chronos-2 (zero-shot) | 0.98* | 0.95* | 0.98* | 0.94* | 0.96 |
 | Chronos-2 + macro covariates | 0.86* | 0.90* | 0.87* | 0.89* | 0.88 |
@@ -149,6 +152,7 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 | Mean of non-linear ML | 0.84* | 0.83* | 0.94* | 0.79* | 0.85 |
 | ½ non-linear ML + ½ UCSV | 0.82* | 0.84* | 0.85* | 0.81* | 0.83 |
 | Median of all models | 0.84* | 0.81* | 0.96* | 0.78* | 0.84 |
+| Combined: nowcast, bottom-up, survey path | 0.79* |  |  |  |  |
 | Chronos-Bolt (zero-shot) | 1.14* | 1.04* | 1.11* | 1.04* | 1.08 |
 | Chronos-2 (zero-shot) | 0.89* | 0.92* | 0.93* | 0.91* | 0.91 |
 | Chronos-2 + macro covariates | 0.82* | 0.85* | 0.84* | 0.80* | 0.83 |
@@ -162,20 +166,20 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 
 ## Against professional forecasters
 
-US: Survey of Professional Forecasters (Philadelphia Fed), median CPI forecasts, quarterly from 2000; "monthly" scores y/y inflation in the target quarter's last month, "quarterly" the quarterly average (the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP 12 and 24 months after the latest print; "one print fewer" handicaps the models by a month.  RMSE relative to no change; p-values are Diebold-Mariano tests of the median model against the survey.
+US: Survey of Professional Forecasters (Philadelphia Fed), median CPI forecasts, quarterly from 2000; "monthly" scores y/y inflation in the target quarter's last month, "quarterly" the quarterly average (the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP 12 and 24 months after the latest print; "one print fewer" handicaps the models by a month.  RMSE relative to no change; p-values are Diebold-Mariano tests against the survey.  The combined forecast uses the survey itself as one of its inputs.
 
-| economy, horizon | surveys | Professional forecasters | Median of all models | UCSV | Median + survey, averaged | p: median vs survey |
-|---|---|---|---|---|---|---|
-| United States, 3 months | 107 | 0.65 | 0.71 | 0.77 | 0.66 | 0.115 |
-| United States, 3 months (quarterly) | 108 | 0.53 | 0.74 | 0.83 | 0.60 | 0.001 |
-| United States, 6 months | 106 | 0.70 | 0.81 | 0.83 | 0.74 | 0.018 |
-| United States, 6 months (quarterly) | 107 | 0.66 | 0.80 | 0.83 | 0.71 | 0.021 |
-| United States, 12 months | 104 | 0.77 | 0.89 | 0.92 | 0.81 | 0.080 |
-| United States, 12 months (quarterly) | 105 | 0.79 | 0.90 | 0.92 | 0.81 | 0.182 |
-| Euro area, 12 months | 97 | 0.88 | 0.92 | 0.98 | 0.89 | 0.610 |
-| Euro area, 24 months | 89 | 0.72 | 0.78 | 0.86 | 0.74 | 0.009 |
-| Euro area, 12 months (monthly, one print fewer) | 96 | 0.88 | 0.92 | 1.02 | 0.89 | 0.596 |
-| Euro area, 24 months (monthly, one print fewer) | 88 | 0.72 | 0.77 | 0.87 | 0.74 | 0.003 |
+| economy, horizon | surveys | Professional forecasters | Combined | Median of all models | UCSV | Median + survey, averaged | p: median vs survey | p: combined vs survey |
+|---|---|---|---|---|---|---|---|---|
+| United States, 3 months | 107 | 0.65 | 0.64 | 0.71 | 0.77 | 0.66 | 0.115 | 0.548 |
+| United States, 3 months (quarterly) | 108 | 0.53 | 0.67 | 0.74 | 0.83 | 0.60 | 0.001 | 0.001 |
+| United States, 6 months | 106 | 0.70 | 0.76 | 0.81 | 0.83 | 0.74 | 0.018 | 0.030 |
+| United States, 6 months (quarterly) | 107 | 0.66 | 0.74 | 0.80 | 0.83 | 0.71 | 0.021 | 0.014 |
+| United States, 12 months | 104 | 0.77 | 0.82 | 0.89 | 0.92 | 0.81 | 0.080 | 0.167 |
+| United States, 12 months (quarterly) | 105 | 0.79 | 0.83 | 0.90 | 0.92 | 0.81 | 0.182 | 0.367 |
+| Euro area, 12 months | 97 | 0.88 |  | 0.92 | 0.98 | 0.89 | 0.610 |  |
+| Euro area, 24 months | 89 | 0.72 |  | 0.78 | 0.86 | 0.74 | 0.009 |  |
+| Euro area, 12 months (monthly, one print fewer) | 96 | 0.88 |  | 0.92 | 1.02 | 0.89 | 0.596 |  |
+| Euro area, 24 months (monthly, one print fewer) | 88 | 0.72 |  | 0.77 | 0.87 | 0.74 | 0.003 |  |
 
 ## Detail by economy, 12 months ahead
 
@@ -203,19 +207,20 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Plain neural net (MLP) | 1.76 | 0.86 | 0.96 | 1.36 | +1.62 | 0.105 | 1.000 | yes |
 | Pooled ridge | 1.96 | 0.95 | 1.07 | 1.43 | +1.36 | 0.173 | 1.000 | yes |
 | Pooled boosting | 1.91 | 0.93 | 1.04 | 1.42 | +1.54 | 0.124 | 1.000 | yes |
-| Pooled MRF | 2.06 | 1.00 | 1.13 | 1.52 | -0.08 | 0.938 | 0.373 | yes |
+| Pooled MRF | 2.06 | 1.00 | 1.13 | 1.52 | -0.08 | 0.938 | 0.350 | yes |
 | Pooled BART | 2.10 | 1.02 | 1.15 | 1.51 | -0.15 | 0.881 | 1.000 | yes |
 | Pooled hemisphere net | 1.89 | 0.92 | 1.03 | 1.41 | +0.86 | 0.389 | 1.000 | yes |
 | Mean of non-linear ML | 1.78 | 0.86 | 0.97 | 1.37 | +2.06 | 0.040 | 1.000 | yes |
 | ½ non-linear ML + ½ UCSV | 1.76 | 0.86 | 0.96 | 1.28 | +1.98 | 0.047 | 1.000 | yes |
 | Median of all models | 1.81 | 0.88 | 0.99 | 1.36 | +2.21 | 0.027 | 1.000 | yes |
+| Combined: nowcast, bottom-up, survey path | 1.69 | 0.82 | 0.92 | 1.24 | +2.22 | 0.027 | 1.000 | yes |
 | Chronos-Bolt (zero-shot) | 2.17 | 1.06 | 1.19 | 1.57 | -0.71 | 0.476 | 1.000 | yes |
 | Chronos-2 (zero-shot) | 2.01 | 0.98 | 1.10 | 1.46 | +0.87 | 0.387 | 1.000 | yes |
 | Chronos-2 + macro covariates | 1.78 | 0.86 | 0.97 | 1.28 | +2.58 | 0.010 | 1.000 | yes |
 | TimesFM 2.5 (zero-shot) | 1.89 | 0.92 | 1.03 | 1.39 | +1.81 | 0.070 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.93 | 0.94 | 1.06 | 1.40 | +1.88 | 0.060 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.76 | 0.86 | 0.96 | 1.27 | +2.17 | 0.030 | 1.000 | yes |
-| N-HiTS (tier 2) | 2.84 | 1.38 | 1.55 | 2.02 | -2.84 | 0.005 | 0.026 |  |
+| N-HiTS (tier 2) | 2.84 | 1.38 | 1.55 | 2.02 | -2.84 | 0.005 | 0.025 |  |
 | PatchTST (tier 2) | 1.96 | 0.95 | 1.07 | 1.43 | +2.03 | 0.042 | 1.000 | yes |
 | TiDE (tier 2) | 1.86 | 0.91 | 1.02 | 1.34 | +1.37 | 0.172 | 1.000 | yes |
 | LSTM (tier 2) | 1.99 | 0.97 | 1.08 | 1.35 | +0.30 | 0.762 | 1.000 | yes |
@@ -248,6 +253,7 @@ RMSE relative to the random walk by the month being forecast:
 | Mean of non-linear ML | 0.87 | 0.85 | 0.96 | 0.72 |
 | ½ non-linear ML + ½ UCSV | 0.83 | 0.78 | 1.04 | 0.75 |
 | Median of all models | 0.91 | 0.90 | 0.95 | 0.64 |
+| Combined: nowcast, bottom-up, survey path | 0.80 | 0.80 | 1.01 | 0.46 |
 | Chronos-Bolt (zero-shot) | 1.03 | 0.93 | 0.97 | 1.46 |
 | Chronos-2 (zero-shot) | 1.04 | 1.01 | 0.95 | 0.89 |
 | Chronos-2 + macro covariates | 0.80 | 0.82 | 0.95 | 0.86 |
@@ -702,7 +708,7 @@ Macroeconomic random forest: average time-varying coefficients (pp of forecast c
 
 ## Latest forecasts
 
-Every model refitted on all realised data and applied at each economy's latest CPI print.
+Every model refitted on all realised data and applied at each economy's latest CPI print.  Where an economy has a combined forecast, that is its headline; elsewhere the median of the models is.
 
 ### United States: latest print 2026-10, y/y 3.94%
 
@@ -720,6 +726,10 @@ Every model refitted on all realised data and applied at each economy's latest C
 | Mean of non-linear ML | 3.39 | 2.56 | 1.93 | 2.23 |
 | ½ non-linear ML + ½ UCSV | 3.78 | 2.86 | 2.66 | 2.81 |
 | Median of all models | 3.42 | 2.45 | 2.05 | 2.24 |
+| Part: models with the nowcast | 3.36 | 2.41 | 1.81 | 2.60 |
+| Part: bottom-up | 3.60 | 2.61 | 2.53 | 2.60 |
+| Part: nowcast models around the survey path | 3.67 | 2.74 | 1.93 | 2.33 |
+| Combined: nowcast, bottom-up, survey path | 3.54 | 2.58 | 2.09 | 2.51 |
 | TimesFM 3.0 + macro covariates | 3.66 | 3.39 | 3.12 | 2.88 |
 | TimesFM 3.0 + covariates, 80% band | 2.9 to 4.3 | 2.4 to 4.4 | 1.9 to 4.5 | 1.4 to 4.6 |
 

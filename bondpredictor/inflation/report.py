@@ -10,7 +10,7 @@ from .evaluation import (NONLINEAR_ML, SUBPERIODS, add_ensembles, common_sample,
 
 ORDER = ["rw", "ucsv", "ar", "ridge", "adalasso", "enet", "di", "3prf", "csr", "krr", "rf", "lgbm", "mrf", "bart",
          "hnn", "mlp", "panel:ridge", "panel:lgbm", "panel:mrf", "panel:bart", "panel:hnn",
-         "ens:ml", "ens:ml+ucsv", "ens:median", "fm:chronos_bolt", "fm:chronos2", "fm:chronos2_cov", "fm:timesfm25",
+         "ens:ml", "ens:ml+ucsv", "ens:median", "ens:combined", "fm:chronos_bolt", "fm:chronos2", "fm:chronos2_cov", "fm:timesfm25",
          "fm:timesfm3", "fm:timesfm3_cov", "deep:nhits", "deep:patchtst", "deep:tide", "deep:lstm"]
 LABELS = {
     "rw": "Random walk (no change)", "ucsv": "UCSV (Stock-Watson)", "ar": "AR-type, own inflation only",
@@ -21,6 +21,9 @@ LABELS = {
     "panel:ridge": "Pooled ridge", "panel:lgbm": "Pooled boosting", "panel:mrf": "Pooled MRF",
     "panel:bart": "Pooled BART", "panel:hnn": "Pooled hemisphere net",
     "ens:ml": "Mean of non-linear ML", "ens:ml+ucsv": "½ non-linear ML + ½ UCSV", "ens:median": "Median of all models",
+    "ens:combined": "Combined: nowcast, bottom-up, survey path",
+    "part:nowcast": "Part: models with the nowcast", "part:bottom_up": "Part: bottom-up",
+    "part:nowcast+survey_anchor": "Part: nowcast models around the survey path",
     "deep:nhits": "N-HiTS (tier 2)", "deep:patchtst": "PatchTST (tier 2)", "deep:tide": "TiDE (tier 2)",
     "deep:lstm": "LSTM (tier 2)",
     "fm:chronos_bolt": "Chronos-Bolt (zero-shot)", "fm:chronos2": "Chronos-2 (zero-shot)",
@@ -43,7 +46,7 @@ def _cell(v, kind="2"):
     if isinstance(v, (float, np.floating)):
         if not np.isfinite(v):
             return ""
-        if kind == "p":
+        if kind in ("p", "3"):
             return f"{v:.3f}"
         if kind == "i":
             return f"{v:.0f}"
@@ -184,8 +187,10 @@ LATEST_HEADING = "## Latest forecasts"
 def latest_section(latest: pd.DataFrame, results: dict, countries) -> list[str]:
     """Markdown lines of the latest-forecast tables (TimesFM 3 rows when its forecasts are in ``results``)."""
     L = [LATEST_HEADING, "",
-         "Every model refitted on all realised data and applied at each economy's latest CPI print.", ""]
-    show = ["rw", "ucsv", "ridge", "csr", "krr", "lgbm", "mrf", "hnn", "mlp", "ens:ml", "ens:ml+ucsv", "ens:median"]
+         "Every model refitted on all realised data and applied at each economy's latest CPI print.  Where an "
+         "economy has a combined forecast, that is its headline; elsewhere the median of the models is.", ""]
+    show = ["rw", "ucsv", "ridge", "csr", "krr", "lgbm", "mrf", "hnn", "mlp", "ens:ml", "ens:ml+ucsv", "ens:median",
+            "part:nowcast", "part:bottom_up", "part:nowcast+survey_anchor", "ens:combined"]
     for c in countries:
         x = latest[latest["country"] == c]
         if x.empty:
@@ -213,7 +218,7 @@ def replace_latest(report: str, lines: list[str]) -> str:
 
 
 def survey_section(surveys: pd.DataFrame) -> list[str]:
-    """Markdown lines comparing the median model with professional forecasters (see ``surveys.compare``)."""
+    """Markdown lines comparing the models with professional forecasters (see ``surveys.compare``)."""
     t = surveys.copy()
     t.index = [f"{NAMES.get(c, c)}, {h} months" + ("" if b == "monthly" else f" ({b})")
                for c, h, b in zip(t["economy"], t["horizon"], t["basis"])]
@@ -221,13 +226,19 @@ def survey_section(surveys: pd.DataFrame) -> list[str]:
                          "Median of all models": t["rel_ens:median"], "UCSV": t["rel_ucsv"],
                          "Median + survey, averaged": t["rel_mix:ens:median"],
                          "p: median vs survey": t["dm_p_ens:median"]})
+    kinds = {"p: median vs survey": "p"}
+    if "rel_ens:combined" in t and t["rel_ens:combined"].notna().any():
+        show.insert(2, "Combined", t["rel_ens:combined"])
+        show["p: combined vs survey"] = t["dm_p_ens:combined"]
+        kinds["p: combined vs survey"] = "p"
     return ["## Against professional forecasters", "",
             "US: Survey of Professional Forecasters (Philadelphia Fed), median CPI forecasts, quarterly from 2000; "
             "\"monthly\" scores y/y inflation in the target quarter's last month, \"quarterly\" the quarterly average "
             "(the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP "
             "12 and 24 months after the latest print; \"one print fewer\" handicaps the models by a month.  RMSE "
-            "relative to no change; p-values are Diebold-Mariano tests of the median model against the survey.", "",
-            md_table(show, {"p: median vs survey": "p"}, "economy, horizon"), ""]
+            "relative to no change; p-values are Diebold-Mariano tests against the survey.  The combined forecast "
+            "uses the survey itself as one of its inputs.", "",
+            md_table(show, kinds, "economy, horizon"), ""]
 
 
 def build_report(results: dict, robust: dict, store: dict, countries, horizons, latest: pd.DataFrame | None,
@@ -238,7 +249,10 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
           "print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start "
           "in 1990), each using only data published by then.  Expanding training window from 1960 where data "
           "exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative "
-          "to headline moved towards core (see the README).  RMSE is relative to the random walk "
+          "to headline moved towards core (see the README).  The combined forecast (see `combined.py`) averages "
+          "models that use a nowcast, a bottom-up model of components and models anchored on the professional "
+          "forecasters' path; it is listed for the economies where it is the headline.  The UK index is CPIH, the "
+          "OECD's headline for the UK.  RMSE is relative to the random walk "
           "(no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set "
           "(Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  "
           "All models of one economy and horizon are scored on the same months.", ""]

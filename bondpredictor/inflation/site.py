@@ -1,7 +1,7 @@
 """Data for the interactive site (``docs/site``).
 
 ``site_data`` gathers everything the page shows into one JSON-ready dict:
-inflation history, the latest forecasts with 80% bands, the backtest paths,
+inflation history, the latest headline forecasts with 80% bands, the backtest paths,
 the accuracy league table, sub-period scores, driver coefficients and the
 scenario responses.  ``render`` drops it into the page template.
 
@@ -20,12 +20,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .combined import headline_model
 from .evaluation import SUBPERIODS, common_sample, subperiod_table, target_month
 from .report import LABELS, NAMES, ORDER, collect
 
 ECONOMIES = ("US", "UK", "JP", "EA")
 HORIZONS = (3, 6, 12, 24)
-INDEX = {"US": "CPI", "UK": "CPI", "JP": "CPI", "EA": "HICP"}
+INDEX = {"US": "CPI", "UK": "CPIH", "JP": "CPI", "EA": "HICP"}
 
 SHORT = {
     "rw": "No change", "ucsv": "UCSV trend", "ar": "AR benchmark", "ridge": "Ridge", "adalasso": "Adaptive lasso",
@@ -34,7 +35,7 @@ SHORT = {
     "bart": "BART", "hnn": "Hemisphere net", "mlp": "Neural net (MLP)", "panel:ridge": "Pooled ridge",
     "panel:lgbm": "Pooled boosting", "panel:mrf": "Pooled MRF", "panel:bart": "Pooled BART",
     "panel:hnn": "Pooled hemisphere net", "ens:ml": "Mean of ML", "ens:ml+ucsv": "Half ML, half UCSV",
-    "ens:median": "Median of models", "fm:chronos_bolt": "Chronos-Bolt", "fm:chronos2": "Chronos-2",
+    "ens:median": "Median of models", "ens:combined": "Combined model", "fm:chronos_bolt": "Chronos-Bolt", "fm:chronos2": "Chronos-2",
     "fm:chronos2_cov": "Chronos-2 + macro", "fm:timesfm25": "TimesFM 2.5", "fm:timesfm3": "TimesFM 3.0",
     "fm:timesfm3_cov": "TimesFM 3.0 + macro", "deep:nhits": "N-HiTS", "deep:patchtst": "PatchTST", "deep:tide": "TiDE",
     "deep:lstm": "LSTM",
@@ -57,9 +58,13 @@ def family(m: str) -> str:
 
 # Models whose backtest paths the page can replay.
 PATH_MODELS = ("ucsv", "ridge", "adalasso", "csr", "krr", "rf", "lgbm", "mrf", "bart", "hnn", "mlp", "panel:ridge",
-               "ens:median", "ens:ml+ucsv", "fm:timesfm3_cov", "fm:chronos2_cov", "deep:tide")
+               "ens:median", "ens:combined", "ens:ml+ucsv", "fm:timesfm3_cov", "fm:chronos2_cov", "deep:tide")
 # Models listed beside the median in the latest-forecast table.
-LATEST_MODELS = ("ucsv", "ridge", "csr", "krr", "lgbm", "mrf", "hnn", "mlp", "ens:ml+ucsv")
+LATEST_MODELS = ("ucsv", "ridge", "csr", "krr", "lgbm", "mrf", "hnn", "mlp", "ens:ml+ucsv", "ens:median")
+# How each headline forecast is described on the page.
+HEADLINE = {"ens:median": {"short": "Median model", "what": "the median of 13 econometric ML models"},
+            "ens:combined": {"short": "Combined model",
+                             "what": "a combination of nowcast, bottom-up and survey-anchored models"}}
 
 
 def _r(x, nd: int = 2):
@@ -92,7 +97,7 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
               frames_for_drivers: dict | None = None, asof: str | None = None, previous: dict | None = None,
               surveys: pd.DataFrame | None = None) -> dict:
     out = {"asof": asof or str(pd.Timestamp.today().date()), "economies": [], "history": {}, "latest": {},
-           "paths": {}, "subperiods": {}, "accuracy": [], "models": {}}
+           "paths": {}, "subperiods": {}, "accuracy": [], "models": {}, "headline": {}}
     reused = False
     out["subperiodLabels"] = list(SUBPERIODS)
     for c in ECONOMIES:
@@ -104,18 +109,23 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
         for h in HORIZONS:
             res = collect(results, c, h)
             lat = latest[(latest.country == c) & (latest.horizon == h)].set_index("model")
-            med = float(lat.loc["ens:median", "forecast"])
+            head = headline_model(c, lat.index)  # the combination where adopted, else the median of the models
+            out["headline"][c] = {"model": head, **HEADLINE[head]}
+            med = float(lat.loc[head, "forecast"])
             backtest = "ens:median" in res
             if not backtest and previous is None:
                 raise ValueError(f"no backtest results for {c} h={h} and no previous site data to reuse")
             if backtest:
-                width = _bands(res["ens:median"])
+                if head not in res:
+                    raise ValueError(f"{c} h={h}: no backtest of the headline model {head}")
+                width = _bands(res[head])
             else:
                 old = previous["latest"][c][str(h)]
-                width = {k: v - old["median"] for k, v in old["bands"].items()}
-            entry = {"target": str(lat["target_month"].iloc[0]), "median": _r(med),
+                width = {k: v - old.get("headline", old.get("median")) for k, v in old["bands"].items()}
+            entry = {"target": str(lat["target_month"].iloc[0]), "headline": _r(med),
                      "bands": {k: _r(med + v) for k, v in width.items()},
-                     "models": {m: _r(lat.loc[m, "forecast"]) for m in LATEST_MODELS if m in lat.index}}
+                     "models": {m: _r(lat.loc[m, "forecast"]) for m in LATEST_MODELS if m in lat.index},
+                     "parts": {m[5:]: _r(lat.loc[m, "forecast"]) for m in lat.index if m.startswith("part:")}}
             for m in ("fm:timesfm3_cov", "fm:chronos2_cov"):
                 r = res.get(m)
                 if r is not None and not r.empty:
@@ -147,8 +157,9 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
         out["models"][m] = {"label": LABELS[m], "short": SHORT[m], "family": family(m)}
     out["backtestAsof"] = (previous.get("backtestAsof") or previous["asof"]) if reused else out["asof"]
     if surveys is not None and not surveys.empty:  # professional forecasters, on the models' own monthly target
-        out["surveys"] = [{"c": r["economy"], "h": int(r["horizon"]), "n": int(r["n"]), "survey": _r(r["rel_survey"], 3),
-                           "model": _r(r["rel_ens:median"], 3), "p": _r(r["dm_p_ens:median"], 4)}
+        out["surveys"] = [{"c": r["economy"], "h": int(r["horizon"]), "n": int(r["n"]), "survey": _r(r["rel_survey"], 4),
+                           "model": _r(r["rel_ens:median"], 4), "p": _r(r["dm_p_ens:median"], 4),
+                           "combined": _r(r.get("rel_ens:combined"), 4)}
                           for r in surveys[surveys["basis"] == "monthly"].to_dict("records")]
     if frames_for_drivers:
         out["drivers"] = drivers_data(frames_for_drivers)
