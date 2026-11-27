@@ -256,13 +256,14 @@ def anchor_column(frame: pd.DataFrame, h: int, prior: float = 1.0) -> pd.Series:
 
     ``w_h`` is the real-time share of the gap that closes within ``h`` months.  Until ten years of
     published data allow an estimate it is ``prior`` (full convergence, which is also what the
-    first estimates for the UK, Japan and the euro area turn out to be), so no origin uses a
-    weight estimated later.  Where there is no core index the offset is zero (no anchor), which
+    first estimates for the UK and the euro area turn out to be), so no origin uses a weight
+    estimated later.  Where there is no core index the offset is zero (no anchor), which
     keeps those months in the training sample.
     """
     gap = frame["core"] - frame["pi"]
     anchor = (convergence_weights(frame, h).fillna(prior) * gap).where(gap.notna(), 0.0)
     return anchor.where(frame["pi"].notna()).rename(f"anchor_h{h}")
+
 
 def horizon_columns(frame: pd.DataFrame, groups: dict[str, str], h: int) -> list[str]:
     """Features for horizon ``h``: the base features plus that horizon's base-effect and tax columns."""
