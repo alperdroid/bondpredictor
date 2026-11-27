@@ -722,6 +722,9 @@ bondpredictor/
     hnn.py         hemisphere neural net and MLP (PyTorch)
     ucsv.py        Stock-Watson UCSV particle filter
     backtest.py    real-time expanding-window engine and model zoo
+    partial.py     partial-horizon training: direct models fitted on horizons 1-12 at once
+    pistar.py      persistent-state trend model (linear Deep-pi*, ECB WP 3307)
+    pistar_report.py  docs/inflation_pistar.md
     panel.py       pooled cross-country models
     foundation.py  Chronos / TimesFM zero-shot forecasts
     deep.py        N-HiTS, PatchTST, TiDE, LSTM (neuralforecast)
