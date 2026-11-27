@@ -189,10 +189,15 @@ def load_surveys(dl: Downloader) -> dict:
 
 
 def compare(store: dict, results: dict, surveys: dict, models=("ens:median", "ucsv")) -> pd.DataFrame:
-    """All comparisons.  ``results``: {(economy, horizon, model): frame}, ensembles included."""
+    """All comparisons.  ``results``: {(economy, horizon, model): frame}, ensembles included.
+
+    Each economy is scored on the models it has forecasts for (the combined forecast exists only where adopted).
+    """
     us = {(h, m): r for (c, h, m), r in results.items() if c == "US"}
     ea = {(h, m): r for (c, h, m), r in results.items() if c == "EA"}
-    parts = [us_comparison(store["frames"]["US"][0], us, surveys["us_spf"], surveys["us_cpi_sa"], models),
-             ea_comparison(store["frames"]["EA"][0], ea, surveys["ecb"], models, lag=0),
-             ea_comparison(store["frames"]["EA"][0], ea, surveys["ecb"], models, lag=1)]
+    mu = tuple(m for m in models if any(k[1] == m for k in us))
+    me = tuple(m for m in models if any(k[1] == m for k in ea))
+    parts = [us_comparison(store["frames"]["US"][0], us, surveys["us_spf"], surveys["us_cpi_sa"], mu),
+             ea_comparison(store["frames"]["EA"][0], ea, surveys["ecb"], me, lag=0),
+             ea_comparison(store["frames"]["EA"][0], ea, surveys["ecb"], me, lag=1)]
     return pd.concat(parts, ignore_index=True)

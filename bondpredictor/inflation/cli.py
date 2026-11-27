@@ -228,6 +228,16 @@ def cmd_explain(args):
     print(f"\nwrote {out}")
 
 
+def with_combined(results: dict, res_dir: Path) -> dict:
+    """``results`` plus the combined forecast's backtest, built from the pilot run when one is on disk."""
+    path = res_dir / "pilot" / "pilot.pkl"
+    if not path.exists():
+        return results
+    from .combined import combined_backtest
+
+    return {**results, **combined_backtest(pd.read_pickle(path))}
+
+
 def cmd_report(args):
     from .report import build_report, latest_section, replace_latest
 
@@ -247,6 +257,7 @@ def cmd_report(args):
         p = Path(args.results) / extra
         if p.exists():
             results = {**results, **pd.read_pickle(p)}
+    results = with_combined(results, Path(args.results))
     fc_path = Path(args.results) / "latest.csv"
     latest = pd.read_csv(fc_path) if fc_path.exists() else None
     surveys = None
@@ -256,7 +267,7 @@ def cmd_report(args):
         from .surveys import compare, load_surveys
 
         full = {(c, h, m): r for c in ("US", "EA") for h in args.horizons for m, r in collect(results, c, h).items()}
-        surveys = compare(store, full, load_surveys(DL(max_age_days=7)))
+        surveys = compare(store, full, load_surveys(DL(max_age_days=7)), models=("ens:median", "ucsv", "ens:combined"))
         surveys.to_csv(Path(args.out).with_name("inflation_surveys.csv"), index=False)
     text, tables = build_report(results, robust, store, args.countries, args.horizons, latest, n_boot=args.n_boot,
                                 surveys=surveys)
@@ -274,6 +285,14 @@ def cmd_forecast(args):
     store = load_frames(args)
     frames = {c: store["frames"][c] for c in args.countries}
     table = latest_forecasts(frames, args.horizons, n_jobs=args.jobs)
+    from .combined import PARTS, latest_combined
+
+    parts = {c: PARTS[c] for c in args.countries if c in PARTS}
+    if parts and not args.no_combined:  # the combined forecast, where it is the headline
+        from ..data import Downloader as DL
+
+        extra = latest_combined(store, DL(), args.horizons, parts, n_jobs=args.jobs)
+        table = pd.concat([table, extra], ignore_index=True).sort_values(["country", "horizon", "model"]).reset_index(drop=True)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     table.to_csv(out / "latest.csv", index=False)
@@ -315,6 +334,7 @@ def cmd_site(args):
     for name in ("results.pkl", "deep.pkl", "foundation.pkl"):
         if (res_dir / name).exists():
             results = {**results, **pd.read_pickle(res_dir / name)}
+    results = with_combined(results, res_dir)
     # Without a backtest on disk, keep the backtest parts of the page built last time.
     prev_path = Path(args.previous or args.out)
     previous = None
@@ -413,9 +433,13 @@ def cmd_pilot(args):
         print(f"wrote {args.report}")
         return
     t0 = time.time()
-    res = run_pilot(store, DL(cache_dir=args.cache, max_age_days=args.max_age), args.countries, tuple(args.horizons),
-                    tuple(args.models), start=args.start, n_jobs=args.jobs, progress=_progress(t0),
-                    bottomup=not args.no_bottom_up)
+    dl = DL(cache_dir=args.cache, max_age_days=args.max_age)
+    res = run_pilot(store, dl, args.countries, tuple(args.horizons), tuple(args.models), start=args.start,
+                    n_jobs=args.jobs, progress=_progress(t0), bottomup=not args.no_bottom_up, sets=args.sets)
+    if args.merge and (out / "pilot.pkl").exists():  # keep the other runs' series, recompute the bottom-up sums
+        from .pilot import rebuild_bottom_up
+
+        res = rebuild_bottom_up({**pd.read_pickle(out / "pilot.pkl"), **res}, store, dl)
     pd.to_pickle(res, out / "pilot.pkl")
     head = {k: v for k, v in res.items() if not k[2].startswith("comp:")}
     table = compare_table(head)
@@ -433,7 +457,10 @@ def cmd_results(args):
     out, store_dir = Path(args.out), Path(args.store)
     if args.action == "pack":
         store_dir.mkdir(parents=True, exist_ok=True)
-        res = pd.read_pickle(out / f"{args.name}.pkl")
+        if args.name == "pilot":  # keyed (economy, horizon, set, model): stored with model "set|model"
+            res = {(c, h, f"{s}|{m}"): r for (c, h, s, m), r in pd.read_pickle(out / "pilot" / "pilot.pkl").items()}
+        else:
+            res = pd.read_pickle(out / f"{args.name}.pkl")
         if args.countries != CODES:
             res = {k: v for k, v in res.items() if k[0] in args.countries}
         path = store_dir / f"{args.tag or args.name}.csv.gz"
@@ -441,16 +468,21 @@ def cmd_results(args):
         print(f"wrote {path} ({n} forecast series, {path.stat().st_size / 1e6:.2f} MB)")
         return
     files = sorted(store_dir.glob("*.csv.gz"))
-    groups = {"results": [], "deep": [], "foundation": []}
+    groups = {"results": [], "deep": [], "foundation": [], "pilot": []}
     for f in files:
-        kind = "deep" if f.name.startswith("deep") else "foundation" if f.name.startswith("foundation") else "results"
+        kind = next((k for k in ("deep", "foundation", "pilot") if f.name.startswith(k)), "results")
         groups[kind].append(f)
     out.mkdir(parents=True, exist_ok=True)
     for kind, fs in groups.items():
         if fs:
             res = unpack_results(fs)
-            pd.to_pickle(res, out / f"{kind}.pkl")
-            print(f"wrote {out / f'{kind}.pkl'} ({len(res)} forecast series from {len(fs)} file(s))")
+            path = out / f"{kind}.pkl"
+            if kind == "pilot":
+                res = {(c, h, *m.split("|", 1)): r for (c, h, m), r in res.items()}
+                path = out / "pilot" / "pilot.pkl"
+                path.parent.mkdir(parents=True, exist_ok=True)
+            pd.to_pickle(res, path)
+            print(f"wrote {path} ({len(res)} forecast series from {len(fs)} file(s))")
 
 
 def build_parser():
@@ -522,6 +554,7 @@ def build_parser():
     f = sub.add_parser("forecast", parents=[common])
     f.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
     f.add_argument("--jobs", type=int, default=1)
+    f.add_argument("--no-combined", action="store_true", help="skip the combined forecast (needs pump-price and component data)")
     f.add_argument("--out", default="output/inflation")
     f.set_defaults(func=cmd_forecast)
 
@@ -550,6 +583,8 @@ def build_parser():
     pl.add_argument("--start", default="2000-01")
     pl.add_argument("--jobs", type=int, default=1)
     pl.add_argument("--no-bottom-up", action="store_true")
+    pl.add_argument("--sets", nargs="+", default=None, help="feature sets to run (default: all)")
+    pl.add_argument("--merge", action="store_true", help="add the run to the existing pilot.pkl instead of replacing it")
     pl.add_argument("--report", nargs="?", const="docs/inflation_pilot.md", default=None,
                     help="write the markdown summary of a finished run instead of running")
     pl.add_argument("--cache", default=None)
@@ -559,7 +594,7 @@ def build_parser():
 
     rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")
     rs.add_argument("action", choices=["pack", "unpack"])
-    rs.add_argument("--name", default="results", help="pickle to pack: results, deep or foundation")
+    rs.add_argument("--name", default="results", help="pickle to pack: results, deep, foundation or pilot")
     rs.add_argument("--tag", default=None, help="file name to write (default: --name)")
     rs.add_argument("--out", default="output/inflation")
     rs.add_argument("--store", default="results/inflation")

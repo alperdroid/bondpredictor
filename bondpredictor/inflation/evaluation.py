@@ -211,7 +211,7 @@ def pack_results(results: dict, path) -> int:
     parts = []
     for (c, h, m), r in results.items():
         if isinstance(r, pd.DataFrame) and not r.empty:
-            x = r.reset_index()
+            x = r.rename_axis("date").reset_index()
             x.insert(0, "model", m)
             x.insert(0, "horizon", h)
             x.insert(0, "economy", c)
