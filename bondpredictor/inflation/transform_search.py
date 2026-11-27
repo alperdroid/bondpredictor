@@ -272,7 +272,12 @@ def run_screen(data, store: dict, codes=("US", "UK", "JP", "EA"), horizons=(3, 6
 
 # ------------------------------------------------------------------ multivariate comparison
 
-SETS = ("current", "core_anchor", "top1", "top3", "library", "lags", "partial_anchor", "underlying", "underlying_anchor")
+SETS = ("current", "core_anchor", "top1", "top3", "library", "lags", "partial_anchor", "underlying", "underlying_anchor",
+        "quadratic")
+# Drivers whose pairwise products enter the quadratic set (each economy uses the ones it has).
+KEY_DRIVERS = ("pi", "core", "headline_minus_core", "sa6", "pi_avg36", "oil_yoy", "ppi_yoy", "gscpi_lvl", "g_infl",
+               "unemp_gap", "wages_yoy", "earnings_yoy", "mich_lvl", "cleveland1y_lvl", "breakeven10_lvl",
+               "tankan_infl_outlook_1y_lvl", "consumer_price_exp_lvl", "industry_price_exp_lvl", "sticky_core_lvl")
 
 # US measures of underlying inflation, all in % (12-month or 1-month rates), published with CPI (lag 1) or PCE (lag 2).
 UNDERLYING = {
@@ -351,6 +356,13 @@ def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFra
         # estimate was already known at each of them.
         anchored = anchor_column(frame, h)
         out["partial_anchor"] = (frame.assign(**{anchor: anchored}), groups, anchor)
+    # Squares of every non-binary input and products of the key drivers: curvature for the linear models.
+    base = [c for c in X.columns if c not in ("drop", "mech", "tax") and X[c].nunique() > 2]
+    key = [c for c in KEY_DRIVERS if c in X.columns]
+    quad = {f"sq:{c}": X[c] ** 2 for c in base}
+    quad.update({f"x:{a}*{b}": X[a] * X[b] for i, a in enumerate(key) for b in key[i + 1:]})
+    out["quadratic"] = (pd.concat([frame, pd.DataFrame(quad, index=frame.index)], axis=1),
+                        {**groups, **{n: g[n.split(":", 1)[1].split("*")[0]] for n in quad}}, None)
     if extras is not None and not extras.empty:
         fu = pd.concat([frame, extras], axis=1)
         gu = {**groups, **{n: "own" for n in extras.columns}}
@@ -469,7 +481,7 @@ def base_rates(frame: pd.DataFrame, gap_min: float = 0.9, oil_min: float = 25.0,
 SET_LABELS = {"current": "Current features", "core_anchor": "Core-anchored target", "top1": "+ best transform per variable",
               "top3": "+ best three per variable", "library": "+ full transform library", "lags": "+ lags 1-12 of current",
               "partial_anchor": "Estimated core anchor", "underlying": "+ US underlying inflation",
-              "underlying_anchor": "+ US underlying, estimated anchor"}
+              "underlying_anchor": "+ US underlying, estimated anchor", "quadratic": "+ squares and cross-products"}
 
 
 def stickiness_section(frames: dict, rounds: pd.DataFrame | None) -> list[str]:
