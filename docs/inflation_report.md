@@ -913,16 +913,16 @@ Every model refitted on all realised data and applied at each economy's latest C
 |---|---|---|---|---|
 | Random walk (no change) | 3.94 | 3.94 | 3.94 | 3.94 |
 | UCSV (Stock-Watson) | 4.18 | 3.17 | 3.39 | 3.39 |
-| Ridge | 3.35 | 2.07 | 1.69 | 2.09 |
-| Complete subset regression | 3.88 | 3.08 | 3.02 | 2.40 |
-| Kernel ridge (RBF) | 3.31 | 2.20 | 1.35 | 1.67 |
-| Gradient boosting (LightGBM) | 2.85 | 1.93 | 1.19 | 2.59 |
-| Macroeconomic random forest | 3.81 | 3.09 | 2.75 | 2.74 |
-| Hemisphere neural net | 3.31 | 2.51 | 1.82 | 1.83 |
-| Plain neural net (MLP) | 3.23 | 2.35 | 1.75 | 1.84 |
-| Mean of non-linear ML | 3.31 | 2.47 | 1.84 | 2.59 |
-| ½ non-linear ML + ½ UCSV | 3.74 | 2.82 | 2.61 | 2.99 |
-| Median of all models | 3.33 | 2.30 | 1.75 | 2.40 |
+| Ridge | 3.49 | 2.28 | 2.05 | 2.69 |
+| Complete subset regression | 3.91 | 3.17 | 3.17 | 2.15 |
+| Kernel ridge (RBF) | 3.44 | 2.41 | 1.87 | 2.16 |
+| Gradient boosting (LightGBM) | 2.92 | 2.37 | 2.15 | 2.56 |
+| Macroeconomic random forest | 3.80 | 3.30 | 2.85 | 2.01 |
+| Hemisphere neural net | 3.42 | 2.45 | 2.04 | 1.95 |
+| Plain neural net (MLP) | 3.35 | 2.50 | 2.06 | 1.87 |
+| Mean of non-linear ML | 3.39 | 2.56 | 1.93 | 2.38 |
+| ½ non-linear ML + ½ UCSV | 3.78 | 2.86 | 2.66 | 2.89 |
+| Median of all models | 3.42 | 2.45 | 2.05 | 2.24 |
 | TimesFM 3.0 + macro covariates | 3.66 | 3.39 | 3.12 | 2.88 |
 | TimesFM 3.0 + covariates, 80% band | 2.9 to 4.3 | 2.4 to 4.4 | 1.9 to 4.5 | 1.4 to 4.6 |
 
@@ -932,16 +932,16 @@ Every model refitted on all realised data and applied at each economy's latest C
 |---|---|---|---|---|
 | Random walk (no change) | 3.59 | 3.59 | 3.59 | 3.59 |
 | UCSV (Stock-Watson) | 4.04 | 4.11 | 4.15 | 4.15 |
-| Ridge | 3.76 | 3.89 | 3.90 | 3.59 |
-| Complete subset regression | 3.97 | 4.10 | 4.01 | 3.37 |
-| Kernel ridge (RBF) | 3.78 | 3.94 | 3.83 | 3.21 |
-| Gradient boosting (LightGBM) | 3.82 | 4.05 | 3.06 | 2.59 |
-| Macroeconomic random forest | 3.81 | 3.66 | 3.35 | 3.02 |
-| Hemisphere neural net | 3.53 | 3.58 | 3.49 | 2.89 |
-| Plain neural net (MLP) | 3.60 | 3.95 | 3.47 | 2.85 |
-| Mean of non-linear ML | 3.69 | 3.78 | 2.74 | 2.66 |
-| ½ non-linear ML + ½ UCSV | 3.86 | 3.95 | 3.44 | 3.40 |
-| Median of all models | 3.81 | 3.94 | 3.49 | 2.98 |
+| Ridge | 3.76 | 3.89 | 3.90 | 3.30 |
+| Complete subset regression | 3.97 | 4.10 | 4.01 | 3.74 |
+| Kernel ridge (RBF) | 3.78 | 3.94 | 3.83 | 3.38 |
+| Gradient boosting (LightGBM) | 3.82 | 4.05 | 3.06 | 2.30 |
+| Macroeconomic random forest | 3.81 | 3.66 | 3.35 | 2.78 |
+| Hemisphere neural net | 3.53 | 3.58 | 3.49 | 2.59 |
+| Plain neural net (MLP) | 3.60 | 3.95 | 3.47 | 3.13 |
+| Mean of non-linear ML | 3.69 | 3.78 | 2.74 | 2.61 |
+| ½ non-linear ML + ½ UCSV | 3.86 | 3.95 | 3.44 | 3.38 |
+| Median of all models | 3.81 | 3.94 | 3.49 | 3.13 |
 | TimesFM 3.0 + macro covariates | 3.69 | 3.78 | 3.58 | 3.31 |
 | TimesFM 3.0 + covariates, 80% band | 3.1 to 4.5 | 2.8 to 5.2 | 2.2 to 5.8 | 1.6 to 6.3 |
 
@@ -951,16 +951,16 @@ Every model refitted on all realised data and applied at each economy's latest C
 |---|---|---|---|---|
 | Random walk (no change) | 2.36 | 2.36 | 2.36 | 2.36 |
 | UCSV (Stock-Watson) | 2.71 | 3.13 | 2.27 | 2.27 |
-| Ridge | 2.70 | 2.86 | 2.61 | 2.09 |
-| Complete subset regression | 2.85 | 3.13 | 3.12 | 2.83 |
-| Kernel ridge (RBF) | 2.71 | 2.86 | 2.55 | 1.88 |
-| Gradient boosting (LightGBM) | 2.60 | 2.74 | 2.76 | 1.94 |
-| Macroeconomic random forest | 2.78 | 2.86 | 2.64 | 1.63 |
-| Hemisphere neural net | 2.38 | 2.61 | 2.45 | 2.42 |
-| Plain neural net (MLP) | 2.59 | 2.98 | 2.94 | 2.29 |
-| Mean of non-linear ML | 2.64 | 2.63 | 2.32 | 1.82 |
-| ½ non-linear ML + ½ UCSV | 2.68 | 2.88 | 2.29 | 2.04 |
-| Median of all models | 2.71 | 2.86 | 2.61 | 2.29 |
+| Ridge | 2.70 | 2.86 | 2.61 | 2.10 |
+| Complete subset regression | 2.85 | 3.13 | 3.12 | 3.20 |
+| Kernel ridge (RBF) | 2.71 | 2.86 | 2.55 | 2.39 |
+| Gradient boosting (LightGBM) | 2.60 | 2.74 | 2.76 | 2.93 |
+| Macroeconomic random forest | 2.78 | 2.86 | 2.64 | 2.56 |
+| Hemisphere neural net | 2.38 | 2.61 | 2.45 | 2.74 |
+| Plain neural net (MLP) | 2.59 | 2.98 | 2.94 | 2.68 |
+| Mean of non-linear ML | 2.64 | 2.63 | 2.32 | 2.19 |
+| ½ non-linear ML + ½ UCSV | 2.68 | 2.88 | 2.29 | 2.23 |
+| Median of all models | 2.71 | 2.86 | 2.61 | 2.56 |
 | TimesFM 3.0 + macro covariates | 2.64 | 2.64 | 2.46 | 2.03 |
 | TimesFM 3.0 + covariates, 80% band | 1.9 to 3.5 | 1.6 to 3.9 | 1.0 to 4.2 | 0.2 to 4.1 |
 
@@ -970,15 +970,15 @@ Every model refitted on all realised data and applied at each economy's latest C
 |---|---|---|---|---|
 | Random walk (no change) | 3.95 | 3.95 | 3.95 | 3.95 |
 | UCSV (Stock-Watson) | 4.72 | 3.96 | 4.12 | 4.12 |
-| Ridge | 4.10 | 3.69 | 3.30 | 3.29 |
-| Complete subset regression | 4.35 | 3.65 | 3.18 | 1.95 |
-| Kernel ridge (RBF) | 4.04 | 3.69 | 3.17 | 2.38 |
-| Gradient boosting (LightGBM) | 4.12 | 2.67 | 2.14 | 1.98 |
-| Macroeconomic random forest | 4.21 | 3.47 | 3.24 | 2.48 |
-| Hemisphere neural net | 3.89 | 3.41 | 3.01 | 2.30 |
-| Plain neural net (MLP) | 3.94 | 3.48 | 2.78 | 2.14 |
-| Mean of non-linear ML | 4.15 | 3.29 | 2.80 | 2.53 |
-| ½ non-linear ML + ½ UCSV | 4.43 | 3.63 | 3.46 | 3.33 |
-| Median of all models | 4.10 | 3.65 | 3.17 | 2.48 |
+| Ridge | 4.10 | 3.69 | 3.30 | 2.75 |
+| Complete subset regression | 4.35 | 3.65 | 3.18 | 1.78 |
+| Kernel ridge (RBF) | 4.04 | 3.69 | 3.17 | 2.59 |
+| Gradient boosting (LightGBM) | 4.12 | 2.67 | 2.14 | 2.47 |
+| Macroeconomic random forest | 4.21 | 3.47 | 3.24 | 2.64 |
+| Hemisphere neural net | 3.89 | 3.41 | 3.01 | 2.49 |
+| Plain neural net (MLP) | 3.94 | 3.48 | 2.78 | 2.51 |
+| Mean of non-linear ML | 4.15 | 3.29 | 2.80 | 2.49 |
+| ½ non-linear ML + ½ UCSV | 4.43 | 3.63 | 3.46 | 3.30 |
+| Median of all models | 4.10 | 3.65 | 3.17 | 2.51 |
 | TimesFM 3.0 + macro covariates | 3.88 | 3.92 | 3.40 | 2.76 |
 | TimesFM 3.0 + covariates, 80% band | 3.2 to 4.6 | 2.9 to 5.1 | 1.9 to 5.2 | 1.0 to 5.0 |

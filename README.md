@@ -526,14 +526,15 @@ What it says:
   (the surge broke past error patterns); the foundation models' own
   quantiles are the best calibrated, BART's posterior covers only ~30%.
 
-Latest forecasts, refreshed on 26 November 2026 with the October prints (median of the 13 tier-1 country
-models / TimesFM 3 + covariates; the backtest results above are from the October build):
+Latest forecasts, refreshed on 27 November 2026 with the October prints, the 24-month core anchor and the US
+underlying-inflation measures (median of the 13 tier-1 country models / TimesFM 3 + covariates; the backtest
+results above are from the October build):
 
 | | Latest y/y | 3 months | 12 months | 24 months |
 |---|---|---|---|---|
-| US (Oct 2026) | 3.9% | 3.3 / 3.7 (Jan 2027) | 1.8 / 3.1 (Oct 2027) | 2.4 / 2.9 (Oct 2028) |
-| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.0 / 3.3 (Oct 2028) |
-| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.3 / 2.0 (Oct 2028) |
+| US (Oct 2026) | 3.9% | 3.4 / 3.7 (Jan 2027) | 2.0 / 3.1 (Oct 2027) | 2.2 / 2.9 (Oct 2028) |
+| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.1 / 3.3 (Oct 2028) |
+| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.6 / 2.0 (Oct 2028) |
 | Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
 
 The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
