@@ -135,6 +135,9 @@ def model_responses(frame: pd.DataFrame, groups: dict[str, str], economy: str, h
     Xv = X.to_numpy(dtype=float)
     piv = pi.to_numpy(dtype=float)
     y = (tgt - pi).to_numpy()
+    anchored = h in getattr(spec, "anchor_horizons", ()) and f"anchor_h{h}" in frame
+    off = frame[f"anchor_h{h}"].to_numpy(dtype=float) if anchored else np.zeros(len(y))
+    y = y - off
     k = int(np.flatnonzero(np.isfinite(piv))[-1])
     t0 = max(frame.index.searchsorted(pd.Period(spec.train_start, "M")), 0)
     fit = fit_at(Xv, names, g, y, piv, k, h, spec, t0, min_train, min_hist)
@@ -153,7 +156,7 @@ def model_responses(frame: pd.DataFrame, groups: dict[str, str], economy: str, h
     pred = np.asarray(model.predict(_shifted_rows(base_row, used, c, shocks)), dtype=float)
     base = pred[0]
     resp = pred - base
-    out = {"base": float(piv[k] + base), "pi": float(piv[k]), "origin": str(frame.index[k]), "n_train": n_train,
+    out = {"base": float(piv[k] + off[k] + base), "pi": float(piv[k]), "origin": str(frame.index[k]), "n_train": n_train,
            "curves": {}, "joint": {}, "additive": {}}
     i = 1
     for lv in LEVERS:

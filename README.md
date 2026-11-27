@@ -381,6 +381,7 @@ each preset jointly (within 0.26 pp in the November 2026 refresh).
 |---|---|---|---|---|
 | CPI target | CPI-U NSA (FRED, 1913–) | CPI (OECD, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
 | Core / components | core, energy, food, services, goods, shelter | core, energy, food, services, goods | ex food & energy, energy, food | ex energy & food, energy, food, services, NEIG |
+| Underlying inflation | sticky- and flexible-price CPI (Atlanta Fed), median and trimmed-mean CPI (Cleveland Fed), trimmed-mean PCE (Dallas Fed) | – | – | – |
 | Expectations / price surveys | Michigan, Cleveland Fed, 5y breakeven, Philly Fed prices paid | 10y gilt breakeven (BoE) | Tankan output/input price DIs and firms' inflation outlook (BoJ) | EC consumer and selling-price expectations |
 | Slack | unemployment (level, change, gap), payrolls, claims, wages, IP, capacity utilisation, retail, housing | unemployment, average weekly earnings (ONS), IP, retail, confidence | unemployment, employment, earnings, IP, retail, confidence | unemployment, IP, retail, ESI, confidence |
 | Costs | oil, PPI, import prices, commodities, dollar | oil in GBP, output PPI (ONS, to Jan 2025), REER, GBP/USD | oil in JPY, PPI, import prices, services PPI (BoJ), REER, USD/JPY | oil in EUR, PPI, import prices, NEER, EUR/USD |
@@ -395,6 +396,13 @@ as a target.  Every series is kept on a contiguous calendar, so a missing
 month cannot shift later 12-month changes.
 
 ### Models
+
+Two years ahead, the ML models forecast relative to today's headline rate
+moved towards core by the share of the core-headline gap that has
+historically closed within 24 months (estimated in real time; 0.87 for the
+US, 1 elsewhere).  This "core anchor" and the US underlying-inflation
+measures were adopted in November 2026 after the transformation study
+(`docs/inflation_transforms.md`); the backtest tables below predate them.
 
 **Tier 1 – benchmarks and econometric ML** (run first, full robustness):
 

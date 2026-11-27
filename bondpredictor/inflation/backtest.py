@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import logging
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
 
-from .features import generic_name, horizon_columns
+from .features import ANCHOR_HORIZONS, generic_name, horizon_columns
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ class Spec:
     train_start: str = "1960-01"
     tier: int = 1  # 1 = econometric ML and benchmarks, 2 = generic deep learning
     offset: str | None = None  # forecast the target minus this predictor (e.g. "mech"; "-name" subtracts minus it), then add it back
+    anchor_horizons: tuple[int, ...] = ()  # at these horizons, unless ``offset`` is set, use the frame's anchor_h{h}
 
 
 def design(frame: pd.DataFrame, groups: dict[str, str], h: int):
@@ -114,6 +115,8 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
     if spec.offset:
         sign, col = (-1.0, spec.offset[1:]) if spec.offset.startswith("-") else (1.0, spec.offset)
         off = sign * (X[col] if col in X.columns else frame[col]).to_numpy(dtype=float)  # may be a non-feature column
+    elif h in spec.anchor_horizons and f"anchor_h{h}" in frame:
+        off = frame[f"anchor_h{h}"].to_numpy(dtype=float)
     else:
         off = np.zeros(len(X))
     y = y - off
@@ -191,6 +194,8 @@ def model_zoo(tier: int = 1) -> list[Spec]:
         Spec("hnn", "hnn", refit_every=12),
         Spec("mlp", "mlp", refit_every=12),
     ]
+    # The ML models forecast two years ahead relative to headline moved towards core; benchmarks stay as they are.
+    specs = [s if s.name in ("rw", "ucsv", "ar") else replace(s, anchor_horizons=ANCHOR_HORIZONS) for s in specs]
     return [s for s in specs if s.tier <= tier]
 
 

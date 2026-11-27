@@ -38,6 +38,9 @@ from .data import CountryData, InflationData, yoy
 from .ucsv import ucsv_filter
 
 HORIZONS = (3, 6, 12, 24)
+# Horizons at which the ML models forecast relative to today's headline rate moved towards core (see anchor_column).
+ANCHOR_HORIZONS = (24,)
+ANCHOR_TRAIN_START = "1960-01"
 
 
 # ------------------------------------------------------------- transforms
@@ -59,6 +62,7 @@ TRANSFORMS = {
     "c1": lambda x: 100.0 * _log(x).diff(1),
     "gap": _gap,  # level minus its trailing 10-year mean
     "gap_log": lambda x: 100.0 * _gap(_log(x)),
+    "ma3": lambda x: x.rolling(3).mean(),
 }
 
 
@@ -214,8 +218,47 @@ def build_frame(data: InflationData, code: str, horizons=HORIZONS) -> tuple[pd.D
         parts.append(pi_target.shift(-h).rename(f"tgt{h}"))
     frame = pd.concat(parts, axis=1)
     frame = frame.loc[:, ~frame.columns.duplicated()]
+    if "core" in frame:  # target offsets, not features (not in groups)
+        for h in ANCHOR_HORIZONS:
+            if h in horizons:
+                frame[f"anchor_h{h}"] = anchor_column(frame, h)
     frame.attrs["country"] = code
     return frame, groups
+
+
+def convergence_weights(frame: pd.DataFrame, h: int, min_rows: int = 120) -> pd.Series:
+    """Real-time share of the core-headline gap that closes within ``h`` months.
+
+    At origin ``k``: the OLS slope of (inflation in ``h`` months - inflation now) on (core now -
+    inflation now), over the rows from 1960 whose target was published by ``k``, clipped to [0, 1].
+    1 means headline is expected to land on today's core rate; 0 means no convergence.
+    """
+    pi = frame["pi"].to_numpy(float)
+    x = frame["core"].to_numpy(float) - pi
+    y = frame[f"tgt{h}"].to_numpy(float) - pi
+    ok = np.isfinite(x) & np.isfinite(y)
+    ok[: frame.index.searchsorted(pd.Period(ANCHOR_TRAIN_START, "M"))] = False
+    xw, yw = np.where(ok, x, 0.0), np.where(ok, y, 0.0)
+    n, sx, sy = np.cumsum(ok), np.cumsum(xw), np.cumsum(yw)
+    sxx, sxy = np.cumsum(xw * xw), np.cumsum(xw * yw)
+    w = np.full(len(pi), np.nan)
+    for k in range(h, len(pi)):
+        j = k - h
+        if n[j] >= min_rows:
+            vx = sxx[j] - sx[j] ** 2 / n[j]
+            if vx > 0:
+                w[k] = np.clip((sxy[j] - sx[j] * sy[j] / n[j]) / vx, 0.0, 1.0)
+    return pd.Series(w, index=frame.index, name=f"w{h}")
+
+
+def anchor_column(frame: pd.DataFrame, h: int) -> pd.Series:
+    """Target offset for horizon ``h``: the expected move of headline towards core, ``w_h * (core - pi)``.
+
+    Training rows before the first weight estimate (about ten years after 1960) take that first
+    estimate, so anchored models keep their full training sample; every forecast origin evaluated
+    comes later and already knew it.
+    """
+    return (convergence_weights(frame, h).bfill() * (frame["core"] - frame["pi"])).rename(f"anchor_h{h}")
 
 
 def horizon_columns(frame: pd.DataFrame, groups: dict[str, str], h: int) -> list[str]:

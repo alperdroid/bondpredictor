@@ -139,3 +139,32 @@ def test_partial_anchor_offset_reaches_the_backtest():
     # the anchor must not shrink the training sample: the offset exists wherever the target and core do
     usable = frame[f"tgt12"].notna() & frame["core"].notna() & (frame.index >= pd.Period("1985-01", "M"))
     assert f.loc[usable, off].notna().all()
+
+
+def test_frame_carries_a_real_time_24_month_anchor_that_is_not_a_feature():
+    data = _synthetic()
+    frame, groups = build_frame(data, "US")
+    assert "anchor_h24" in frame and "anchor_h24" not in groups
+    k = 300
+    later = frame.copy()
+    later.iloc[k - 24 + 1:, later.columns.get_loc("tgt24")] = 40.0  # targets not yet published at origin k
+    from bondpredictor.inflation.features import anchor_column
+
+    assert anchor_column(later, 24).iloc[k] == pytest.approx(frame["anchor_h24"].iloc[k])
+
+
+def test_ml_models_are_anchored_at_24_months_only():
+    from dataclasses import replace
+
+    from bondpredictor.inflation.backtest import model_zoo
+
+    specs = {s.name: s for s in model_zoo(1)}
+    assert specs["ridge"].anchor_horizons == (24,) and specs["ucsv"].anchor_horizons == ()
+    frame, groups = build_frame(_synthetic(), "US")
+    ridge = replace(specs["ridge"], train_start="1985-01")
+    plain = replace(ridge, anchor_horizons=())
+    kw = dict(start="2012-01", end="2012-03", min_train=60, min_hist=24)
+    a12, p12 = run_backtest(frame, groups, 12, ridge, **kw), run_backtest(frame, groups, 12, plain, **kw)
+    a24, p24 = run_backtest(frame, groups, 24, ridge, **kw), run_backtest(frame, groups, 24, plain, **kw)
+    assert np.allclose(a12["forecast"], p12["forecast"])
+    assert not np.allclose(a24["forecast"], p24["forecast"])

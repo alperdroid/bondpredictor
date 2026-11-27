@@ -155,6 +155,16 @@ US = InflationCountry(
         "loans": P(fred("BUSLOANS", lag=1), ["yoy"], "money"),
         "stocks": P(fred("NASDAQCOM", how="mean"), ["yoy"], "money"),
         "house_prices": P(fred("CSUSHPINSA", lag=2), ["yoy"], "money"),
+        # Underlying inflation, already in %: sticky- and flexible-price CPI (Atlanta Fed), median and trimmed-mean
+        # CPI (Cleveland Fed), published with CPI; trimmed-mean PCE (Dallas Fed), published a month later.
+        "sticky_core": P(fred("CORESTICKM159SFRBATL", lag=1), ["lvl", "d3", "d12"], "own", "level"),
+        "sticky_core_m": P(fred("CORESTICKM157SFRBATL", lag=1), ["lvl", "ma3"], "own", "level"),
+        "median_cpi": P(fred("MEDCPIM159SFRBCLE", lag=1), ["lvl", "d3", "d12"], "own", "level"),
+        "median_cpi_m": P(fred("MEDCPIM158SFRBCLE", lag=1), ["lvl", "ma3"], "own", "level"),
+        "trimmed_cpi": P(fred("TRMMEANCPIM159SFRBCLE", lag=1), ["lvl", "d3", "d12"], "own", "level"),
+        "trimmed_cpi_m": P(fred("TRMMEANCPIM158SFRBCLE", lag=1), ["lvl", "ma3"], "own", "level"),
+        "flexible_cpi": P(fred("FLEXCPIM679SFRBATL", lag=1), ["lvl", "d3", "d12"], "own", "level"),
+        "pce_trimmed": P(fred("PCETRIM12M159SFRBDAL", lag=2), ["lvl", "d3", "d12"], "own", "level"),
     },
 )
 

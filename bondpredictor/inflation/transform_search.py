@@ -52,7 +52,7 @@ import pandas as pd
 
 from . import config as cfg
 from .backtest import AR_FEATURES, design
-from .features import sa_onesided
+from .features import anchor_column, convergence_weights, sa_onesided
 
 HORIZONS_ALL = (3, 6, 12, 24)
 SCREEN_VERSION = 2  # bump when the scoring changes, so a stale screen file is not reused
@@ -304,30 +304,6 @@ def underlying_features(dl, code: str, index: pd.PeriodIndex) -> pd.DataFrame:
             cols[f"{name}_lvl"], cols[f"{name}_d3"], cols[f"{name}_d12"] = s, s.diff(3), s.diff(12)
     return pd.DataFrame({k: v.reindex(index) for k, v in cols.items()}, index=index)
 
-
-def convergence_weights(frame: pd.DataFrame, h: int, min_rows: int = 120) -> pd.Series:
-    """Real-time share of the core-headline gap that closes within ``h`` months.
-
-    At origin ``k``: the OLS slope of (inflation in ``h`` months - inflation now) on (core now -
-    inflation now), over the rows from 1960 whose target was published by ``k``, clipped to [0, 1].
-    1 means headline is expected to land on today's core rate; 0 means no convergence.
-    """
-    pi = frame["pi"].to_numpy(float)
-    x = frame["core"].to_numpy(float) - pi
-    y = frame[f"tgt{h}"].to_numpy(float) - pi
-    ok = np.isfinite(x) & np.isfinite(y)
-    ok[: frame.index.searchsorted(pd.Period(TRAIN_START, "M"))] = False
-    xw, yw = np.where(ok, x, 0.0), np.where(ok, y, 0.0)
-    n, sx, sy = np.cumsum(ok), np.cumsum(xw), np.cumsum(yw)
-    sxx, sxy = np.cumsum(xw * xw), np.cumsum(xw * yw)
-    w = np.full(len(pi), np.nan)
-    for k in range(h, len(pi)):
-        j = k - h
-        if n[j] >= min_rows:
-            vx = sxx[j] - sx[j] ** 2 / n[j]
-            if vx > 0:
-                w[k] = np.clip((sxy[j] - sx[j] * sy[j] / n[j]) / vx, 0.0, 1.0)
-    return pd.Series(w, index=frame.index, name=f"w{h}")
 COMPARE_MODELS = ("ridge", "adalasso", "enet", "krr", "rf", "lgbm")
 FEATURE_LAGS = (1, 3, 6, 12)
 
@@ -373,7 +349,7 @@ def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFra
         # Training rows before the first estimate (about ten years after 1960) take that first estimate, so the
         # anchored models train on the same rows as the others; every origin tested comes later, so the first
         # estimate was already known at each of them.
-        anchored = convergence_weights(frame, h).bfill() * (frame["core"] - frame["pi"])
+        anchored = anchor_column(frame, h)
         out["partial_anchor"] = (frame.assign(**{anchor: anchored}), groups, anchor)
     if extras is not None and not extras.empty:
         fu = pd.concat([frame, extras], axis=1)

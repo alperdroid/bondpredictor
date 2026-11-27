@@ -1137,14 +1137,15 @@ function renderMethod() {
   const box = $("#method-body"); box.replaceChildren();
   const blockEl = (title, ...paras) => el("div", {}, el("h3", { text: title }), ...paras);
   box.append(
-    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 72 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed." }),
+    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 93 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure, and for the US sticky, median, trimmed-mean and flexible inflation. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed." }),
       el("p", { text: "Every series enters with its publication lag, so each backtest forecast uses only what was known that month. The figures are today's revised vintages." })),
     blockEl("Models", el("p", { text: "Tier 1, tested first: random walk, UCSV, ridge, lasso, elastic net, factor models, subset regression, kernel ridge, random forest, gradient boosting, macroeconomic random forest, BART, hemisphere and plain neural nets, pooled versions across economies, and ensembles." }),
       el("p", { text: "Tier 2: deep nets (N-HiTS, PatchTST, TiDE, LSTM) and zero-shot foundation models (Chronos and TimesFM). Models forecast the change in inflation, so zero means no change." })),
     blockEl("Scoring", el("ul", {}, el("li", { text: "Monthly origins from 2000 (euro area 2002), expanding windows, refits every 1 to 12 months." }),
       el("li", { text: "RMSE relative to no change; 75% model confidence set (Hansen, T-max, 2,000 bootstrap draws)." }),
       el("li", { text: "80% ranges: the 10th and 90th percentiles of the model's own errors over the past ten years." }),
-      el("li", { text: "The live median uses the 13 country models; the backtest median also includes 5 pooled models." }))),
+      el("li", { text: "The live median uses the 13 country models; the backtest median also includes 5 pooled models." }),
+      el("li", { text: "Since November 2026 the 24-month forecasts are anchored to core inflation and the US models use underlying-inflation measures; the league table and replay are from the October backtest, before these changes." }))),
     blockEl("Scenarios", el("p", { text: "Each of the 13 country models is refitted on all data. A scenario shifts today's predictors the way the shock would show up this month (oil 30% dearer moves its 1-, 3- and 12-month changes by the same amount) and asks every model again." }),
       el("p", { text: `Levers add up within each model before the median is taken. Checked against solving the six presets jointly, the shortcut is off by at most ${d3.max(gaps).toFixed(2)} pp (median ${median(gaps).toFixed(2)} pp).` })),
     blockEl("Caveats", el("ul", {}, el("li", { text: "The scenario models capture correlations. A shock moves only the drivers you set." }),
