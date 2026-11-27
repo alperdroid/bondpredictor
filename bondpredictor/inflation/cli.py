@@ -376,6 +376,28 @@ def cmd_transforms(args):
     print(f"wrote {out / f'transform_compare_{tag}.csv.gz'} and the table")
 
 
+def cmd_pilot(args):
+    from ..data import Downloader as DL
+    from .pilot import run_pilot
+    from .transform_search import compare_table
+
+    store = load_frames(args)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    res = run_pilot(store, DL(cache_dir=args.cache, max_age_days=args.max_age), args.countries, tuple(args.horizons),
+                    tuple(args.models), start=args.start, n_jobs=args.jobs, progress=_progress(t0),
+                    bottomup=not args.no_bottom_up)
+    pd.to_pickle(res, out / "pilot.pkl")
+    head = {k: v for k, v in res.items() if not k[2].startswith("comp:")}
+    table = compare_table(head)
+    table.to_csv(out / "pilot_table.csv", index=False)
+    with pd.option_context("display.width", 250, "display.max_rows", 500):
+        med = table[table["model"] == "median"]
+        print(med.pivot_table(index=["economy", "horizon"], columns="set", values="rel_rw").round(3).to_string())
+    print(f"wrote {out / 'pilot.pkl'} ({len(res)} forecast series) and pilot_table.csv")
+
+
 def cmd_results(args):
     """Move results between output/ pickles and compact CSV files that are kept in the repository."""
     from .evaluation import pack_results, unpack_results
@@ -491,6 +513,17 @@ def build_parser():
     tr.add_argument("--jobs", type=int, default=1)
     tr.add_argument("--out", default="output/inflation")
     tr.set_defaults(func=cmd_transforms)
+
+    pl = sub.add_parser("pilot", parents=[common], help="nowcast, survey path and bottom-up pilots")
+    pl.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
+    pl.add_argument("--models", nargs="+", default=["ridge", "adalasso", "enet", "krr", "rf", "lgbm"])
+    pl.add_argument("--start", default="2000-01")
+    pl.add_argument("--jobs", type=int, default=1)
+    pl.add_argument("--no-bottom-up", action="store_true")
+    pl.add_argument("--cache", default=None)
+    pl.add_argument("--max-age", type=float, default=7.0)
+    pl.add_argument("--out", default="output/inflation/pilot")
+    pl.set_defaults(func=cmd_pilot)
 
     rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")
     rs.add_argument("action", choices=["pack", "unpack"])

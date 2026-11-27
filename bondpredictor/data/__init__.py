@@ -15,6 +15,7 @@ from .local import read_local_series
 from .nyfed import fetch_nyfed
 from .ons import fetch_ons
 from .sdmx import fetch_ecb, fetch_oecd
+from .zillow import fetch_zillow
 
 __all__ = ["DataUnavailable", "Downloader", "fetch_raw"]
 
@@ -38,6 +39,8 @@ def fetch_raw(dl: Downloader, source: str, key: str) -> pd.Series:
         return fetch_ons(dl, key)
     if source == "nyfed":
         return fetch_nyfed(dl, key)
+    if source == "zillow":
+        return fetch_zillow(dl, key)
     if source == "csv":
         return read_local_series(key)
     raise ValueError(f"unknown source {source!r}")
