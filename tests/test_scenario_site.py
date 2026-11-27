@@ -200,3 +200,18 @@ def test_pooled_models_use_the_24_month_anchor():
     same12 = run_panel_backtest(frames, 12, spec, **kw)["US"]["forecast"]
     assert not np.allclose(with_a, without)
     assert np.allclose(same12, run_panel_backtest(frames, 12, replace(spec, anchor_horizons=()), **kw)["US"]["forecast"])
+
+
+def test_us_survey_path_chains_quarterly_growth_onto_published_levels():
+    from bondpredictor.inflation.surveys import us_spf_yoy
+
+    months = pd.date_range("2018-01-01", "2020-12-01", freq="MS")
+    cpi = pd.Series(100.0 * 1.002 ** np.arange(len(months)), index=months)  # 0.2% a month
+    spf = pd.DataFrame({"CPI2": [4.0], "CPI3": [4.0], "CPI4": [4.0], "CPI5": [4.0], "CPI6": [4.0]},
+                       index=pd.PeriodIndex(["2020Q1"], freq="Q", name="survey"))
+    out = us_spf_yoy(spf, cpi).set_index("j")["forecast"]
+    q = cpi.resample("QS").mean()
+    # one forecast quarter at 4% annualised on top of three published quarters
+    expect0 = 100 * (q["2019-10-01"] * 1.04 ** 0.25 / q["2019-01-01"] - 1)
+    assert out[0] == pytest.approx(expect0)
+    assert out[4] == pytest.approx(4.0)  # four forecast quarters over a forecast base: 4% a year
