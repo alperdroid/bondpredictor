@@ -392,6 +392,15 @@ def cmd_pilot(args):
     store = load_frames(args)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    if args.report:
+        from .pilot import report
+        from .surveys import load_surveys
+
+        text = report(pd.read_pickle(out / "pilot.pkl"), store, load_surveys(DL(cache_dir=args.cache, max_age_days=args.max_age)))
+        Path(args.report).write_text(text)
+        print(text)
+        print(f"wrote {args.report}")
+        return
     t0 = time.time()
     res = run_pilot(store, DL(cache_dir=args.cache, max_age_days=args.max_age), args.countries, tuple(args.horizons),
                     tuple(args.models), start=args.start, n_jobs=args.jobs, progress=_progress(t0),
@@ -529,6 +538,8 @@ def build_parser():
     pl.add_argument("--start", default="2000-01")
     pl.add_argument("--jobs", type=int, default=1)
     pl.add_argument("--no-bottom-up", action="store_true")
+    pl.add_argument("--report", nargs="?", const="docs/inflation_pilot.md", default=None,
+                    help="write the markdown summary of a finished run instead of running")
     pl.add_argument("--cache", default=None)
     pl.add_argument("--max-age", type=float, default=7.0)
     pl.add_argument("--out", default="output/inflation/pilot")
