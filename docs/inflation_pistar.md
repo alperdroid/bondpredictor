@@ -26,8 +26,10 @@ Forecast origins 2000-01 to 2026-10; every model re-estimated at each origin on 
   well in 2021-23 does not single out the paper's ingredients.
 * **Adding the state model to the median helps by about 0.01** (DM p < 0.10 in the UK and Japan).
 * **Diagnostic, run after the main results:** trained from 1985, the no-state variant averages 0.84, the best
-  12-month number here.  The median was not retrained from 1985, so this is a lead for a pre-specified test,
-  not a result.
+  12-month number here.  The pre-registered follow-up (`docs/inflation_prereg_1985.md`, results in
+  `docs/inflation_prereg_1985_results.md`) gave the median the same window: 0.84 against 0.87, Diebold-Mariano
+  p = 0.50, so the lead was mostly the training window (the median improves to 0.82 in the US and 0.86 in the
+  UK when trained from 1985).  The remaining gap is Japan's (0.77 against 0.89, p = 0.29).
 * Two estimation lessons: the forward loss has two local optima in the AR coefficients, so the fit is
   multi-started (a single warm start left the UK at a trend-led optimum, RMSE 1.46); and taxes need a
   pass-through, estimated here from earlier events.

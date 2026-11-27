@@ -468,6 +468,7 @@ python -m bondpredictor.inflation report                 # docs/inflation_report
 python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of the latest forecasts
 python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
 python -m bondpredictor.inflation pistar run --jobs 4    # partial horizons + persistent-state trend (ECB WP 3307)
+python -m bondpredictor.inflation prereg forward          # score the pre-registered forward record after a new build
 ```
 
 `python -m bondpredictor.inflation transforms screen|compare|report` runs a
@@ -494,6 +495,12 @@ validation shrinks the predictors' part of the trend hard and it behaves like
 a re-estimated mean.  On the paper's own US 2021-23 window the state models
 match Deep-π* (RMSE 2.14-2.37 at the SPF dates against the paper's 2.14-2.25
 and the SPF's 3.44), but so do simpler models.  See `docs/inflation_pistar.md`.
+A pre-registered follow-up (`prereg run|report|forward`,
+`docs/inflation_prereg_1985.md`) tested the best variant found there, the
+no-memory model trained from 1985, against the median also trained from 1985:
+0.84 against 0.87 of the random walk's 12-month RMSE, p = 0.50, so the zoo is
+unchanged.  Its forward record of forecasts for prints after October 2026 is
+in `results/inflation/prereg_1985/forward.csv`, to be scored as they arrive.
 
 To refresh the forecasts after new CPI prints without rerunning the backtest:
 `build`, `forecast`, `scenarios`, `foundation --models timesfm3_cov chronos2_cov
