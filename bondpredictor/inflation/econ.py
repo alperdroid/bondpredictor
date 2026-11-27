@@ -106,12 +106,26 @@ class InflationModel:
         return [i for i, n in enumerate(self.names) if n in names]
 
 
+
+def _weighted(model, Z, y):
+    """Rows scaled by the square root of ``model.sample_weight_`` (weighted least squares), if it is set.
+
+    Only the stacked-horizon training in ``partial.py`` sets weights; it centres the data with weighted
+    moments first, so no intercept is needed.
+    """
+    w = getattr(model, "sample_weight_", None)
+    if w is None:
+        return Z, y
+    r = np.sqrt(np.asarray(w, float))
+    return Z * r[:, None], y * r
+
 # ------------------------------------------------------------------ linear
 
 class OLS(InflationModel):
     name = "ols"
 
     def _fit(self, Z, y, params):
+        Z, y = _weighted(self, Z, y)
         self.beta, *_ = np.linalg.lstsq(Z, y, rcond=None)
 
     def _predict(self, Z):
@@ -124,6 +138,7 @@ class Ridge(InflationModel):
     n_folds = 5
 
     def _fit(self, Z, y, params):
+        Z, y = _weighted(self, Z, y)
         self.beta = _ridge(Z, y, params["alpha"])
 
     def _predict(self, Z):
@@ -170,7 +185,7 @@ class ElasticNet(InflationModel):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.m = EN(max_iter=5000, **params).fit(Z, y)
+            self.m = EN(max_iter=5000, **params).fit(Z, y, sample_weight=getattr(self, "sample_weight_", None))
 
     def _predict(self, Z):
         return self.m.predict(Z)
@@ -289,7 +304,8 @@ class RandomForest(InflationModel):
         from sklearn.ensemble import RandomForestRegressor
 
         self.m = RandomForestRegressor(n_estimators=self.kw.get("n_estimators", 500), max_features=1 / 3,
-                                       random_state=self.seed, n_jobs=1, **params).fit(Z, y)
+                                       random_state=self.seed, n_jobs=1, **params).fit(
+            Z, y, sample_weight=getattr(self, "sample_weight_", None))
 
     def _predict(self, Z):
         return self.m.predict(Z)
@@ -305,7 +321,7 @@ class Boosting(InflationModel):
 
         self.m = lgb.LGBMRegressor(learning_rate=0.02, min_child_samples=20, subsample=0.8, subsample_freq=1,
                                    colsample_bytree=0.5, reg_lambda=1.0, random_state=self.seed, n_jobs=1,
-                                   verbose=-1, **params).fit(Z, y)
+                                   verbose=-1, **params).fit(Z, y, sample_weight=getattr(self, "sample_weight_", None))
 
     def _predict(self, Z):
         return self.m.predict(Z)

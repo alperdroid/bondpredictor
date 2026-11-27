@@ -57,6 +57,7 @@ class Spec:
     tier: int = 1  # 1 = econometric ML and benchmarks, 2 = generic deep learning
     offset: str | None = None  # forecast the target minus this predictor (e.g. "mech"; "-name" subtracts minus it), then add it back
     anchor_horizons: tuple[int, ...] = ()  # at these horizons, unless ``offset`` is set, use the frame's anchor_h{h}
+    stack: str | None = None  # "partial" or "complete": train on horizons 1..12 at once (see ``partial.py``)
 
 
 def design(frame: pd.DataFrame, groups: dict[str, str], h: int):
@@ -108,6 +109,10 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
                  end: str | None = None, min_train: int = 120, min_hist: int = 60,
                  explain: bool = False) -> pd.DataFrame:
     """One row per origin: ``forecast``, ``rw``, ``actual`` (NaN until realised) and diagnostics."""
+    if spec.stack:
+        from .partial import run_stacked
+
+        return run_stacked(frame, groups, h, spec, start=start, end=end, min_train=min_train, min_hist=min_hist)
     X, g, pi, tgt = design(frame, groups, h)
     if spec.features is not None:
         X = X[[c for c in spec.features if c in X]]

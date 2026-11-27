@@ -398,6 +398,57 @@ def cmd_pilot(args):
     print(f"wrote {out / 'pilot.pkl'} ({len(res)} forecast series) and pilot_table.csv")
 
 
+def cmd_pistar(args):
+    """Partial-horizon training and the persistent-state model (Montes-Galdon 2026, ECB WP 3307)."""
+    from dataclasses import replace
+
+    from .backtest import model_zoo, run_jobs
+    from .partial import SUPPORTED
+    from .pistar import run_state_jobs, state_zoo
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "pistar.pkl"
+    if args.action == "report":
+        from .pistar_report import write_report
+
+        write_report(pd.read_pickle(path), args.report)
+        print(f"wrote {args.report}")
+        return
+    store = load_frames(args)
+    frames = {c: store["frames"][c] for c in args.countries}
+    end = args.end or str(store["last_month"])
+    kw = dict(start=args.start, end=end, min_train=args.min_train)
+    results = pd.read_pickle(path) if (args.resume and path.exists()) else {}
+    zoo = {s.name: s for s in model_zoo(1)}
+    jobs = []
+    for name in args.models:  # the tier-1 models as they are, 12 months ahead
+        jobs += [((c, 12, f"current|{name}"), zoo[name], kw) for c in args.countries]
+    for name in args.stacked:  # trained on horizons 1..12, with and without the partial rows
+        if zoo[name].model not in SUPPORTED:
+            raise SystemExit(f"{name}: stacked training supports {SUPPORTED}")
+        for st in ("complete", "partial"):
+            jobs += [((c, 12, f"{st}|{name}"), replace(zoo[name], stack=st), kw) for c in args.countries]
+    for name in ("rw", "ucsv", "ar"):  # benchmarks at the other horizons, for the state model
+        jobs += [((c, h, f"current|{name}"), zoo[name], kw) for c in args.countries for h in (3, 6, 24)]
+    jobs = [j for j in jobs if (j[0][0], j[0][1], *j[0][2].split("|")) not in results]
+    t0 = time.time()
+    show = _progress(t0)
+    if jobs:
+        raw = run_jobs(frames, jobs, args.jobs, show)
+        for (c, h, label), r in raw.items():
+            if isinstance(r, pd.DataFrame):
+                results[(c, h, *label.split("|"))] = r
+        pd.to_pickle(results, path)
+    specs = [s for s in state_zoo() if s.name not in {k[3] for k in results if k[2] == "state"}]
+    if specs:
+        raw = run_state_jobs(frames, specs, args.countries, kw, args.jobs, show)
+        for (c, h, name), r in raw.items():
+            results[(c, h, "state", name)] = r
+        pd.to_pickle(results, path)
+    print(f"wrote {path} ({len(results)} forecast series) in {time.time() - t0:.0f}s")
+
+
 def cmd_results(args):
     """Move results between output/ pickles and compact CSV files that are kept in the repository."""
     from .evaluation import pack_results, unpack_results
@@ -524,6 +575,16 @@ def build_parser():
     pl.add_argument("--max-age", type=float, default=7.0)
     pl.add_argument("--out", default="output/inflation/pilot")
     pl.set_defaults(func=cmd_pilot)
+
+    ps = sub.add_parser("pistar", parents=[common, run],
+                        help="partial-horizon training and the persistent-state trend model (ECB WP 3307)")
+    ps.add_argument("action", choices=["run", "report"])
+    ps.add_argument("--models", nargs="+", default=["rw", "ucsv", "ar", "ridge", "adalasso", "enet", "di", "3prf",
+                                                    "csr", "krr", "rf", "lgbm", "mrf", "bart", "hnn", "mlp"])
+    ps.add_argument("--stacked", nargs="+", default=["ar", "ridge", "enet", "rf", "lgbm"])
+    ps.add_argument("--out", default="output/inflation/pistar")
+    ps.add_argument("--report", default="docs/inflation_pistar.md")
+    ps.set_defaults(func=cmd_pistar)
 
     rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")
     rs.add_argument("action", choices=["pack", "unpack"])
