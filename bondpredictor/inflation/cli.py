@@ -340,8 +340,10 @@ def cmd_transforms(args):
         if r2.exists():
             parts.append(pd.read_csv(r2).query("set == 'underlying'"))
         rounds = pd.concat(parts) if parts else None
+        r4 = out / "round4" / "transform_compare_US_UK_JP_EA_table.csv"
         text = report(pd.read_pickle(screen_path), compare, store["frames"],
-                      pd.read_csv(latest_path) if latest_path.exists() else None, rounds)
+                      pd.read_csv(latest_path) if latest_path.exists() else None, rounds,
+                      pd.read_csv(r4) if r4.exists() else None)
         Path(args.report).write_text(text)
         print(text)
         print(f"wrote {args.report}")

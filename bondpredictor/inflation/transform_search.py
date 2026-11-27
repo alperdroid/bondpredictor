@@ -484,6 +484,31 @@ SET_LABELS = {"current": "Current features", "core_anchor": "Core-anchored targe
               "underlying_anchor": "+ US underlying, estimated anchor", "quadratic": "+ squares and cross-products"}
 
 
+def curvature_section(table: pd.DataFrame | None) -> list[str]:
+    """Markdown lines on adding squares and cross-products to the linear models."""
+    from .report import NAMES, md_table
+
+    if table is None or table.empty:
+        return []
+    med = table[table["model"] == "median"]
+    piv = med.pivot_table(index=["economy", "horizon"], columns="set", values="rel_rw")
+    p = med[med["set"] == "quadratic"].set_index(["economy", "horizon"])["dm_p"]
+    q = table[table["set"] == "quadratic"]
+    out = pd.DataFrame({"Current features": piv["current"].map(lambda v: f"{v:.3f}"),
+                        "+ squares and cross-products": [f"{v:.3f}" + ("*" if p.loc[i] < 0.1 else "") for i, v in piv["quadratic"].items()],
+                        "change": (piv["quadratic"] / piv["current"] - 1).map(lambda v: f"{100 * v:+.0f}%")})
+    out.index = [f"{NAMES.get(c, c)}, {h}m" for c, h in out.index]
+    return ["## Curvature: squares and cross-products", "",
+            "The non-linear models (kernel ridge, forests, boosting, BART, neural nets) learn curvature and "
+            "interactions by themselves.  For the linear models (ridge, adaptive lasso, elastic net) every input's "
+            f"square and the products of the key drivers were added, 120-180 terms per economy.  On average the "
+            f"median of the three linear models scored {piv['quadratic'].mean():.3f} with them against "
+            f"{piv['current'].mean():.3f} without; of the 64 model-horizon-economy rows, "
+            f"{int(((q['dm_t'] < 0) & (q['dm_p'] < 0.1)).sum())} were significantly better and "
+            f"{int(((q['dm_t'] > 0) & (q['dm_p'] < 0.1)).sum())} significantly worse (Diebold-Mariano, 10%).", "",
+            md_table(out, index_name="economy, horizon"), ""]
+
+
 def stickiness_section(frames: dict, rounds: pd.DataFrame | None) -> list[str]:
     """Markdown lines on the estimated core anchor and the US underlying-inflation measures."""
     from .report import NAMES, md_table
@@ -516,7 +541,7 @@ def stickiness_section(frames: dict, rounds: pd.DataFrame | None) -> list[str]:
 
 
 def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest: pd.DataFrame | None = None,
-           rounds: pd.DataFrame | None = None) -> str:
+           rounds: pd.DataFrame | None = None, curvature: pd.DataFrame | None = None) -> str:
     """Markdown summary of the screen, the model comparison and the base-rate check."""
     from .report import NAMES, md_table
 
@@ -576,6 +601,7 @@ def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest:
               "How often each alternative beat the current features (median model, 16 economy-horizon pairs; Diebold-"
               "Mariano at 10%):", "", md_table(wins, index_name="feature set"), ""]
     L += stickiness_section(frames, rounds)
+    L += curvature_section(curvature)
     if latest is not None and not latest.empty:
         lt = latest.pivot_table(index="h", columns="set", values="median")
         lt = lt[[c for c in SETS if c in lt.columns]].rename(columns=SET_LABELS)

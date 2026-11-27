@@ -129,6 +129,29 @@ Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano 
 | United States, 12m | 0.932 | 0.931 | 0.898 | 0.905 |
 | United States, 24m | 0.877 | 0.864 | 0.877 | 0.857 |
 
+## Curvature: squares and cross-products
+
+The non-linear models (kernel ridge, forests, boosting, BART, neural nets) learn curvature and interactions by themselves.  For the linear models (ridge, adaptive lasso, elastic net) every input's square and the products of the key drivers were added, 120-180 terms per economy.  On average the median of the three linear models scored 0.844 with them against 0.820 without; of the 64 model-horizon-economy rows, 3 were significantly better and 7 significantly worse (Diebold-Mariano, 10%).
+
+| economy, horizon | Current features | + squares and cross-products | change |
+|---|---|---|---|
+| Euro area, 3m | 0.783 | 0.688 | -12% |
+| Euro area, 6m | 0.832 | 0.838 | +1% |
+| Euro area, 12m | 0.994 | 1.273 | +28% |
+| Euro area, 24m | 0.782 | 0.820 | +5% |
+| Japan, 3m | 0.713 | 0.768 | +8% |
+| Japan, 6m | 0.781 | 0.745 | -5% |
+| Japan, 12m | 0.951 | 0.949 | -0% |
+| Japan, 24m | 1.008 | 1.006 | -0% |
+| United Kingdom, 3m | 0.777 | 0.770 | -1% |
+| United Kingdom, 6m | 0.757 | 0.772 | +2% |
+| United Kingdom, 12m | 0.879 | 0.896 | +2% |
+| United Kingdom, 24m | 0.799 | 0.808 | +1% |
+| United States, 3m | 0.618 | 0.647 | +5% |
+| United States, 6m | 0.720 | 0.950 | +32% |
+| United States, 12m | 0.885 | 0.733 | -17% |
+| United States, 24m | 0.842 | 0.836 | -1% |
+
 ## What the alternatives say about the US today
 
 Median of the same six models at the latest origin (October 2026 print, 3.9%), by feature set:
