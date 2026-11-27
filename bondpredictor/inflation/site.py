@@ -89,7 +89,8 @@ def _bands(r: pd.DataFrame, n: int = 120) -> dict:
 
 
 def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict | None, scores: pd.DataFrame,
-              frames_for_drivers: dict | None = None, asof: str | None = None, previous: dict | None = None) -> dict:
+              frames_for_drivers: dict | None = None, asof: str | None = None, previous: dict | None = None,
+              surveys: pd.DataFrame | None = None) -> dict:
     out = {"asof": asof or str(pd.Timestamp.today().date()), "economies": [], "history": {}, "latest": {},
            "paths": {}, "subperiods": {}, "accuracy": [], "models": {}}
     reused = False
@@ -145,6 +146,10 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
     for m in ORDER:
         out["models"][m] = {"label": LABELS[m], "short": SHORT[m], "family": family(m)}
     out["backtestAsof"] = (previous.get("backtestAsof") or previous["asof"]) if reused else out["asof"]
+    if surveys is not None and not surveys.empty:  # professional forecasters, on the models' own monthly target
+        out["surveys"] = [{"c": r["economy"], "h": int(r["horizon"]), "n": int(r["n"]), "survey": _r(r["rel_survey"], 3),
+                           "model": _r(r["rel_ens:median"], 3), "p": _r(r["dm_p_ens:median"], 4)}
+                          for r in surveys[surveys["basis"] == "monthly"].to_dict("records")]
     if frames_for_drivers:
         out["drivers"] = drivers_data(frames_for_drivers)
     if scenarios:

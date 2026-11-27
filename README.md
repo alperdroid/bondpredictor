@@ -440,6 +440,31 @@ and BART's posterior, scored by coverage and interval score; and
 re-estimation variants (seeds, fixed hyperparameters, rolling 20-year
 window, training only from 1985).
 
+### Update, November 2026
+
+The backtest was rerun on 27 November 2026 with the 24-month core anchor and
+the US underlying-inflation measures (`docs/inflation_report.md`,
+`results/inflation/`).  Averaged over the four economies the median of all
+models scores 0.73 / 0.80 / 0.88 / 0.84 of the no-change RMSE at 3 / 6 / 12 / 24
+months (October: 0.73 / 0.80 / 0.88 / 0.89); only the 24-month column changed.
+Two further results:
+
+* **Professional forecasters are still ahead.**  On the same dates and
+  targets the Survey of Professional Forecasters beats the median model for
+  the US (0.65 / 0.70 / 0.77 against 0.71 / 0.81 / 0.89 at 3 / 6 / 12 months)
+  and the ECB survey beats it for the euro area (0.88 against 0.92 at 12
+  months, 0.72 against 0.78 at 24), and averaging the model with the survey
+  does not beat the survey.
+* **A US pilot closes about half of that gap** (`docs/inflation_pilot.md`):
+  the average of direct models with a gasoline-based nowcast, a bottom-up
+  model of energy, food, core goods and core services, and models anchored on
+  the survey path scores 0.60 / 0.75 / 0.82 / 0.79 against 0.66 / 0.83 / 0.91 /
+  0.86 for the current features (six fast models), better in both halves of
+  the sample at every horizon.  It is not yet part of the live forecasts.
+
+The robustness tables of the October configuration are kept in
+`docs/inflation_robustness.md`.  The text below describes the October build.
+
 ### Results (October 2026 build)
 
 Full tables (per economy, Diebold–Mariano tests, model confidence sets,
@@ -526,15 +551,14 @@ What it says:
   (the surge broke past error patterns); the foundation models' own
   quantiles are the best calibrated, BART's posterior covers only ~30%.
 
-Latest forecasts, refreshed on 27 November 2026 with the October prints, the 24-month core anchor and the US
-underlying-inflation measures (median of the 13 tier-1 country models / TimesFM 3 + covariates; the backtest
-results above are from the October build):
+Latest forecasts, 27 November 2026, data to October (median of the 13 tier-1 country models / TimesFM 3 +
+covariates):
 
 | | Latest y/y | 3 months | 12 months | 24 months |
 |---|---|---|---|---|
 | US (Oct 2026) | 3.9% | 3.4 / 3.7 (Jan 2027) | 2.0 / 3.1 (Oct 2027) | 2.2 / 2.9 (Oct 2028) |
-| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.1 / 3.3 (Oct 2028) |
-| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.6 / 2.0 (Oct 2028) |
+| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.2 / 3.3 (Oct 2028) |
+| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.4 / 2.0 (Oct 2028) |
 | Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
 
 The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
@@ -582,6 +606,10 @@ bondpredictor/
     report.py      markdown report
     scenario.py    what-if responses of the refitted models
     site.py        data and renderer for docs/site
+    transform_search.py  real-time search over predictor transformations
+    surveys.py     professional forecasters as a yardstick
+    pilot.py       nowcast, survey path and bottom-up pilots
+    recursive.py   recursive least squares
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```
 

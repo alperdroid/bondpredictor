@@ -249,7 +249,17 @@ def cmd_report(args):
             results = {**results, **pd.read_pickle(p)}
     fc_path = Path(args.results) / "latest.csv"
     latest = pd.read_csv(fc_path) if fc_path.exists() else None
-    text, tables = build_report(results, robust, store, args.countries, args.horizons, latest, n_boot=args.n_boot)
+    surveys = None
+    if not args.no_surveys and {"US", "EA"} <= set(args.countries):
+        from ..data import Downloader as DL
+        from .report import collect
+        from .surveys import compare, load_surveys
+
+        full = {(c, h, m): r for c in ("US", "EA") for h in args.horizons for m, r in collect(results, c, h).items()}
+        surveys = compare(store, full, load_surveys(DL(max_age_days=7)))
+        surveys.to_csv(Path(args.out).with_name("inflation_surveys.csv"), index=False)
+    text, tables = build_report(results, robust, store, args.countries, args.horizons, latest, n_boot=args.n_boot,
+                                surveys=surveys)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)
@@ -314,7 +324,8 @@ def cmd_site(args):
     scen_path = res_dir / "scenarios.pkl"
     data = site_data(store, results, pd.read_csv(res_dir / "latest.csv"),
                      pd.read_pickle(scen_path) if scen_path.exists() else None, pd.read_csv(args.scores),
-                     {c: store["frames"][c] for c in CODES}, previous=previous)
+                     {c: store["frames"][c] for c in CODES}, previous=previous,
+                     surveys=pd.read_csv(args.surveys) if Path(args.surveys).exists() else None)
     (res_dir / "site.json").write_text(json.dumps(data))
     out = write_site(data, Path(args.template), Path(args.out))
     print(f"wrote {out} ({out.stat().st_size / 1e6:.2f} MB)")
@@ -505,6 +516,7 @@ def build_parser():
     rep.add_argument("--n-boot", type=int, default=2000)
     rep.add_argument("--out", default="docs/inflation_report.md")
     rep.add_argument("--latest-only", action="store_true", help="only refresh the latest-forecast section of --out")
+    rep.add_argument("--no-surveys", action="store_true", help="skip the comparison with professional forecasters")
     rep.set_defaults(func=cmd_report)
 
     f = sub.add_parser("forecast", parents=[common])
@@ -556,6 +568,7 @@ def build_parser():
     st = sub.add_parser("site", parents=[common], help="interactive site with forecasts and scenarios")
     st.add_argument("--results", default="output/inflation")
     st.add_argument("--scores", default="docs/inflation_report.csv", help="league table written by `report`")
+    st.add_argument("--surveys", default="docs/inflation_surveys.csv", help="comparison written by `report`")
     st.add_argument("--template", default="docs/site/template.html")
     st.add_argument("--out", default="docs/site/index.html")
     st.add_argument("--previous", default=None, help="page whose backtest to reuse when results.pkl is missing (default: --out)")
