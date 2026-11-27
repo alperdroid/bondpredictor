@@ -155,7 +155,8 @@ def survey_gap(dl: Downloader, code: str, frame: pd.DataFrame, horizons=HORIZONS
     """``svy_gap_h{h}``: the survey path at each horizon's target month minus current inflation.
 
     At origin ``k`` the path runs from the latest print through the points of the latest survey
-    published by ``k`` that lie beyond it, flat after the last point.
+    published by ``k`` that lie beyond it, flat after the last point.  Missing once every point
+    of that survey lies behind the latest print.
     """
     surveys = sorted(SURVEY_POINTS[code](dl), key=lambda x: x[0])
     known = [a for a, _ in surveys]
