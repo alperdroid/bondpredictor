@@ -311,7 +311,37 @@ def median_table(results) -> pd.DataFrame:
 
 # ------------------------------------------------------------------ document
 
-def write_report(results: dict, path: str, summary: str | None = None) -> None:
+SUMMARY = r"""## Findings (November 2026 build)
+
+* **Partial horizons do not help the direct models.**  Over 2000-2025 the stacked versions match or trail the
+  standard ones 12 months ahead (mean RMSE relative to the random walk: ridge 0.93 -> 0.93, elastic net
+  0.99 -> 0.99, LightGBM 0.96 -> 0.99, random forest 0.95 -> 1.00, AR-type 0.96 -> 0.98).  The partial rows
+  move results by about 0.01 against the complete-origin control, in either direction.  On the paper's US
+  2021-23 window ridge gains (0.69 as it is, 0.74 with complete origins, 0.61 with partial ones; its
+  January 2021 forecast rises from 2.3% to 4.0%), but the elastic net and the trees lose there too.
+* **The linear persistent-state model does not beat the existing models.**  The paper's design averages
+  0.94 against 0.88 for the repository's median and 0.92 for UCSV; it is best in Japan (0.81).  Removing
+  the memory (theta = 0) does as well (0.92), and neither the state nor the partial horizons is
+  significant in any economy at the 5% level.  Validation shrinks the predictors' part of the trend hard
+  (the penalty sits at the top of its grid at 89% of US origins and every UK origin), so the trend is close
+  to a re-estimated mean: the predictors moved it by 0.3-0.5 pp between January 2019 and 2022 in real time,
+  against about 5 pp for the paper's neural network.  The paper's mechanism needs the non-linear
+  innovation; a linear one does not reproduce it.
+* **On the paper's window several simple models do as well as Deep-pi\*.**  At the 12 SPF dates the state
+  models score 2.14-2.37 (paper: 2.14-2.25; SPF 3.44; the repository's median 2.61), but so do the
+  no-state variant (1.95), ridge with partial horizons (1.89) and the elastic net as it is (2.06).  Doing
+  well in 2021-23 does not single out the paper's ingredients.
+* **Adding the state model to the median helps by about 0.01** (DM p < 0.10 in the UK and Japan).
+* **Diagnostic, run after the main results:** trained from 1985, the no-state variant averages 0.84, the best
+  12-month number here.  The median was not retrained from 1985, so this is a lead for a pre-specified test,
+  not a result.
+* Two estimation lessons: the forward loss has two local optima in the AR coefficients, so the fit is
+  multi-started (a single warm start left the UK at a trend-led optimum, RMSE 1.46); and taxes need a
+  pass-through, estimated here from earlier events.
+"""
+
+
+def write_report(results: dict, path: str, summary: str | None = SUMMARY) -> None:
     from pathlib import Path
 
     from .pistar import LAMBDAS, THETA

@@ -406,13 +406,20 @@ def cmd_pistar(args):
     from .partial import SUPPORTED
     from .pistar import run_state_jobs, state_zoo
 
+    from .evaluation import pack_results, unpack_results
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     path = out / "pistar.pkl"
+    packed = Path(args.store) / "pistar.csv.gz"  # own folder: ``results unpack`` must not merge these
     if args.action == "report":
         from .pistar_report import write_report
 
-        write_report(pd.read_pickle(path), args.report)
+        if path.exists():
+            results = pd.read_pickle(path)
+        else:  # the copy kept in the repository
+            results = {(c, h, *m.split("|", 1)): r for (c, h, m), r in unpack_results([packed]).items()}
+        write_report(results, args.report)
         print(f"wrote {args.report}")
         return
     store = load_frames(args)
@@ -450,7 +457,9 @@ def cmd_pistar(args):
             for (c, h, name), r in raw.items():
                 results[(c, h, label, name)] = r
             pd.to_pickle(results, path)
-    print(f"wrote {path} ({len(results)} forecast series) in {time.time() - t0:.0f}s")
+    packed.parent.mkdir(parents=True, exist_ok=True)
+    n = pack_results({(c, h, f"{st}|{m}"): r for (c, h, st, m), r in results.items()}, packed)
+    print(f"wrote {path} ({len(results)} forecast series) in {time.time() - t0:.0f}s; {n} packed into {packed}")
 
 
 def cmd_results(args):
@@ -589,6 +598,7 @@ def build_parser():
     ps.add_argument("--from1985", action="store_true", help="also run the state models trained from 1985")
     ps.add_argument("--out", default="output/inflation/pistar")
     ps.add_argument("--report", default="docs/inflation_pistar.md")
+    ps.add_argument("--store", default="results/inflation/pistar", help="compact copy kept in the repository")
     ps.set_defaults(func=cmd_pistar)
 
     rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")

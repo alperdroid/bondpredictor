@@ -467,6 +467,7 @@ python -m bondpredictor.inflation deep                   # tier 2: global deep t
 python -m bondpredictor.inflation report                 # docs/inflation_report.md (+ .csv)
 python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of the latest forecasts
 python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
+python -m bondpredictor.inflation pistar run --jobs 4    # partial horizons + persistent-state trend (ECB WP 3307)
 ```
 
 `python -m bondpredictor.inflation transforms screen|compare|report` runs a
@@ -477,6 +478,22 @@ the screened transforms, the full transform library, lagged features and a
 core-anchored target.  None of these beat the current features on average
 over 2013-2026; transformations that won on 2000-2010 did no better than random
 ones afterwards.  See `docs/inflation_transforms.md`.
+
+`python -m bondpredictor.inflation pistar run|report` tests two ideas from
+Montes-Galdón (2026, ECB Working Paper 3307, "Deep-π*"): *partial-horizon
+training*, where the direct 12-month models learn from horizons 1-12 at once,
+including the last year's origins whose 12 months are only partly published
+(`partial.py`); and a *persistent-state trend*, an AR(12) on monthly inflation
+around a trend that is an exponentially weighted average of the predictors
+(the paper's recursion with a linear innovation, `pistar.py`).  Neither beats
+the current models over 2000-2025: the stacked direct models match or trail
+their standard versions 12 months ahead, and the state model averages 0.94 of
+the random walk's RMSE against 0.88 for the median combination (0.81 in Japan,
+its best economy).  Dropping the state's memory does as well, because
+validation shrinks the predictors' part of the trend hard and it behaves like
+a re-estimated mean.  On the paper's own US 2021-23 window the state models
+match Deep-π* (RMSE 2.14-2.37 at the SPF dates against the paper's 2.14-2.25
+and the SPF's 3.44), but so do simpler models.  See `docs/inflation_pistar.md`.
 
 To refresh the forecasts after new CPI prints without rerunning the backtest:
 `build`, `forecast`, `scenarios`, `foundation --models timesfm3_cov chronos2_cov
