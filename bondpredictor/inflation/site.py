@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import combined
 from .combined import headline_model
 from .evaluation import SUBPERIODS, common_sample, subperiod_table, target_month
 from .report import LABELS, NAMES, ORDER, collect
@@ -35,7 +36,7 @@ SHORT = {
     "bart": "BART", "hnn": "Hemisphere net", "mlp": "Neural net (MLP)", "panel:ridge": "Pooled ridge",
     "panel:lgbm": "Pooled boosting", "panel:mrf": "Pooled MRF", "panel:bart": "Pooled BART",
     "panel:hnn": "Pooled hemisphere net", "ens:ml": "Mean of ML", "ens:ml+ucsv": "Half ML, half UCSV",
-    "ens:median": "Median of models", "ens:combined": "Combined model", "fm:chronos_bolt": "Chronos-Bolt", "fm:chronos2": "Chronos-2",
+    "ens:median": "Median of models", "ens:combined": "Headline combination", "fm:chronos_bolt": "Chronos-Bolt", "fm:chronos2": "Chronos-2",
     "fm:chronos2_cov": "Chronos-2 + macro", "fm:timesfm25": "TimesFM 2.5", "fm:timesfm3": "TimesFM 3.0",
     "fm:timesfm3_cov": "TimesFM 3.0 + macro", "deep:nhits": "N-HiTS", "deep:patchtst": "PatchTST", "deep:tide": "TiDE",
     "deep:lstm": "LSTM",
@@ -61,10 +62,19 @@ PATH_MODELS = ("ucsv", "ridge", "adalasso", "csr", "krr", "rf", "lgbm", "mrf", "
                "ens:median", "ens:combined", "ens:ml+ucsv", "fm:timesfm3_cov", "fm:chronos2_cov", "deep:tide")
 # Models listed beside the median in the latest-forecast table.
 LATEST_MODELS = ("ucsv", "ridge", "csr", "krr", "lgbm", "mrf", "hnn", "mlp", "ens:ml+ucsv", "ens:median")
-# How each headline forecast is described on the page.
-HEADLINE = {"ens:median": {"short": "Median model", "what": "the median of 13 econometric ML models"},
-            "ens:combined": {"short": "Combined model",
-                             "what": "a combination of nowcast, bottom-up and survey-anchored models"}}
+PART_WORDS = {"nowcast": "nowcast", "bottom_up": "bottom-up", "nowcast+survey_anchor": "survey-anchored"}
+
+
+def headline_info(code: str, model: str) -> dict:
+    """How an economy's headline forecast is described on the page."""
+    if model != combined.KEY:
+        return {"model": model, "short": "Median model", "what": "the median of 13 econometric ML models", "parts": []}
+    parts = list(combined.PARTS[code])
+    words = [PART_WORDS[p] for p in parts]
+    what = (f"a combination of {', '.join(words[:-1])} and {words[-1]} models" if len(words) > 1
+            else f"the {words[0]} model{'' if parts[0] == 'bottom_up' else 's'}")
+    return {"model": model, "short": "Combined model" if len(parts) > 1 else f"{words[0].capitalize()} model", "what": what,
+            "parts": parts}
 
 
 def _r(x, nd: int = 2):
@@ -110,7 +120,7 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
             res = collect(results, c, h)
             lat = latest[(latest.country == c) & (latest.horizon == h)].set_index("model")
             head = headline_model(c, lat.index)  # the combination where adopted, else the median of the models
-            out["headline"][c] = {"model": head, **HEADLINE[head]}
+            out["headline"][c] = headline_info(c, head)
             med = float(lat.loc[head, "forecast"])
             backtest = "ens:median" in res
             if not backtest and previous is None:
@@ -154,7 +164,8 @@ def site_data(store: dict, results: dict, latest: pd.DataFrame, scenarios: dict 
                                 "rel": _r(row["rel. RW"], 3), "mcs": bool(row["in MCS"]), "p": _r(row["DM p"], 4),
                                 "n": int(row["N"]), "start": row["start"]})
     for m in ORDER:
-        out["models"][m] = {"label": LABELS[m], "short": SHORT[m], "family": family(m)}
+        # The report's label of the combination spells out its parts per economy; the page says that elsewhere.
+        out["models"][m] = {"label": SHORT[m] if m == combined.KEY else LABELS[m], "short": SHORT[m], "family": family(m)}
     out["backtestAsof"] = (previous.get("backtestAsof") or previous["asof"]) if reused else out["asof"]
     if surveys is not None and not surveys.empty:  # professional forecasters, on the models' own monthly target
         out["surveys"] = [{"c": r["economy"], "h": int(r["horizon"]), "n": int(r["n"]), "survey": _r(r["rel_survey"], 4),

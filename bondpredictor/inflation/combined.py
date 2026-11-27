@@ -15,10 +15,11 @@ see ``pilot.py`` for how each is built):
 the combination passed the rule in ``pilot.adoption``: better than the same six
 models without the new information over the full backtest and in both halves
 at three or more of the four horizons, and better than the median of all
-models on average (``docs/inflation_pilot.md``).  Only the US passed; in the
-UK, Japan and the euro area the median of the models stays the headline.  At
-an origin where a part has no forecast yet (too little history), the parts
-that exist are averaged.
+models on average (``docs/inflation_pilot.md``).  The US passed with all three
+parts and Japan, narrowly, with the bottom-up model alone; in the UK and the
+euro area the median of the models stays the headline.  At an origin where a
+part has no forecast yet (too little history), the parts that exist are
+averaged.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ KEY = "ens:combined"
 MEDIAN = "ens:median"
 PARTS: dict[str, tuple[str, ...]] = {
     "US": ("nowcast", "bottom_up", "nowcast+survey_anchor"),
+    "JP": ("bottom_up",),  # its component models are fed by the Tokyo CPI, published four weeks before the national one
 }
 
 

@@ -4,7 +4,7 @@
 
 Median of six fast models (ridge, adaptive lasso, elastic net, kernel ridge, random forest, gradient boosting), monthly origins from 2000, RMSE relative to no change (below 1 beats it).  Each economy's sets are scored on the months for which all of them have forecasts (the bottom-up model needs ten years of component data: from 2007 in the euro area).  Sub-periods are by the month being forecast.  `*` marks a Diebold-Mariano p-value below 0.1 against the current features (full sample, better or worse).
 
-The nowcast uses pump prices in the US, the UK and the euro area, and crude oil in yen in Japan, where no pump-price source accepts automated downloads.  The UK index is CPIH, the OECD's headline for the UK.
+The nowcast uses pump prices in the US, the UK and the euro area, and in Japan the Tokyo CPI, which is published four weeks before the national index (the backtest uses its revised values).
 
 ## What becomes the headline
 
@@ -14,106 +14,105 @@ Rule, fixed before the UK, Japan and euro-area runs: the first combination below
 
 **Combined (three-way average)** becomes the headline.
 
-* Combined (three-way average): beats the current features at 4 of 4 horizons; RMSE 8.2% below the median of all models on average: **adopted**.
-* Nowcast and bottom-up, averaged: beats the current features at 3 of 4 horizons; RMSE 3.7% below the median of all models on average.
-* Bottom-up: beats the current features at 2 of 4 horizons; RMSE 4.4% below the median of all models on average.
-* + nowcast: beats the current features at 1 of 4 horizons; RMSE 0.4% above the median of all models on average.
+* Combined (three-way average): beats the current features at 4 of 4 horizons; RMSE 7.8% below the median of all models on average: **adopted**.
+* Nowcast and bottom-up, averaged: beats the current features at 3 of 4 horizons; RMSE 3.3% below the median of all models on average.
+* Bottom-up: beats the current features at 2 of 4 horizons; RMSE 4.1% below the median of all models on average.
+* + nowcast: beats the current features at 1 of 4 horizons; RMSE 0.8% above the median of all models on average.
 
 | candidate, horizon | from | n | candidate | current | median of all models | candidate, to 2012 | current, to 2012 | candidate, 2013 on | current, 2013 on | beats current |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Combined (three-way average), 3 months | 2000-01 | 318 | 0.596 | 0.656 | 0.683 | 0.612 | 0.687 | 0.570 | 0.601 | yes |
-| Combined (three-way average), 6 months | 2000-01 | 315 | 0.748 | 0.827 | 0.810 | 0.738 | 0.866 | 0.762 | 0.767 | yes |
-| Combined (three-way average), 12 months | 2000-01 | 309 | 0.821 | 0.908 | 0.882 | 0.758 | 0.895 | 0.878 | 0.921 | yes |
-| Combined (three-way average), 24 months | 2000-01 | 297 | 0.789 | 0.864 | 0.835 | 0.791 | 0.851 | 0.788 | 0.870 | yes |
-| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 318 | 0.618 | 0.656 | 0.683 | 0.640 | 0.687 | 0.581 | 0.601 | yes |
-| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 315 | 0.770 | 0.827 | 0.810 | 0.788 | 0.866 | 0.743 | 0.767 | yes |
-| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 309 | 0.872 | 0.908 | 0.882 | 0.833 | 0.895 | 0.908 | 0.921 | yes |
-| Nowcast and bottom-up, averaged, 24 months | 2000-01 | 297 | 0.843 | 0.864 | 0.835 | 0.852 | 0.851 | 0.839 | 0.870 |  |
-| Bottom-up, 3 months | 2000-01 | 318 | 0.623 | 0.656 | 0.683 | 0.632 | 0.687 | 0.609 | 0.601 |  |
-| Bottom-up, 6 months | 2000-01 | 315 | 0.751 | 0.827 | 0.810 | 0.740 | 0.866 | 0.766 | 0.767 | yes |
-| Bottom-up, 12 months | 2000-01 | 309 | 0.864 | 0.908 | 0.882 | 0.810 | 0.895 | 0.913 | 0.921 | yes |
-| Bottom-up, 24 months | 2000-01 | 297 | 0.838 | 0.864 | 0.835 | 0.867 | 0.851 | 0.825 | 0.870 |  |
-| + nowcast, 3 months | 2000-01 | 318 | 0.641 | 0.656 | 0.683 | 0.667 | 0.687 | 0.596 | 0.601 | yes |
-| + nowcast, 6 months | 2000-01 | 315 | 0.825 | 0.827 | 0.810 | 0.869 | 0.866 | 0.758 | 0.767 |  |
-| + nowcast, 12 months | 2000-01 | 309 | 0.906 | 0.908 | 0.882 | 0.882 | 0.895 | 0.929 | 0.921 |  |
-| + nowcast, 24 months | 2000-01 | 297 | 0.862 | 0.864 | 0.835 | 0.852 | 0.851 | 0.866 | 0.870 |  |
+| Combined (three-way average), 3 months | 2000-01 | 318 | 0.596 | 0.656 | 0.672 | 0.612 | 0.687 | 0.570 | 0.601 | yes |
+| Combined (three-way average), 6 months | 2000-01 | 315 | 0.748 | 0.827 | 0.808 | 0.738 | 0.866 | 0.762 | 0.767 | yes |
+| Combined (three-way average), 12 months | 2000-01 | 309 | 0.821 | 0.908 | 0.878 | 0.758 | 0.895 | 0.878 | 0.921 | yes |
+| Combined (three-way average), 24 months | 2000-01 | 297 | 0.789 | 0.864 | 0.841 | 0.791 | 0.851 | 0.788 | 0.870 | yes |
+| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 318 | 0.618 | 0.656 | 0.672 | 0.640 | 0.687 | 0.581 | 0.601 | yes |
+| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 315 | 0.770 | 0.827 | 0.808 | 0.788 | 0.866 | 0.743 | 0.767 | yes |
+| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 309 | 0.872 | 0.908 | 0.878 | 0.833 | 0.895 | 0.908 | 0.921 | yes |
+| Nowcast and bottom-up, averaged, 24 months | 2000-01 | 297 | 0.843 | 0.864 | 0.841 | 0.852 | 0.851 | 0.839 | 0.870 |  |
+| Bottom-up, 3 months | 2000-01 | 318 | 0.623 | 0.656 | 0.672 | 0.632 | 0.687 | 0.609 | 0.601 |  |
+| Bottom-up, 6 months | 2000-01 | 315 | 0.751 | 0.827 | 0.808 | 0.740 | 0.866 | 0.766 | 0.767 | yes |
+| Bottom-up, 12 months | 2000-01 | 309 | 0.864 | 0.908 | 0.878 | 0.810 | 0.895 | 0.913 | 0.921 | yes |
+| Bottom-up, 24 months | 2000-01 | 297 | 0.838 | 0.864 | 0.841 | 0.867 | 0.851 | 0.825 | 0.870 |  |
+| + nowcast, 3 months | 2000-01 | 318 | 0.641 | 0.656 | 0.672 | 0.667 | 0.687 | 0.596 | 0.601 | yes |
+| + nowcast, 6 months | 2000-01 | 315 | 0.825 | 0.827 | 0.808 | 0.869 | 0.866 | 0.758 | 0.767 |  |
+| + nowcast, 12 months | 2000-01 | 309 | 0.906 | 0.908 | 0.878 | 0.882 | 0.895 | 0.929 | 0.921 |  |
+| + nowcast, 24 months | 2000-01 | 297 | 0.862 | 0.864 | 0.841 | 0.852 | 0.851 | 0.866 | 0.870 |  |
 
 ### United Kingdom
 
 No candidate passes both tests: the median of the models stays the headline.
 
-* Nowcast and bottom-up, averaged: beats the current features at 3 of 4 horizons; RMSE 1.1% above the median of all models on average.
-* Bottom-up: beats the current features at 1 of 4 horizons; RMSE 1.9% above the median of all models on average.
-* + nowcast: beats the current features at 2 of 4 horizons; RMSE 5.4% above the median of all models on average.
+* Nowcast and bottom-up, averaged: beats the current features at 2 of 4 horizons; RMSE 1.0% above the median of all models on average.
+* Bottom-up: beats the current features at 1 of 4 horizons; RMSE 2.2% above the median of all models on average.
+* + nowcast: beats the current features at 1 of 4 horizons; RMSE 4.7% above the median of all models on average.
 * Half "Nowcast and bottom-up, averaged" and half the median of all models: beats that median over the full sample and both halves at 1 of 4 horizons, so not adopted either.
 
 | candidate, horizon | from | n | candidate | current | median of all models | candidate, to 2012 | current, to 2012 | candidate, 2013 on | current, 2013 on | beats current |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 320 | 0.756 | 0.785 | 0.739 | 0.828 | 0.884 | 0.719 | 0.733 | yes |
-| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 317 | 0.780 | 0.813 | 0.777 | 0.854 | 0.937 | 0.754 | 0.767 | yes |
-| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 311 | 0.885 | 0.935 | 0.903 | 0.914 | 1.067 | 0.879 | 0.906 | yes |
-| Nowcast and bottom-up, averaged, 24 months | 2001-01 | 287 | 0.835 | 0.864 | 0.805 | 1.212 | 1.574 | 0.796 | 0.777 |  |
-| Bottom-up, 3 months | 2000-01 | 320 | 0.761 | 0.785 | 0.739 | 0.805 | 0.884 | 0.739 | 0.733 |  |
-| Bottom-up, 6 months | 2000-01 | 317 | 0.786 | 0.813 | 0.777 | 0.833 | 0.937 | 0.769 | 0.767 |  |
-| Bottom-up, 12 months | 2000-01 | 311 | 0.877 | 0.935 | 0.903 | 0.939 | 1.067 | 0.863 | 0.906 | yes |
-| Bottom-up, 24 months | 2001-01 | 287 | 0.858 | 0.864 | 0.805 | 1.176 | 1.574 | 0.826 | 0.777 |  |
-| + nowcast, 3 months | 2000-01 | 320 | 0.784 | 0.785 | 0.739 | 0.885 | 0.884 | 0.730 | 0.733 |  |
-| + nowcast, 6 months | 2000-01 | 317 | 0.808 | 0.813 | 0.777 | 0.932 | 0.937 | 0.761 | 0.767 | yes |
-| + nowcast, 12 months | 2000-01 | 311 | 0.942 | 0.935 | 0.903 | 1.066 | 1.067 | 0.915 | 0.906 |  |
-| + nowcast, 24 months | 2000-01 | 299 | 0.862 | 0.865 | 0.805 | 1.566 | 1.572 | 0.775 | 0.777 | yes |
+| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 320 | 0.739 | 0.762 | 0.732 | 0.797 | 0.869 | 0.712 | 0.708 |  |
+| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 317 | 0.775 | 0.808 | 0.791 | 0.831 | 0.933 | 0.757 | 0.764 | yes |
+| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 311 | 0.885 | 0.928 | 0.890 | 0.947 | 1.096 | 0.875 | 0.898 | yes |
+| Nowcast and bottom-up, averaged, 24 months | 2001-01 | 287 | 0.837 | 0.861 | 0.794 | 1.328 | 1.724 | 0.797 | 0.775 |  |
+| Bottom-up, 3 months | 2000-01 | 320 | 0.753 | 0.762 | 0.732 | 0.786 | 0.869 | 0.737 | 0.708 |  |
+| Bottom-up, 6 months | 2000-01 | 317 | 0.780 | 0.808 | 0.791 | 0.809 | 0.933 | 0.771 | 0.764 |  |
+| Bottom-up, 12 months | 2000-01 | 311 | 0.888 | 0.928 | 0.890 | 1.009 | 1.096 | 0.867 | 0.898 | yes |
+| Bottom-up, 24 months | 2001-01 | 287 | 0.854 | 0.861 | 0.794 | 1.251 | 1.724 | 0.823 | 0.775 |  |
+| + nowcast, 3 months | 2000-01 | 320 | 0.762 | 0.762 | 0.732 | 0.869 | 0.869 | 0.707 | 0.708 |  |
+| + nowcast, 6 months | 2000-01 | 317 | 0.804 | 0.808 | 0.791 | 0.933 | 0.933 | 0.759 | 0.764 | yes |
+| + nowcast, 12 months | 2000-01 | 311 | 0.927 | 0.928 | 0.890 | 1.080 | 1.096 | 0.900 | 0.898 |  |
+| + nowcast, 24 months | 2000-01 | 299 | 0.866 | 0.862 | 0.795 | 1.728 | 1.722 | 0.779 | 0.775 |  |
 
 ### Japan
 
-No candidate passes both tests: the median of the models stays the headline.
+**Bottom-up** becomes the headline.
 
-* Nowcast and bottom-up, averaged: beats the current features at 4 of 4 horizons; RMSE 1.3% above the median of all models on average.
-* Bottom-up: beats the current features at 3 of 4 horizons; RMSE 0.2% above the median of all models on average.
-* + nowcast: beats the current features at 1 of 4 horizons; RMSE 6.1% above the median of all models on average.
-* Half "Nowcast and bottom-up, averaged" and half the median of all models: beats that median over the full sample and both halves at 0 of 4 horizons, so not adopted either.
+* Nowcast and bottom-up, averaged: beats the current features at 4 of 4 horizons; RMSE 0.0% above the median of all models on average.
+* Bottom-up: beats the current features at 4 of 4 horizons; RMSE 1.4% below the median of all models on average: **adopted**.
+* + nowcast: beats the current features at 3 of 4 horizons; RMSE 5.1% above the median of all models on average.
 
 | candidate, horizon | from | n | candidate | current | median of all models | candidate, to 2012 | current, to 2012 | candidate, 2013 on | current, 2013 on | beats current |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 320 | 0.740 | 0.748 | 0.707 | 0.794 | 0.814 | 0.701 | 0.702 | yes |
-| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 317 | 0.758 | 0.795 | 0.748 | 0.821 | 0.863 | 0.715 | 0.748 | yes |
-| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 311 | 0.821 | 0.871 | 0.833 | 0.841 | 0.872 | 0.811 | 0.871 | yes |
-| Nowcast and bottom-up, averaged, 24 months | 2000-01 | 299 | 0.967 | 1.022 | 0.960 | 0.886 | 0.947 | 0.990 | 1.043 | yes |
-| Bottom-up, 3 months | 2000-01 | 320 | 0.759 | 0.748 | 0.707 | 0.789 | 0.814 | 0.738 | 0.702 |  |
-| Bottom-up, 6 months | 2000-01 | 317 | 0.752 | 0.795 | 0.748 | 0.805 | 0.863 | 0.716 | 0.748 | yes |
-| Bottom-up, 12 months | 2000-01 | 311 | 0.787 | 0.871 | 0.833 | 0.812 | 0.872 | 0.774 | 0.871 | yes |
-| Bottom-up, 24 months | 2000-01 | 299 | 0.946 | 1.022 | 0.960 | 0.921 | 0.947 | 0.953 | 1.043 | yes |
-| + nowcast, 3 months | 2000-01 | 320 | 0.753 | 0.748 | 0.707 | 0.818 | 0.814 | 0.707 | 0.702 |  |
-| + nowcast, 6 months | 2000-01 | 317 | 0.789 | 0.795 | 0.748 | 0.856 | 0.863 | 0.743 | 0.748 | yes |
-| + nowcast, 12 months | 2000-01 | 311 | 0.882 | 0.871 | 0.833 | 0.899 | 0.872 | 0.874 | 0.871 |  |
-| + nowcast, 24 months | 2000-01 | 299 | 1.021 | 1.022 | 0.960 | 0.942 | 0.947 | 1.044 | 1.043 |  |
+| Nowcast and bottom-up, averaged, 3 months | 2000-01 | 320 | 0.683 | 0.748 | 0.703 | 0.755 | 0.814 | 0.631 | 0.702 | yes |
+| Nowcast and bottom-up, averaged, 6 months | 2000-01 | 317 | 0.750 | 0.795 | 0.727 | 0.816 | 0.863 | 0.705 | 0.748 | yes |
+| Nowcast and bottom-up, averaged, 12 months | 2000-01 | 311 | 0.808 | 0.871 | 0.825 | 0.814 | 0.872 | 0.804 | 0.871 | yes |
+| Nowcast and bottom-up, averaged, 24 months | 2000-01 | 299 | 0.972 | 1.022 | 0.953 | 0.882 | 0.947 | 0.997 | 1.043 | yes |
+| Bottom-up, 3 months | 2000-01 | 320 | 0.699 | 0.748 | 0.703 | 0.749 | 0.814 | 0.664 | 0.702 | yes |
+| Bottom-up, 6 months | 2000-01 | 317 | 0.735 | 0.795 | 0.727 | 0.794 | 0.863 | 0.696 | 0.748 | yes |
+| Bottom-up, 12 months | 2000-01 | 311 | 0.779 | 0.871 | 0.825 | 0.793 | 0.872 | 0.771 | 0.871 | yes |
+| Bottom-up, 24 months | 2000-01 | 299 | 0.949 | 1.022 | 0.953 | 0.916 | 0.947 | 0.959 | 1.043 | yes |
+| + nowcast, 3 months | 2000-01 | 320 | 0.699 | 0.748 | 0.703 | 0.780 | 0.814 | 0.640 | 0.702 | yes |
+| + nowcast, 6 months | 2000-01 | 317 | 0.790 | 0.795 | 0.727 | 0.859 | 0.863 | 0.743 | 0.748 | yes |
+| + nowcast, 12 months | 2000-01 | 311 | 0.865 | 0.871 | 0.825 | 0.869 | 0.872 | 0.864 | 0.871 | yes |
+| + nowcast, 24 months | 2000-01 | 299 | 1.025 | 1.022 | 0.953 | 0.931 | 0.947 | 1.051 | 1.043 |  |
 
 ### Euro area
 
 No candidate passes both tests: the median of the models stays the headline.
 
-* Combined (three-way average): beats the current features at 1 of 4 horizons; RMSE 0.9% above the median of all models on average.
-* Nowcast and bottom-up, averaged: beats the current features at 1 of 4 horizons; RMSE 0.1% above the median of all models on average.
-* Bottom-up: beats the current features at 0 of 4 horizons; RMSE 2.4% above the median of all models on average.
-* + nowcast: beats the current features at 3 of 4 horizons; RMSE 1.3% above the median of all models on average.
+* Combined (three-way average): beats the current features at 1 of 4 horizons; RMSE 0.0% below the median of all models on average.
+* Nowcast and bottom-up, averaged: beats the current features at 1 of 4 horizons; RMSE 0.8% below the median of all models on average.
+* Bottom-up: beats the current features at 0 of 4 horizons; RMSE 1.5% above the median of all models on average.
+* + nowcast: beats the current features at 3 of 4 horizons; RMSE 0.4% above the median of all models on average.
 * Half "+ nowcast" and half the median of all models: beats that median over the full sample and both halves at 0 of 4 horizons, so not adopted either.
 
 | candidate, horizon | from | n | candidate | current | median of all models | candidate, to 2012 | current, to 2012 | candidate, 2013 on | current, 2013 on | beats current |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Combined (three-way average), 3 months | 2007-04 | 233 | 0.785 | 0.818 | 0.778 | 0.760 | 0.887 | 0.792 | 0.799 | yes |
-| Combined (three-way average), 6 months | 2007-07 | 227 | 0.883 | 0.877 | 0.869 | 0.833 | 0.972 | 0.895 | 0.852 |  |
-| Combined (three-way average), 12 months | 2008-01 | 215 | 0.904 | 0.915 | 0.902 | 0.808 | 0.969 | 0.920 | 0.905 |  |
-| Combined (three-way average), 24 months | 2009-01 | 191 | 0.773 | 0.792 | 0.766 | 0.469 | 0.352 | 0.784 | 0.807 |  |
-| Nowcast and bottom-up, averaged, 3 months | 2007-04 | 233 | 0.770 | 0.818 | 0.778 | 0.725 | 0.887 | 0.781 | 0.799 | yes |
-| Nowcast and bottom-up, averaged, 6 months | 2007-07 | 227 | 0.859 | 0.877 | 0.869 | 0.819 | 0.972 | 0.869 | 0.852 |  |
-| Nowcast and bottom-up, averaged, 12 months | 2008-01 | 215 | 0.902 | 0.915 | 0.902 | 0.858 | 0.969 | 0.910 | 0.905 |  |
-| Nowcast and bottom-up, averaged, 24 months | 2009-01 | 191 | 0.787 | 0.792 | 0.766 | 0.557 | 0.352 | 0.796 | 0.807 |  |
-| Bottom-up, 3 months | 2007-04 | 233 | 0.770 | 0.818 | 0.778 | 0.638 | 0.887 | 0.802 | 0.799 |  |
-| Bottom-up, 6 months | 2007-07 | 227 | 0.883 | 0.877 | 0.869 | 0.701 | 0.972 | 0.923 | 0.852 |  |
-| Bottom-up, 12 months | 2008-01 | 215 | 0.928 | 0.915 | 0.902 | 0.785 | 0.969 | 0.951 | 0.905 |  |
-| Bottom-up, 24 months | 2009-01 | 191 | 0.812 | 0.792 | 0.766 | 0.781 | 0.352 | 0.814 | 0.807 |  |
-| + nowcast, 3 months | 2002-01 | 296 | 0.797 | 0.819 | 0.780 | 0.838 | 0.880 | 0.784 | 0.799 | yes |
-| + nowcast, 6 months | 2002-01 | 293 | 0.864 | 0.877 | 0.869 | 0.955 | 0.964 | 0.836 | 0.852 | yes |
-| + nowcast, 12 months | 2002-01 | 287 | 0.909 | 0.911 | 0.900 | 0.928 | 0.935 | 0.905 | 0.905 | yes |
-| + nowcast, 24 months | 2003-01 | 263 | 0.798 | 0.800 | 0.778 | 0.736 | 0.736 | 0.804 | 0.807 |  |
+| Combined (three-way average), 3 months | 2007-04 | 233 | 0.785 | 0.818 | 0.783 | 0.760 | 0.887 | 0.792 | 0.799 | yes |
+| Combined (three-way average), 6 months | 2007-07 | 227 | 0.883 | 0.877 | 0.880 | 0.833 | 0.972 | 0.895 | 0.852 |  |
+| Combined (three-way average), 12 months | 2008-01 | 215 | 0.904 | 0.915 | 0.920 | 0.808 | 0.969 | 0.920 | 0.905 |  |
+| Combined (three-way average), 24 months | 2009-01 | 191 | 0.773 | 0.792 | 0.765 | 0.469 | 0.352 | 0.784 | 0.807 |  |
+| Nowcast and bottom-up, averaged, 3 months | 2007-04 | 233 | 0.770 | 0.818 | 0.783 | 0.725 | 0.887 | 0.781 | 0.799 | yes |
+| Nowcast and bottom-up, averaged, 6 months | 2007-07 | 227 | 0.859 | 0.877 | 0.880 | 0.819 | 0.972 | 0.869 | 0.852 |  |
+| Nowcast and bottom-up, averaged, 12 months | 2008-01 | 215 | 0.902 | 0.915 | 0.920 | 0.858 | 0.969 | 0.910 | 0.905 |  |
+| Nowcast and bottom-up, averaged, 24 months | 2009-01 | 191 | 0.787 | 0.792 | 0.765 | 0.557 | 0.352 | 0.796 | 0.807 |  |
+| Bottom-up, 3 months | 2007-04 | 233 | 0.770 | 0.818 | 0.783 | 0.638 | 0.887 | 0.802 | 0.799 |  |
+| Bottom-up, 6 months | 2007-07 | 227 | 0.883 | 0.877 | 0.880 | 0.701 | 0.972 | 0.923 | 0.852 |  |
+| Bottom-up, 12 months | 2008-01 | 215 | 0.928 | 0.915 | 0.920 | 0.785 | 0.969 | 0.951 | 0.905 |  |
+| Bottom-up, 24 months | 2009-01 | 191 | 0.812 | 0.792 | 0.765 | 0.781 | 0.352 | 0.814 | 0.807 |  |
+| + nowcast, 3 months | 2002-01 | 296 | 0.797 | 0.819 | 0.784 | 0.838 | 0.880 | 0.784 | 0.799 | yes |
+| + nowcast, 6 months | 2002-01 | 293 | 0.864 | 0.877 | 0.880 | 0.955 | 0.964 | 0.836 | 0.852 | yes |
+| + nowcast, 12 months | 2002-01 | 287 | 0.909 | 0.911 | 0.917 | 0.928 | 0.935 | 0.905 | 0.905 | yes |
+| + nowcast, 24 months | 2003-01 | 263 | 0.798 | 0.800 | 0.777 | 0.736 | 0.736 | 0.804 | 0.807 |  |
 
 ## United States
 
@@ -136,35 +135,35 @@ No candidate passes both tests: the median of the models stays the headline.
 
 | horizon, sample | n | Current | + nowcast | Bottom-up | Nowcast and bottom-up, averaged |
 |---|---|---|---|---|---|
-| 3 months, all | 320 | 0.785 | 0.784 | 0.761 | 0.756* |
-| 3 months, to 2012 | 154 | 0.884 | 0.885 | 0.805 | 0.828 |
-| 3 months, 2013 on | 166 | 0.733 | 0.730 | 0.739 | 0.719 |
-| 6 months, all | 317 | 0.813 | 0.808 | 0.786 | 0.780 |
-| 6 months, to 2012 | 151 | 0.937 | 0.932 | 0.833 | 0.854 |
-| 6 months, 2013 on | 166 | 0.767 | 0.761 | 0.769 | 0.754 |
-| 12 months, all | 311 | 0.935 | 0.942 | 0.877 | 0.885 |
-| 12 months, to 2012 | 145 | 1.067 | 1.066 | 0.939 | 0.914 |
-| 12 months, 2013 on | 166 | 0.906 | 0.915 | 0.863 | 0.879 |
-| 24 months, all | 287 | 0.864 | 0.861 | 0.858 | 0.835 |
-| 24 months, to 2012 | 121 | 1.574 | 1.569 | 1.176 | 1.212 |
-| 24 months, 2013 on | 166 | 0.777 | 0.775 | 0.826 | 0.796 |
+| 3 months, all | 320 | 0.762 | 0.762 | 0.753 | 0.739 |
+| 3 months, to 2012 | 154 | 0.869 | 0.869 | 0.786 | 0.797 |
+| 3 months, 2013 on | 166 | 0.708 | 0.707 | 0.737 | 0.712 |
+| 6 months, all | 317 | 0.808 | 0.804 | 0.780 | 0.775 |
+| 6 months, to 2012 | 151 | 0.933 | 0.933 | 0.809 | 0.831 |
+| 6 months, 2013 on | 166 | 0.764 | 0.759 | 0.771 | 0.757 |
+| 12 months, all | 311 | 0.928 | 0.927 | 0.888 | 0.885* |
+| 12 months, to 2012 | 145 | 1.096 | 1.080 | 1.009 | 0.947 |
+| 12 months, 2013 on | 166 | 0.898 | 0.900 | 0.867 | 0.875 |
+| 24 months, all | 287 | 0.861 | 0.865 | 0.854 | 0.837 |
+| 24 months, to 2012 | 121 | 1.724 | 1.730 | 1.251 | 1.328 |
+| 24 months, 2013 on | 166 | 0.775 | 0.779 | 0.823 | 0.797 |
 
 ## Japan
 
 | horizon, sample | n | Current | + nowcast | Bottom-up | Nowcast and bottom-up, averaged |
 |---|---|---|---|---|---|
-| 3 months, all | 320 | 0.748 | 0.753* | 0.759 | 0.740 |
-| 3 months, to 2012 | 154 | 0.814 | 0.818 | 0.789 | 0.794 |
-| 3 months, 2013 on | 166 | 0.702 | 0.707 | 0.738 | 0.701 |
-| 6 months, all | 317 | 0.795 | 0.789* | 0.752* | 0.758* |
-| 6 months, to 2012 | 151 | 0.863 | 0.856 | 0.805 | 0.821 |
-| 6 months, 2013 on | 166 | 0.748 | 0.743 | 0.716 | 0.715 |
-| 12 months, all | 311 | 0.871 | 0.882 | 0.787* | 0.821* |
-| 12 months, to 2012 | 145 | 0.872 | 0.899 | 0.812 | 0.841 |
-| 12 months, 2013 on | 166 | 0.871 | 0.874 | 0.774 | 0.811 |
-| 24 months, all | 299 | 1.022 | 1.021 | 0.946 | 0.967 |
-| 24 months, to 2012 | 133 | 0.947 | 0.942 | 0.921 | 0.886 |
-| 24 months, 2013 on | 166 | 1.043 | 1.044 | 0.953 | 0.990 |
+| 3 months, all | 320 | 0.748 | 0.699* | 0.699* | 0.683* |
+| 3 months, to 2012 | 154 | 0.814 | 0.780 | 0.749 | 0.755 |
+| 3 months, 2013 on | 166 | 0.702 | 0.640 | 0.664 | 0.631 |
+| 6 months, all | 317 | 0.795 | 0.790 | 0.735* | 0.750* |
+| 6 months, to 2012 | 151 | 0.863 | 0.859 | 0.794 | 0.816 |
+| 6 months, 2013 on | 166 | 0.748 | 0.743 | 0.696 | 0.705 |
+| 12 months, all | 311 | 0.871 | 0.865* | 0.779* | 0.808* |
+| 12 months, to 2012 | 145 | 0.872 | 0.869 | 0.793 | 0.814 |
+| 12 months, 2013 on | 166 | 0.871 | 0.864 | 0.771 | 0.804 |
+| 24 months, all | 299 | 1.022 | 1.025 | 0.949 | 0.972* |
+| 24 months, to 2012 | 133 | 0.947 | 0.931 | 0.916 | 0.882 |
+| 24 months, 2013 on | 166 | 1.043 | 1.051 | 0.959 | 0.997 |
 
 ## Euro area
 
@@ -200,18 +199,18 @@ How well each component's own y/y inflation is forecast, relative to no change i
 
 | component | 3 months | 6 months | 12 months | 24 months |
 |---|---|---|---|---|
-| core goods | 0.93 | 0.97 | 0.94 | 0.91 |
-| energy | 0.74 | 0.78 | 0.87 | 0.90 |
-| food | 0.70 | 0.67 | 0.79 | 0.81 |
-| services | 0.96 | 0.97 | 1.02 | 1.03 |
+| core goods | 0.93 | 0.97 | 0.94 | 0.92 |
+| energy | 0.74 | 0.78 | 0.89 | 0.91 |
+| food | 0.71 | 0.67 | 0.79 | 0.81 |
+| services | 0.93 | 0.93 | 1.04 | 0.96 |
 
 ### Japan
 
 | component | 3 months | 6 months | 12 months | 24 months |
 |---|---|---|---|---|
-| core | 0.85 | 0.83 | 0.88 | 0.97 |
-| energy | 0.68 | 0.67 | 0.71 | 0.71 |
-| food | 0.72 | 0.73 | 0.71 | 0.92 |
+| core | 0.79 | 0.80 | 0.84 | 0.97 |
+| energy | 0.63 | 0.65 | 0.70 | 0.71 |
+| food | 0.66 | 0.72 | 0.71 | 0.92 |
 
 ### Euro area
 
@@ -240,14 +239,14 @@ Quarterly survey dates from 2000, y/y inflation in the last month of the target 
 | United States, 6 months | 2.39 | 2.41 | 2.45 | 2.70 | 2.74 | 2.61 | 2.51 | 2.58 |
 | United States, 12 months | 1.99 | 1.81 | 1.88 | 1.91 | 1.93 | 2.53 | 2.17 | 2.09 |
 | United States, 24 months | 2.64 | 2.60 | 2.40 | 2.32 | 2.33 | 2.60 | 2.60 | 2.51 |
-| United Kingdom, 3 months | 3.82 | 3.85 |  |  |  | 3.76 | 3.81 |  |
-| United Kingdom, 6 months | 3.94 | 3.96 |  |  |  | 3.53 | 3.75 |  |
-| United Kingdom, 12 months | 3.73 | 3.74 |  |  |  | 2.78 | 3.26 |  |
-| United Kingdom, 24 months | 3.30 | 3.28 |  |  |  | 1.66 | 2.47 |  |
-| Japan, 3 months | 2.67 | 2.70 |  |  |  | 3.10 | 2.90 |  |
-| Japan, 6 months | 2.85 | 2.86 |  |  |  | 3.35 | 3.11 |  |
-| Japan, 12 months | 2.58 | 2.55 |  |  |  | 3.24 | 2.89 |  |
-| Japan, 24 months | 2.28 | 2.26 |  |  |  | 2.29 | 2.28 |  |
+| United Kingdom, 3 months | 3.83 | 3.86 |  |  |  | 3.78 | 3.82 |  |
+| United Kingdom, 6 months | 4.06 | 4.06 |  |  |  | 3.66 | 3.86 |  |
+| United Kingdom, 12 months | 3.99 | 3.98 |  |  |  | 2.62 | 3.30 |  |
+| United Kingdom, 24 months | 3.08 | 2.99 |  |  |  | 1.35 | 2.17 |  |
+| Japan, 3 months | 2.67 | 2.70 |  |  |  | 3.11 | 2.90 |  |
+| Japan, 6 months | 2.85 | 2.92 |  |  |  | 3.32 | 3.12 |  |
+| Japan, 12 months | 2.58 | 2.62 |  |  |  | 3.16 | 2.89 |  |
+| Japan, 24 months | 2.28 | 2.31 |  |  |  | 2.22 | 2.27 |  |
 | Euro area, 3 months | 4.10 | 4.04 | 4.10 | 4.05 | 4.03 | 3.96 | 4.00 | 4.01 |
 | Euro area, 6 months | 3.67 | 3.57 | 3.68 | 3.55 | 3.72 | 3.34 | 3.46 | 3.54 |
 | Euro area, 12 months | 3.13 | 2.84 | 3.15 | 3.04 | 2.97 | 2.66 | 2.75 | 2.82 |

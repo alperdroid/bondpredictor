@@ -120,7 +120,7 @@ p { margin: 0; }
 .chip svg { width: 12px; height: 12px; flex: none; }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
 .controls label, .ctl-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
-select { font: 500 0.875rem var(--font-body); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 30px 7px 10px;
+select { max-width: 100%; font: 500 0.875rem var(--font-body); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 30px 7px 10px;
   appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
   background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; max-width: 100%; }
 
@@ -593,7 +593,7 @@ function renderHero() {
     el("strong", { text: `${pct(L("US")["12"].headline)} by ${t("US")}` }), ", the UK at ",
     el("strong", { text: pct(L("UK")["12"].headline) }), ", Japan at ", el("strong", { text: pct(L("JP")["12"].headline) }),
     " and the euro area at ", el("strong", { text: pct(L("EA")["12"].headline) }),
-    ` a year from now. ${[...d3.group(DATA.economies, e => HEAD(e.code).what)].map(([what, es], i) => `${i ? "and" : "They are"} ${what} for ${listOf(es.map(e => PLACE[e.code]))}`).join(", ")}: in each economy, whichever did better in a horse race of ${new Set(DATA.accuracy.map(r => r.m)).size} models, backtested on each month since 2000.`);
+    ` a year from now. They are ${(items => items.length > 1 ? `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}` : items.join(""))([...d3.group(DATA.economies, e => HEAD(e.code).what)].map(([what, es]) => `${what} for ${listOf(es.map(e => PLACE[e.code]))}`))}: in each economy, whichever did better in a horse race of ${new Set(DATA.accuracy.map(r => r.m)).size} models, backtested on each month since 2000.`);
 }
 function renderTickets() {
   const wrap = $("#tickets"); wrap.replaceChildren();
@@ -697,7 +697,8 @@ function renderOutlook() {
   const parts = Object.entries(L12.parts || {});
   lead.replaceChildren(`${e.index} inflation was `, el("b", { text: pct(e.value) }), ` in ${fmtYM(e.month)}. The ${HEAD(c).short.toLowerCase()} sees `,
     el("b", { text: pct(L12.headline) }), ` in ${fmtYM(L12.target)}, with an 80% range of ${pct(L12.bands.q10)} to ${pct(L12.bands.q90)}. The ranges come from the model's own errors over the past ten years, so the 2021–22 surge stretches them upwards.`,
-    ...(parts.length ? [` Its parts: ${listOf(parts.map(([k, v]) => `${PART[k] || k} ${pct(v)}`))}; the median of the 13 models is ${pct(L12.models["ens:median"])}.`] : []));
+    ...(parts.length > 1 ? [` Its parts: ${listOf(parts.map(([k, v]) => `${PART[k] || k} ${pct(v)}`))}; the median of the 13 models is ${pct(L12.models["ens:median"])}.`]
+      : parts.length ? [` The median of the 13 models, the previous headline, is ${pct(L12.models["ens:median"])}.`] : []));
   const legend = $("#outlook-legend"); legend.replaceChildren(
     el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--ink)" }), "Actual"),
     el("span", {}, Object.assign(el("i", { class: "key-line" }), { style: "color:var(--accent)" }), HEAD(c).short),
@@ -1000,12 +1001,21 @@ function renderFindings() {
     card("Foundation models: strong but suspect", `${a24["fm:timesfm3_cov"].toFixed(2)} at 24 months`, `TimesFM 3.0 with macro covariates scores best beyond a year (${a12["fm:timesfm3_cov"].toFixed(2)} at 12 months). It was released in August 2026, after every scored forecast, so it may have seen these CPI series in training. Marked * in the table.`),
     ...(() => {
       const won = DATA.economies.filter(e => HEAD(e.code).model === "ens:combined"), kept = DATA.economies.filter(e => HEAD(e.code).model !== "ens:combined");
-      if (!won.length) return [];
-      const rel = (c, m) => DATA.accuracy.find(r => r.c === c && r.h === 12 && r.m === m)?.rel, c0 = won[0].code;
-      if (rel(c0, "ens:combined") == null || rel(c0, "ens:median") == null) return [];
-      const text = `In ${listOf(won.map(e => PLACE[e.code]))}, the headline is now an average of three forecasts: models that also see a nowcast of the month not yet published, a bottom-up model of energy, food, core goods and services, and models anchored on the professional forecasters' path where a survey exists. Twelve months ahead it scores ${rel(c0, "ens:combined").toFixed(2)} of the no-change error in ${PLACE[c0]} against ${rel(c0, "ens:median").toFixed(2)} for the median of all models.` +
-        (kept.length ? ` In ${listOf(kept.map(e => PLACE[e.code]))} it did not beat the median in both halves of the backtest, so the median stays.` : "");
-      return [card("Three views beat one", `${rel(c0, "ens:combined").toFixed(2)} vs ${rel(c0, "ens:median").toFixed(2)}`, text)];
+      const rel = (c, m) => DATA.accuracy.find(r => r.c === c && r.h === 12 && r.m === m)?.rel;
+      const scored = won.filter(e => rel(e.code, "ens:combined") != null && rel(e.code, "ens:median") != null);
+      if (!scored.length) return [];
+      const c0 = scored[0].code;
+      const SIGNAL = { US: "pump prices", UK: "pump prices", EA: "pump prices", JP: "Tokyo's CPI" };
+      const describe = e => {
+        const P = HEAD(e.code).parts || [], bits = [];
+        if (P.includes("nowcast")) bits.push(`a nowcast of the month not yet published (from ${SIGNAL[e.code]})`);
+        if (P.includes("bottom_up")) bits.push(`a bottom-up model of energy, food and core prices${e.code === "JP" ? ", fed by Tokyo's CPI, which is published four weeks before the national index" : ""}`);
+        if (P.includes("nowcast+survey_anchor")) bits.push("models anchored on the professional forecasters' path");
+        return `In ${PLACE[e.code]} it ${bits.length > 1 ? "averages " : "is "}${listOf(bits)}.`;
+      };
+      const text = `In ${listOf(won.map(e => PLACE[e.code]))}, the headline is now built on information the other models lack. ${won.map(describe).join(" ")} Twelve months ahead it scores ${listOf(scored.map(e => `${rel(e.code, "ens:combined").toFixed(2)} of the no-change error in ${PLACE[e.code]} against ${rel(e.code, "ens:median").toFixed(2)} for the median of all models`))}.` +
+        (kept.length ? ` In ${listOf(kept.map(e => PLACE[e.code]))} it did not pass the test against the median in both halves of the backtest, so the median stays.` : "");
+      return [card("Fresh information beats more models", `${rel(c0, "ens:combined").toFixed(2)} vs ${rel(c0, "ens:median").toFixed(2)}`, text)];
     })(),
     ...(DATA.surveys && DATA.surveys.length ? [(() => {
       const us = DATA.surveys.find(r => r.c === "US" && r.h === 12), ea = DATA.surveys.find(r => r.c === "EA" && r.h === 24);
@@ -1162,11 +1172,11 @@ function renderMethod() {
   const box = $("#method-body"); box.replaceChildren();
   const blockEl = (title, ...paras) => el("div", {}, el("h3", { text: title }), ...paras);
   box.append(
-    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 93 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure, and for the US sticky, median, trimmed-mean and flexible inflation. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed; for the US combined forecast also weekly pump prices (EIA), CPI components, rents (Zillow) and the Survey of Professional Forecasters." }),
+    blockEl("Data", el("p", { text: "Monthly CPI (HICP for the euro area) plus 58 to 93 predictors per economy: prices, wages, jobs, surveys, money, rates, exchange rates, commodities and supply-chain pressure, and for the US sticky, median, trimmed-mean and flexible inflation. Sources: FRED, OECD, ECB, Eurostat, Bank of Japan, Bank of England, ONS and the New York Fed; for the combined forecasts also weekly US pump prices (EIA), CPI components, rents (Zillow), the Survey of Professional Forecasters and Tokyo's CPI (Statistics Bureau of Japan)." }),
       el("p", { text: "Every series enters with its publication lag, so each backtest forecast uses only what was known that month. The figures are today's revised vintages." })),
     blockEl("Models", el("p", { text: "Tier 1, tested first: random walk, UCSV, ridge, lasso, elastic net, factor models, subset regression, kernel ridge, random forest, gradient boosting, macroeconomic random forest, BART, hemisphere and plain neural nets, pooled versions across economies, and ensembles." }),
       el("p", { text: "Tier 2: deep nets (N-HiTS, PatchTST, TiDE, LSTM) and zero-shot foundation models (Chronos and TimesFM). Models forecast the change in inflation, so zero means no change." }),
-      el("p", { text: "Combined forecast: the average of three medians of six fast models. One set also sees a nowcast of the month not yet published, from this month's pump and oil prices. One forecasts energy, food, core goods and services separately and adds them up. One forecasts the deviation from the professional forecasters' expected path. It becomes an economy's headline only where it beat the median of the models at most horizons in both halves of the backtest." })),
+      el("p", { text: "Combined forecast: an average of medians of six fast models, run up to three ways. One set also sees a nowcast of the month not yet published, from this month's pump and oil prices or, in Japan, from Tokyo's CPI, which comes out four weeks before the national index. One forecasts energy, food and the core components separately and adds them up. One, where a survey exists, forecasts the deviation from the professional forecasters' expected path. It becomes an economy's headline only where it passed a test set in advance: better than the same models without the new information in both halves of the backtest, and better than the median of all models." })),
     blockEl("Scoring", el("ul", {}, el("li", { text: "Monthly origins from 2000 (euro area 2002), expanding windows, refits every 1 to 12 months." }),
       el("li", { text: "RMSE relative to no change; 75% model confidence set (Hansen, T-max, 2,000 bootstrap draws)." }),
       el("li", { text: "80% ranges: the 10th and 90th percentiles of the model's own errors over the past ten years." }),

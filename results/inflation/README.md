@@ -17,5 +17,7 @@ them back into `output/inflation/*.pkl` for `report` and `site`.
 
 Run on 27 November 2026 with data to October 2026: 24-month forecasts of the
 ML models anchored on core inflation, US models with the underlying-inflation
-measures.  `results unpack` writes the pilot files to
+measures, UK target CPI (the UK, pooled, foundation and pilot files were
+rerun after the switch from CPIH; `deep.csv.gz` still holds the CPIH run for
+the UK until its rerun lands).  `results unpack` writes the pilot files to
 `output/inflation/pilot/pilot.pkl`.

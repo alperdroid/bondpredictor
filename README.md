@@ -380,7 +380,7 @@ each preset jointly (within 0.26 pp in the November 2026 refresh).
 
 | | United States | United Kingdom | Japan | Euro area |
 |---|---|---|---|---|
-| CPI target | CPI-U NSA (FRED, 1913–) | CPIH (the OECD's UK headline: CPI plus owner occupiers' housing costs, 1988–; earlier OECD CPI, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
+| CPI target | CPI-U NSA (FRED, 1913–) | CPI (ONS, 1988–; OECD's UK series, 1955–87) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
 | Core / components | core, energy, food, services, goods, shelter | core, energy, food, services, goods | ex food & energy, energy, food | ex energy & food, energy, food, services, NEIG |
 | Underlying inflation | sticky- and flexible-price CPI (Atlanta Fed), median and trimmed-mean CPI (Cleveland Fed), trimmed-mean PCE (Dallas Fed) | – | – | – |
 | Expectations / price surveys | Michigan, Cleveland Fed, 5y breakeven, Philly Fed prices paid | 10y gilt breakeven (BoE) | Tankan output/input price DIs and firms' inflation outlook (BoJ) | EC consumer and selling-price expectations |
@@ -443,54 +443,61 @@ window, training only from 1985).
 
 ### Update, November 2026
 
-The backtest was rerun on 27 November 2026 with the 24-month core anchor and
-the US underlying-inflation measures (`docs/inflation_report.md`,
-`results/inflation/`).  Averaged over the four economies the median of all
-models scores 0.73 / 0.80 / 0.88 / 0.84 of the no-change RMSE at 3 / 6 / 12 / 24
-months (October: 0.73 / 0.80 / 0.88 / 0.89); only the 24-month column changed.
-The generic deep nets were rerun as well and still trail: PatchTST 0.98 /
-0.97 / 0.95 / 0.91, TiDE 1.08 / 1.03 / 0.92 / 0.87, N-HiTS 0.96 / 0.99 / 1.09 /
-1.04 and the LSTM 2.39 / 1.56 / 1.03 / 0.86.
-Two further results:
+The backtest was rerun on 27 November 2026 with the 24-month core anchor, the
+US underlying-inflation measures and, for the UK, the CPI as the target
+(`docs/inflation_report.md`, `results/inflation/`).  Averaged over the four
+economies the median of all models scores 0.72 / 0.80 / 0.88 / 0.84 of the
+no-change RMSE at 3 / 6 / 12 / 24 months (October: 0.73 / 0.80 / 0.88 / 0.89).
+The generic deep nets still trail the econometric models; their rerun with
+the UK on CPI is under way, so the report lists them for the other three
+economies only.
+Further results:
 
-* **Professional forecasters are still ahead.**  On the same dates and
-  targets the Survey of Professional Forecasters beats the median model for
-  the US (0.65 / 0.70 / 0.77 against 0.71 / 0.81 / 0.89 at 3 / 6 / 12 months)
-  and the ECB survey beats it for the euro area (0.88 against 0.92 at 12
+* **Professional forecasters are still ahead of the median model.**  On the
+  same dates and targets the Survey of Professional Forecasters beats it for
+  the US (0.65 / 0.70 / 0.77 against 0.70 / 0.81 / 0.89 at 3 / 6 / 12 months)
+  and the ECB survey beats it for the euro area (0.88 against 0.93 at 12
   months, 0.72 against 0.78 at 24), and averaging the model with the survey
   does not beat the survey.
-* **A combination of three views is now the US headline**
-  (`docs/inflation_pilot.md`, `bondpredictor/inflation/combined.py`).  It
-  averages the medians of six fast models run three ways: with a nowcast of
-  the month not yet published (from this month's pump and oil prices) among
-  the predictors; bottom-up (energy, food, core goods and core services
-  forecast separately and added up); and forecasting the deviation from the
-  professional forecasters' path.  It scores 0.60 / 0.75 / 0.82 / 0.79 at
-  3 / 6 / 12 / 24 months against 0.68 / 0.81 / 0.88 / 0.84 for the median of all
-  models, is better than the same six models without the new information in
-  both halves of the sample at every horizon, and is the best US model at
-  3, 6 and 12 months.  Against the Survey of Professional Forecasters it
-  scores 0.64 / 0.76 / 0.82 (survey: 0.65 / 0.70 / 0.77).
-* **The same recipe did not win elsewhere.**  With pump prices for the UK
-  and the euro area and component indices for all three (CPIH aggregates,
-  HICP aggregates; energy, food and the rest for Japan), the bottom-up and
-  nowcast models improve on the six fast models (UK and Japan: bottom-up
-  0.88 against 0.94 and 0.79 against 0.87 at 12 months; euro area: the
-  pump-price nowcast gains 1-3% up to 6 months), but none beats the median of
-  all 18 models on average over the horizons, alone or averaged with it.
-  The median stays the headline in the UK, Japan and the euro area.  The
-  adoption rule and every number are in `docs/inflation_pilot.md`.
-* **The UK series is CPIH.**  The OECD's all-items index for the UK, the
-  target here since the first build, is CPIH (the CPI plus owner occupiers'
-  housing costs and council tax), not the CPI the Bank of England targets.
-  The two are within 0.01 pp in October 2026 but differed by up to 1.3 pp in
-  2022-23.  Tables and the site now say CPIH.
-* **Japan has no pump-price nowcast.**  The ministry's weekly retail price
-  file is refused to automated clients and e-Stat needs an application ID,
-  so the Japanese nowcast uses crude oil in yen, which adds nothing.
+* **The US and Japan have a new headline, built on information the other
+  models lack** (`docs/inflation_pilot.md`,
+  `bondpredictor/inflation/combined.py`).  Six fast models are run with a
+  nowcast of the month not yet published among the predictors; bottom-up
+  (energy, food and the core components forecast separately and added up);
+  and, where a survey exists, forecasting the deviation from the professional
+  forecasters' path.
+  * US: the average of the three scores 0.60 / 0.75 / 0.82 / 0.79 at
+    3 / 6 / 12 / 24 months against 0.67 / 0.81 / 0.88 / 0.84 for the median of all
+    models, and is the best US model at 3, 6 and 12 months.  Its nowcast comes
+    from this month's pump and oil prices.  Against the Survey of Professional
+    Forecasters it scores 0.64 / 0.76 / 0.82 (survey: 0.65 / 0.70 / 0.77).
+  * Japan: the bottom-up model alone scores 0.70 / 0.74 / 0.78 / 0.95 against
+    0.70 / 0.73 / 0.83 / 0.95, a narrow pass with nearly all of the gain at 12
+    months.  Its component models are fed by the Tokyo CPI, which is published
+    four weeks before the national index (as a nowcast it predicts the next
+    national print with 0.4 to 0.6 of the no-change error).
+  * Both passed a rule fixed in advance: better than the same six models
+    without the new information over the full sample and in both halves at
+    three or more of the four horizons, and better than the median of all
+    models on average.  The first candidate to pass is adopted, in the order
+    three-way average, nowcast and bottom-up, bottom-up, nowcast.
+* **The UK and the euro area keep the median.**  Bottom-up and nowcast models
+  (with pump prices) improve on the six fast models there, but they do not
+  beat the median of all 18 models on average over the horizons, alone or
+  averaged with it.  Every number is in `docs/inflation_pilot.md`.
+* **The UK target is the CPI.**  Until 27 November the UK series was the
+  OECD's all-items index for the UK, which is CPIH (the CPI plus owner
+  occupiers' housing costs and council tax; up to 1.3 pp away from the CPI in
+  2022-23).  The target, core and components now come from the ONS CPI
+  series from 1988, with the OECD series before.  The other economies'
+  models still see the OECD series as UK inflation, so their inputs did not
+  change; the pooled models and the UK models were rerun.
+* **Japanese pump prices are not used.**  The ministry's weekly retail price
+  file is refused to automated clients; the Tokyo CPI does the job better.
 
 The robustness tables of the October configuration are kept in
-`docs/inflation_robustness.md`.  The text below describes the October build.
+`docs/inflation_robustness.md`.  The text below describes the October build,
+in which the UK series was CPIH.
 
 ### Results (October 2026 build)
 
@@ -579,14 +586,14 @@ What it says:
   quantiles are the best calibrated, BART's posterior covers only ~30%.
 
 Latest forecasts, 27 November 2026, data to October (headline / TimesFM 3 +
-covariates; the headline is the combined forecast for the US and the median
-of the 13 tier-1 country models elsewhere, UK figures are CPIH):
+covariates; the headline is the combined forecast for the US and Japan and
+the median of the 13 tier-1 country models for the UK and the euro area):
 
 | | Latest y/y | 3 months | 12 months | 24 months |
 |---|---|---|---|---|
 | US (Oct 2026) | 3.9% | 3.5 / 3.7 (Jan 2027) | 2.1 / 3.1 (Oct 2027) | 2.5 / 2.9 (Oct 2028) |
-| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.2 / 3.3 (Oct 2028) |
-| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.4 / 2.0 (Oct 2028) |
+| UK (Oct 2026) | 3.6% | 3.8 / 3.8 (Jan 2027) | 4.0 / 3.7 (Oct 2027) | 3.0 / 3.3 (Oct 2028) |
+| Japan (Oct 2026) | 2.4% | 3.1 / 2.6 (Jan 2027) | 3.2 / 2.5 (Oct 2027) | 2.2 / 2.0 (Oct 2028) |
 | Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
 
 The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
@@ -637,7 +644,7 @@ bondpredictor/
     transform_search.py  real-time search over predictor transformations
     surveys.py     professional forecasters as a yardstick
     pilot.py       nowcast, survey path and bottom-up models; the rule for adopting them
-    combined.py    the combined forecast (the US headline) and its live version
+    combined.py    the headline combination (US, Japan) and its live version
     recursive.py   recursive least squares
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```

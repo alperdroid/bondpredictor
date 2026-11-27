@@ -2,87 +2,87 @@
 
 # Inflation forecasts with econometric machine learning
 
-Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the latest published print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start in 1990), each using only data published by then.  Expanding training window from 1960 where data exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative to headline moved towards core (see the README).  The combined forecast (see `combined.py`) averages models that use a nowcast, a bottom-up model of components and models anchored on the professional forecasters' path; it is listed for the economies where it is the headline.  The UK index is CPIH, the OECD's headline for the UK.  RMSE is relative to the random walk (no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set (Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  All models of one economy and horizon are scored on the same months.
+Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the latest published print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start in 1990), each using only data published by then.  Expanding training window from 1960 where data exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative to headline moved towards core (see the README).  The headline combination (see `combined.py`) is built from six fast models with information the others lack: in the US the average of models with a nowcast, a bottom-up model of components and models anchored on the professional forecasters' path; in Japan the bottom-up model, fed by the Tokyo CPI.  It is listed for the economies where it passed the adoption rule (`docs/inflation_pilot.md`).  The UK index is the CPI (ONS) from 1988.  RMSE is relative to the random walk (no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set (Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  All models of one economy and horizon are scored on the same months.
 
 ## 3 months ahead: RMSE relative to the random walk
 
 | model | US (2000–) | UK (2000–) | JP (2000–) | EA (2002–) | mean |
 |---|---|---|---|---|---|
 | Random walk (no change) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| UCSV (Stock-Watson) | 0.75* | 0.81* | 0.79* | 0.84* | 0.80 |
-| AR-type, own inflation only | 0.80* | 0.81* | 0.79* | 0.83* | 0.81 |
-| Ridge | 0.66* | 0.81* | 0.78* | 0.80* | 0.76 |
-| Adaptive lasso | 0.67* | 0.81* | 0.86* | 0.80* | 0.79 |
-| Elastic net | 0.64* | 0.85* | 0.75* | 0.78* | 0.76 |
-| Diffusion index (PCA) | 0.73* | 0.92 | 0.75* | 0.81* | 0.80 |
-| Three-pass regression filter | 0.72* | 0.97 | 0.84* | 0.83* | 0.84 |
+| UCSV (Stock-Watson) | 0.75* | 0.82* | 0.79* | 0.84* | 0.80 |
+| AR-type, own inflation only | 0.80* | 0.78* | 0.79* | 0.83* | 0.80 |
+| Ridge | 0.66* | 0.78* | 0.78* | 0.80* | 0.76 |
+| Adaptive lasso | 0.67* | 0.76* | 0.86* | 0.80* | 0.77 |
+| Elastic net | 0.64* | 0.81* | 0.75* | 0.78* | 0.74 |
+| Diffusion index (PCA) | 0.73* | 0.81* | 0.75* | 0.81* | 0.78 |
+| Three-pass regression filter | 0.72* | 0.91 | 0.84* | 0.83* | 0.83 |
 | Complete subset regression | 0.74* | **0.73*** | 0.74* | 0.77* | 0.74 |
-| Kernel ridge (RBF) | 0.69* | 0.80* | 0.76* | 0.85* | 0.77 |
+| Kernel ridge (RBF) | 0.69* | 0.78* | 0.76* | 0.85* | 0.77 |
 | Random forest | 0.83* | 0.77* | 0.78* | 0.89* | 0.82 |
-| Gradient boosting (LightGBM) | 0.78* | 0.81* | 0.84* | 0.89* | 0.83 |
-| Macroeconomic random forest | 0.75* | 0.76* | 0.80* | 0.93* | 0.81 |
-| BART | 0.83* | 1.17 | 0.96 | 1.09 | 1.01 |
-| Hemisphere neural net | 0.73* | 0.79* | 0.98* | 0.93* | 0.86 |
-| Plain neural net (MLP) | 0.78* | 0.74* | 0.75* | 0.91* | 0.79 |
-| Pooled ridge | 0.75* | 0.77* | 0.74* | **0.72*** | 0.74 |
-| Pooled boosting | 0.78* | 0.81* | 0.81* | 0.74* | 0.79 |
-| Pooled MRF | 0.80* | 0.74* | 0.77* | 0.75* | 0.76 |
-| Pooled BART | 0.87 | 0.92* | 0.90* | 0.90* | 0.90 |
-| Pooled hemisphere net | 0.71* | 0.81* | 0.75* | 0.74* | 0.75 |
-| Mean of non-linear ML | 0.72* | 0.77* | 0.78* | 0.88* | 0.79 |
+| Gradient boosting (LightGBM) | 0.78* | 0.79* | 0.84* | 0.89* | 0.82 |
+| Macroeconomic random forest | 0.75* | 0.78* | 0.80* | 0.93* | 0.81 |
+| BART | 0.83* | 0.90* | 0.96 | 1.09 | 0.95 |
+| Hemisphere neural net | 0.73* | 0.80* | 0.98* | 0.93* | 0.86 |
+| Plain neural net (MLP) | 0.78* | 0.76* | 0.75* | 0.91* | 0.80 |
+| Pooled ridge | 0.72* | 0.76* | 0.74* | **0.73*** | 0.73 |
+| Pooled boosting | 0.78* | 0.80* | 0.78* | 0.79* | 0.79 |
+| Pooled MRF | 0.80* | 0.75* | 0.78* | 0.77* | 0.77 |
+| Pooled BART | 0.85 | 0.89* | 0.87* | 1.00* | 0.90 |
+| Pooled hemisphere net | 0.68* | 0.76* | 0.76* | 0.76* | 0.74 |
+| Mean of non-linear ML | 0.72* | 0.76* | 0.78* | 0.88* | 0.79 |
 | ½ non-linear ML + ½ UCSV | 0.70* | 0.75* | 0.75* | 0.83* | 0.76 |
-| Median of all models | 0.68* | 0.74* | **0.71*** | 0.78* | 0.73 |
-| Combined: nowcast, bottom-up, survey path | **0.60*** |  |  |  |  |
+| Median of all models | 0.67* | 0.73* | 0.70* | 0.78* | 0.72 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | **0.60*** |  | **0.70*** |  |  |
 | Chronos-Bolt (zero-shot) | 1.01 | 0.92 | 1.04 | 0.98* | 0.99 |
-| Chronos-2 (zero-shot) | 0.99 | 0.92 | 1.01 | 0.92* | 0.96 |
-| Chronos-2 + macro covariates | 0.79 | 0.91 | 0.95 | 0.92* | 0.89 |
-| TimesFM 2.5 (zero-shot) | 0.95 | 0.90 | 0.96 | 0.97 | 0.95 |
-| TimesFM 3.0 (zero-shot) | 0.94 | 0.89 | 0.96 | 0.92* | 0.93 |
-| TimesFM 3.0 + macro covariates | 0.78* | 0.82* | 0.85* | 0.86* | 0.83 |
-| N-HiTS (tier 2) | 1.09 | 0.91* | 0.86* | 0.96* | 0.96 |
-| PatchTST (tier 2) | 0.99 | 0.98 | 0.98 | 0.98 | 0.98 |
-| TiDE (tier 2) | 1.10 | 1.10 | 1.02 | 1.09 | 1.08 |
-| LSTM (tier 2) | 1.97 | 2.99 | 1.87 | 2.74 | 2.39 |
+| Chronos-2 (zero-shot) | 0.99 | 0.94 | 1.01 | 0.92* | 0.97 |
+| Chronos-2 + macro covariates | 0.79 | 0.92 | 0.95 | 0.92* | 0.90 |
+| TimesFM 2.5 (zero-shot) | 0.95 | 0.91 | 0.96 | 0.97 | 0.95 |
+| TimesFM 3.0 (zero-shot) | 0.94 | 0.90 | 0.96 | 0.92* | 0.93 |
+| TimesFM 3.0 + macro covariates | 0.78* | 0.83* | 0.85* | 0.86* | 0.83 |
+| N-HiTS (tier 2) | 1.09 |  | 0.86* | 0.96* |  |
+| PatchTST (tier 2) | 0.99 |  | 0.98 | 0.98 |  |
+| TiDE (tier 2) | 1.10 |  | 1.02 | 1.09 |  |
+| LSTM (tier 2) | 1.97 |  | 1.87 | 2.74 |  |
 
 ## 6 months ahead: RMSE relative to the random walk
 
 | model | US (2000–) | UK (2000–) | JP (2000–) | EA (2002–) | mean |
 |---|---|---|---|---|---|
 | Random walk (no change) | 1.00 | 1.00* | 1.00 | 1.00* | 1.00 |
-| UCSV (Stock-Watson) | 0.81* | 0.81* | 0.79* | 0.85* | 0.81 |
-| AR-type, own inflation only | 0.88* | 0.81* | 0.81* | 0.87* | 0.84 |
-| Ridge | 0.80* | 0.81* | 0.81* | 0.81* | 0.81 |
-| Adaptive lasso | 0.86* | 0.87* | 0.83* | 0.91* | 0.87 |
-| Elastic net | 0.82* | 0.84* | 0.81* | 0.86* | 0.83 |
-| Diffusion index (PCA) | 0.91* | 1.00* | 0.76* | 0.81* | 0.87 |
-| Three-pass regression filter | 0.84* | 1.01* | 0.99* | 0.83* | 0.92 |
-| Complete subset regression | 0.83* | 0.76* | 0.80* | 0.81* | 0.80 |
-| Kernel ridge (RBF) | 0.85* | 0.81* | 0.80* | 0.95* | 0.85 |
+| UCSV (Stock-Watson) | 0.81* | 0.83* | 0.79* | 0.85* | 0.82 |
+| AR-type, own inflation only | 0.88* | 0.80* | 0.81* | 0.87* | 0.84 |
+| Ridge | 0.80* | 0.79* | 0.81* | 0.81* | 0.80 |
+| Adaptive lasso | 0.86* | 0.81* | 0.83* | 0.91* | 0.85 |
+| Elastic net | 0.82* | 0.82* | 0.81* | 0.86* | 0.83 |
+| Diffusion index (PCA) | 0.91* | 0.86* | 0.76* | 0.81* | 0.84 |
+| Three-pass regression filter | 0.84* | 0.94* | 0.99* | 0.83* | 0.90 |
+| Complete subset regression | 0.83* | **0.76*** | 0.80* | **0.81*** | 0.80 |
+| Kernel ridge (RBF) | 0.85* | 0.80* | 0.80* | 0.95* | 0.85 |
 | Random forest | 0.90* | 0.84* | 0.86* | 1.02* | 0.91 |
 | Gradient boosting (LightGBM) | 0.88* | 0.85* | 0.94* | 1.01* | 0.92 |
-| Macroeconomic random forest | 0.86* | 0.81* | 0.84* | 0.88* | 0.85 |
-| BART | 1.07 | 1.03* | 1.02* | 1.21 | 1.08 |
-| Hemisphere neural net | 0.82* | 0.78* | 0.94* | 0.92* | 0.87 |
-| Plain neural net (MLP) | 0.81* | **0.73*** | 0.80* | 1.00* | 0.83 |
-| Pooled ridge | 0.86* | 0.78* | 0.76* | **0.78*** | 0.80 |
-| Pooled boosting | 0.84* | 0.93* | 0.84* | 0.92* | 0.89 |
-| Pooled MRF | 0.87* | 0.82* | 0.79* | 0.90* | 0.85 |
-| Pooled BART | 0.95* | 1.12 | 1.00* | 1.07* | 1.04 |
-| Pooled hemisphere net | 0.80* | 0.91* | 0.81* | 0.91* | 0.86 |
-| Mean of non-linear ML | 0.85* | 0.79* | 0.81* | 0.97* | 0.85 |
-| ½ non-linear ML + ½ UCSV | 0.79* | 0.77* | 0.76* | 0.88* | 0.80 |
-| Median of all models | 0.81* | 0.78* | **0.75*** | 0.87* | 0.80 |
-| Combined: nowcast, bottom-up, survey path | **0.75*** |  |  |  |  |
-| Chronos-Bolt (zero-shot) | 1.03 | 0.91* | 1.05 | 0.98* | 0.99 |
-| Chronos-2 (zero-shot) | 1.00 | 0.92* | 1.00 | 0.92* | 0.96 |
+| Macroeconomic random forest | 0.86* | 0.83* | 0.84* | 0.88* | 0.85 |
+| BART | 1.07 | 1.19 | 1.02* | 1.21 | 1.12 |
+| Hemisphere neural net | 0.82* | 0.88* | 0.94* | 0.92* | 0.89 |
+| Plain neural net (MLP) | 0.81* | 0.76* | 0.80* | 1.00* | 0.84 |
+| Pooled ridge | 0.83* | 0.77* | 0.80* | 0.81* | 0.80 |
+| Pooled boosting | 0.85* | 0.89* | 0.81* | 0.94* | 0.87 |
+| Pooled MRF | 0.88* | 0.81* | 0.77* | 0.90* | 0.84 |
+| Pooled BART | 0.93* | 0.95* | 0.88* | 1.08* | 0.96 |
+| Pooled hemisphere net | 0.78* | 0.89* | 0.83* | 0.92* | 0.85 |
+| Mean of non-linear ML | 0.85* | 0.82* | 0.81* | 0.97* | 0.86 |
+| ½ non-linear ML + ½ UCSV | 0.79* | 0.80* | 0.76* | 0.88* | 0.81 |
+| Median of all models | 0.81* | 0.79* | **0.73*** | 0.88* | 0.80 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | **0.75*** |  | 0.74* |  |  |
+| Chronos-Bolt (zero-shot) | 1.03 | 0.92* | 1.05 | 0.98* | 0.99 |
+| Chronos-2 (zero-shot) | 1.00 | 0.94 | 1.00 | 0.92* | 0.96 |
 | Chronos-2 + macro covariates | 0.86* | 0.90* | 0.90* | 0.93* | 0.90 |
 | TimesFM 2.5 (zero-shot) | 0.95 | 0.90* | 0.93* | 0.98* | 0.94 |
-| TimesFM 3.0 (zero-shot) | 0.97 | 0.89* | 0.94* | 0.92* | 0.93 |
-| TimesFM 3.0 + macro covariates | 0.84* | 0.82* | 0.81* | 0.84* | 0.83 |
-| N-HiTS (tier 2) | 1.22 | 0.89* | 0.85* | 0.99* | 0.99 |
-| PatchTST (tier 2) | 0.98 | 0.96* | 0.97* | 0.97* | 0.97 |
-| TiDE (tier 2) | 1.00 | 1.04* | 1.03 | 1.04* | 1.03 |
-| LSTM (tier 2) | 1.37 | 1.82* | 1.35 | 1.69* | 1.56 |
+| TimesFM 3.0 (zero-shot) | 0.97 | 0.90* | 0.94 | 0.92* | 0.93 |
+| TimesFM 3.0 + macro covariates | 0.84* | 0.83* | 0.81* | 0.84* | 0.83 |
+| N-HiTS (tier 2) | 1.22 |  | 0.85* | 0.99* |  |
+| PatchTST (tier 2) | 0.98 |  | 0.97 | 0.97* |  |
+| TiDE (tier 2) | 1.00 |  | 1.03 | 1.04* |  |
+| LSTM (tier 2) | 1.37 |  | 1.35 | 1.69* |  |
 
 ## 12 months ahead: RMSE relative to the random walk
 
@@ -90,96 +90,96 @@ Target: year-on-year CPI inflation (HICP for the euro area) *h* months after the
 |---|---|---|---|---|---|
 | Random walk (no change) | 1.00* | 1.00* | 1.00* | 1.00* | 1.00 |
 | UCSV (Stock-Watson) | 0.89* | 0.94* | 0.85* | 1.00* | 0.92 |
-| AR-type, own inflation only | 0.99* | 0.97* | 0.94* | 0.95* | 0.96 |
-| Ridge | 0.96* | 0.89* | 0.89* | 0.99* | 0.93 |
-| Adaptive lasso | 1.00* | 1.02* | 0.98* | 1.00* | 1.00 |
-| Elastic net | 0.97* | 1.00* | 1.00* | 0.98* | 0.99 |
-| Diffusion index (PCA) | 0.99* | 1.19* | 0.82* | 0.91* | 0.98 |
-| Three-pass regression filter | 0.95* | 1.24* | 0.90* | 0.93* | 1.01 |
-| Complete subset regression | 0.92* | 0.92* | 0.95* | 0.88* | 0.92 |
+| AR-type, own inflation only | 0.99* | 0.93* | 0.94* | 0.95* | 0.95 |
+| Ridge | 0.96* | 0.90* | 0.89* | 0.99* | 0.94 |
+| Adaptive lasso | 1.00* | 0.94* | 0.98* | 1.00* | 0.98 |
+| Elastic net | 0.97* | 0.95* | 1.00* | 0.98* | 0.98 |
+| Diffusion index (PCA) | 0.99* | 0.99* | 0.82* | 0.91* | 0.93 |
+| Three-pass regression filter | 0.95* | 1.12* | 0.90* | 0.93* | 0.98 |
+| Complete subset regression | 0.92* | 0.91* | 0.95* | 0.88* | 0.91 |
 | Kernel ridge (RBF) | 0.91* | 0.89* | 0.86* | 0.94* | 0.90 |
-| Random forest | 0.92* | 0.99* | 0.92* | 0.98* | 0.95 |
-| Gradient boosting (LightGBM) | 0.87* | 1.03* | 0.99* | 0.96* | 0.96 |
-| Macroeconomic random forest | 0.91* | 0.99* | 0.92* | 0.97* | 0.95 |
-| BART | 0.94* | 1.17* | 0.97* | 1.10* | 1.04 |
+| Random forest | 0.92* | 0.97* | 0.92* | 0.98* | 0.95 |
+| Gradient boosting (LightGBM) | 0.87* | 1.02* | 0.99* | 0.96* | 0.96 |
+| Macroeconomic random forest | 0.91* | 0.93* | 0.92* | 0.97* | 0.93 |
+| BART | 0.94* | 1.11 | 0.97* | 1.10* | 1.03 |
 | Hemisphere neural net | 0.87* | 0.96* | 1.05* | 0.92* | 0.95 |
-| Plain neural net (MLP) | 0.86* | **0.83*** | 0.90* | 0.93* | 0.88 |
-| Pooled ridge | 0.95* | 0.92* | 0.90* | 0.92* | 0.92 |
-| Pooled boosting | 0.93* | 1.02* | 0.95* | 1.05* | 0.99 |
-| Pooled MRF | 1.00* | 0.96* | 0.93* | 1.10* | 1.00 |
-| Pooled BART | 1.02* | 1.08* | 1.03* | 1.10* | 1.06 |
-| Pooled hemisphere net | 0.92* | 1.00* | 0.95* | 1.04* | 0.98 |
-| Mean of non-linear ML | 0.86* | 0.94* | 0.87* | 0.95* | 0.90 |
-| ½ non-linear ML + ½ UCSV | 0.86* | 0.91* | 0.83* | 0.95* | 0.89 |
-| Median of all models | 0.88* | 0.90* | 0.83* | 0.90* | 0.88 |
-| Combined: nowcast, bottom-up, survey path | **0.82*** |  |  |  |  |
-| Chronos-Bolt (zero-shot) | 1.06* | 0.99* | 1.05* | 1.00* | 1.03 |
-| Chronos-2 (zero-shot) | 0.98* | 0.95* | 0.98* | 0.94* | 0.96 |
+| Plain neural net (MLP) | 0.86* | **0.82*** | 0.90* | 0.93* | 0.88 |
+| Pooled ridge | 0.95* | 0.91* | 0.89* | 0.93* | 0.92 |
+| Pooled boosting | 0.93* | 1.01* | 0.91* | 1.07* | 0.98 |
+| Pooled MRF | 0.98* | 0.92* | 0.89* | 1.06* | 0.96 |
+| Pooled BART | 0.98* | 1.00* | 1.05* | 1.17* | 1.05 |
+| Pooled hemisphere net | 0.88* | 0.93* | 0.93* | 1.02* | 0.94 |
+| Mean of non-linear ML | 0.86* | 0.93* | 0.87* | 0.95* | 0.90 |
+| ½ non-linear ML + ½ UCSV | 0.86* | 0.92* | 0.83* | 0.95* | 0.89 |
+| Median of all models | 0.88* | 0.89* | 0.83* | 0.92* | 0.88 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | **0.82*** |  | **0.78*** |  |  |
+| Chronos-Bolt (zero-shot) | 1.06* | 1.00* | 1.05* | 1.00* | 1.03 |
+| Chronos-2 (zero-shot) | 0.98* | 0.96* | 0.98* | 0.94* | 0.96 |
 | Chronos-2 + macro covariates | 0.86* | 0.90* | 0.87* | 0.89* | 0.88 |
-| TimesFM 2.5 (zero-shot) | 0.92* | 0.93* | 0.94* | 0.97* | 0.94 |
+| TimesFM 2.5 (zero-shot) | 0.92* | 0.92* | 0.94* | 0.97* | 0.94 |
 | TimesFM 3.0 (zero-shot) | 0.94* | 0.94* | 0.94* | 0.95* | 0.94 |
-| TimesFM 3.0 + macro covariates | 0.86* | 0.86* | **0.81*** | **0.85*** | 0.84 |
-| N-HiTS (tier 2) | 1.38 | 1.00* | 0.90* | 1.06* | 1.09 |
-| PatchTST (tier 2) | 0.95* | 0.96* | 0.95* | 0.96* | 0.95 |
-| TiDE (tier 2) | 0.91* | 0.94* | 0.92* | 0.92* | 0.92 |
-| LSTM (tier 2) | 0.97* | 1.13* | 0.96* | 1.05* | 1.03 |
+| TimesFM 3.0 + macro covariates | 0.86* | 0.85* | 0.81* | **0.85*** | 0.84 |
+| N-HiTS (tier 2) | 1.38 |  | 0.90* | 1.06* |  |
+| PatchTST (tier 2) | 0.95* |  | 0.95* | 0.96* |  |
+| TiDE (tier 2) | 0.91* |  | 0.92* | 0.92* |  |
+| LSTM (tier 2) | 0.97* |  | 0.96* | 1.05* |  |
 
 ## 24 months ahead: RMSE relative to the random walk
 
 | model | US (2000–) | UK (2000–) | JP (2000–) | EA (2003–) | mean |
 |---|---|---|---|---|---|
 | Random walk (no change) | 1.00* | 1.00* | 1.00* | 1.00* | 1.00 |
-| UCSV (Stock-Watson) | 0.84* | 0.89* | **0.82*** | 0.87* | 0.86 |
-| AR-type, own inflation only | 0.89* | 0.94* | 0.99* | 0.75* | 0.89 |
-| Ridge | 0.85* | 0.89* | 1.09* | 0.83* | 0.91 |
-| Adaptive lasso | 0.87* | 0.97* | 0.99* | 0.87* | 0.92 |
-| Elastic net | 0.87* | 1.02* | 1.05* | 0.83* | 0.94 |
-| Diffusion index (PCA) | 0.79* | **0.80*** | 1.11* | 0.80* | 0.88 |
-| Three-pass regression filter | 0.96* | 1.16* | 0.98* | 0.80* | 0.98 |
-| Complete subset regression | 0.82* | 0.81* | 0.93* | **0.73*** | 0.82 |
-| Kernel ridge (RBF) | 0.92* | 0.92* | 1.06* | 0.81* | 0.93 |
-| Random forest | 0.82* | 0.82* | 0.94* | 0.81* | 0.85 |
-| Gradient boosting (LightGBM) | 0.89* | 0.86* | 0.99* | 0.83* | 0.89 |
-| Macroeconomic random forest | 0.81* | 0.82* | 0.97* | 0.77* | 0.84 |
-| BART | 0.93* | 1.06* | 1.03* | 0.84* | 0.97 |
-| Hemisphere neural net | 0.85* | 0.88* | 1.09* | 0.74* | 0.89 |
-| Plain neural net (MLP) | 0.86* | 0.86* | 1.15* | 0.75* | 0.90 |
-| Pooled ridge | 0.85* | 0.84* | 0.97* | 0.80* | 0.87 |
-| Pooled boosting | 0.89* | 0.86* | 0.97* | 0.88* | 0.90 |
-| Pooled MRF | 0.81* | 0.80* | 0.91* | 0.83* | 0.84 |
-| Pooled BART | 1.09* | 1.03* | 1.16* | 0.97* | 1.06 |
-| Pooled hemisphere net | 0.90* | 0.94* | 1.09* | 0.89* | 0.96 |
-| Mean of non-linear ML | 0.84* | 0.83* | 0.94* | 0.79* | 0.85 |
-| ½ non-linear ML + ½ UCSV | 0.82* | 0.84* | 0.85* | 0.81* | 0.83 |
-| Median of all models | 0.84* | 0.81* | 0.96* | 0.78* | 0.84 |
-| Combined: nowcast, bottom-up, survey path | 0.79* |  |  |  |  |
-| Chronos-Bolt (zero-shot) | 1.14* | 1.04* | 1.11* | 1.04* | 1.08 |
-| Chronos-2 (zero-shot) | 0.89* | 0.92* | 0.93* | 0.91* | 0.91 |
-| Chronos-2 + macro covariates | 0.82* | 0.85* | 0.84* | 0.80* | 0.83 |
+| UCSV (Stock-Watson) | 0.84* | 0.84* | **0.82*** | 0.87* | 0.84 |
+| AR-type, own inflation only | 0.89* | 0.88* | 0.99* | 0.75* | 0.88 |
+| Ridge | 0.85* | 0.84* | 1.09* | 0.83* | 0.90 |
+| Adaptive lasso | 0.87* | 0.90* | 0.99* | 0.87* | 0.91 |
+| Elastic net | 0.87* | 0.98* | 1.05* | 0.83* | 0.93 |
+| Diffusion index (PCA) | 0.79* | 0.88* | 1.11* | 0.80* | 0.90 |
+| Three-pass regression filter | 0.96* | 1.03* | 0.98* | 0.80* | 0.94 |
+| Complete subset regression | 0.82* | **0.78*** | 0.93* | **0.73*** | 0.81 |
+| Kernel ridge (RBF) | 0.92 | 0.90* | 1.06* | 0.81* | 0.92 |
+| Random forest | 0.82* | 0.84* | 0.94* | 0.81* | 0.85 |
+| Gradient boosting (LightGBM) | 0.89* | 0.90* | 0.99* | 0.83* | 0.90 |
+| Macroeconomic random forest | 0.81* | 0.81* | 0.97* | 0.77* | 0.84 |
+| BART | 0.93* | 0.97* | 1.03* | 0.84* | 0.94 |
+| Hemisphere neural net | 0.85* | 0.86* | 1.09* | 0.74* | 0.88 |
+| Plain neural net (MLP) | 0.86* | 0.79* | 1.15* | 0.75* | 0.89 |
+| Pooled ridge | 0.87* | 0.83* | 0.97* | 0.80* | 0.87 |
+| Pooled boosting | 0.86* | 0.81* | 0.94* | 0.84* | 0.86 |
+| Pooled MRF | 0.85* | 0.79* | 0.92* | 0.85* | 0.85 |
+| Pooled BART | 1.05 | 0.99* | 1.14* | 0.92* | 1.02 |
+| Pooled hemisphere net | 0.88* | 0.86* | 1.11* | 0.86* | 0.93 |
+| Mean of non-linear ML | 0.84* | 0.84* | 0.94* | 0.79* | 0.85 |
+| ½ non-linear ML + ½ UCSV | 0.82* | 0.83* | 0.85* | 0.81* | 0.83 |
+| Median of all models | 0.84* | 0.79* | 0.95* | 0.78* | 0.84 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 0.79* |  | 0.95* |  |  |
+| Chronos-Bolt (zero-shot) | 1.14* | 1.06* | 1.11* | 1.04* | 1.09 |
+| Chronos-2 (zero-shot) | 0.89* | 0.90* | 0.93* | 0.91* | 0.91 |
+| Chronos-2 + macro covariates | 0.82* | 0.84* | 0.84* | 0.80* | 0.82 |
 | TimesFM 2.5 (zero-shot) | 0.87* | 0.90* | 0.92* | 0.90* | 0.90 |
-| TimesFM 3.0 (zero-shot) | 0.86* | 0.97* | 0.93* | 0.88* | 0.91 |
-| TimesFM 3.0 + macro covariates | **0.77*** | 0.85* | 0.86* | 0.75* | 0.81 |
-| N-HiTS (tier 2) | 1.20 | 0.97* | 0.95* | 1.03* | 1.04 |
-| PatchTST (tier 2) | 0.90* | 0.90* | 0.93* | 0.89* | 0.91 |
-| TiDE (tier 2) | 0.85* | 0.87* | 0.91* | 0.84* | 0.87 |
-| LSTM (tier 2) | 0.81* | 0.89* | 0.92* | 0.82* | 0.86 |
+| TimesFM 3.0 (zero-shot) | 0.86* | 0.95* | 0.93* | 0.88* | 0.90 |
+| TimesFM 3.0 + macro covariates | **0.77*** | 0.82* | 0.86* | 0.75* | 0.80 |
+| N-HiTS (tier 2) | 1.20 |  | 0.95* | 1.03* |  |
+| PatchTST (tier 2) | 0.90* |  | 0.93* | 0.89* |  |
+| TiDE (tier 2) | 0.85* |  | 0.91* | 0.84* |  |
+| LSTM (tier 2) | 0.81* |  | 0.92* | 0.82* |  |
 
 ## Against professional forecasters
 
-US: Survey of Professional Forecasters (Philadelphia Fed), median CPI forecasts, quarterly from 2000; "monthly" scores y/y inflation in the target quarter's last month, "quarterly" the quarterly average (the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP 12 and 24 months after the latest print; "one print fewer" handicaps the models by a month.  RMSE relative to no change; p-values are Diebold-Mariano tests against the survey.  The combined forecast uses the survey itself as one of its inputs.
+US: Survey of Professional Forecasters (Philadelphia Fed), median CPI forecasts, quarterly from 2000; "monthly" scores y/y inflation in the target quarter's last month, "quarterly" the quarterly average (the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP 12 and 24 months after the latest print; "one print fewer" handicaps the models by a month.  RMSE relative to no change; p-values are Diebold-Mariano tests against the survey.  The US combination uses the survey itself as one of its inputs.
 
 | economy, horizon | surveys | Professional forecasters | Combined | Median of all models | UCSV | Median + survey, averaged | p: median vs survey | p: combined vs survey |
 |---|---|---|---|---|---|---|---|---|
-| United States, 3 months | 107 | 0.65 | 0.64 | 0.71 | 0.77 | 0.66 | 0.115 | 0.548 |
+| United States, 3 months | 107 | 0.65 | 0.64 | 0.70 | 0.77 | 0.66 | 0.155 | 0.548 |
 | United States, 3 months (quarterly) | 108 | 0.53 | 0.67 | 0.74 | 0.83 | 0.60 | 0.001 | 0.001 |
-| United States, 6 months | 106 | 0.70 | 0.76 | 0.81 | 0.83 | 0.74 | 0.018 | 0.030 |
-| United States, 6 months (quarterly) | 107 | 0.66 | 0.74 | 0.80 | 0.83 | 0.71 | 0.021 | 0.014 |
-| United States, 12 months | 104 | 0.77 | 0.82 | 0.89 | 0.92 | 0.81 | 0.080 | 0.167 |
-| United States, 12 months (quarterly) | 105 | 0.79 | 0.83 | 0.90 | 0.92 | 0.81 | 0.182 | 0.367 |
-| Euro area, 12 months | 97 | 0.88 |  | 0.92 | 0.98 | 0.89 | 0.610 |  |
+| United States, 6 months | 106 | 0.70 | 0.76 | 0.81 | 0.83 | 0.74 | 0.015 | 0.030 |
+| United States, 6 months (quarterly) | 107 | 0.66 | 0.74 | 0.79 | 0.83 | 0.70 | 0.019 | 0.014 |
+| United States, 12 months | 104 | 0.77 | 0.82 | 0.89 | 0.92 | 0.81 | 0.101 | 0.167 |
+| United States, 12 months (quarterly) | 105 | 0.79 | 0.83 | 0.89 | 0.92 | 0.81 | 0.209 | 0.367 |
+| Euro area, 12 months | 97 | 0.88 |  | 0.93 | 0.98 | 0.89 | 0.532 |  |
 | Euro area, 24 months | 89 | 0.72 |  | 0.78 | 0.86 | 0.74 | 0.009 |  |
-| Euro area, 12 months (monthly, one print fewer) | 96 | 0.88 |  | 0.92 | 1.02 | 0.89 | 0.596 |  |
-| Euro area, 24 months (monthly, one print fewer) | 88 | 0.72 |  | 0.77 | 0.87 | 0.74 | 0.003 |  |
+| Euro area, 12 months (monthly, one print fewer) | 96 | 0.88 |  | 0.94 | 1.02 | 0.90 | 0.426 |  |
+| Euro area, 24 months (monthly, one print fewer) | 88 | 0.72 |  | 0.78 | 0.87 | 0.74 | 0.004 |  |
 
 ## Detail by economy, 12 months ahead
 
@@ -189,7 +189,7 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 
 | model | RMSE | rel. RW | rel. UCSV | MAE | DM vs RW | DM p | MCS p | in MCS |
 |---|---|---|---|---|---|---|---|---|
-| Random walk (no change) | 2.06 | 1.00 | 1.12 | 1.51 |  |  | 1.000 | yes |
+| Random walk (no change) | 2.06 | 1.00 | 1.12 | 1.51 |  |  | 0.517 | yes |
 | UCSV (Stock-Watson) | 1.83 | 0.89 | 1.00 | 1.28 | +1.32 | 0.187 | 1.000 | yes |
 | AR-type, own inflation only | 2.03 | 0.99 | 1.11 | 1.48 | +0.25 | 0.803 | 1.000 | yes |
 | Ridge | 1.97 | 0.96 | 1.08 | 1.47 | +0.61 | 0.542 | 1.000 | yes |
@@ -205,22 +205,22 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | BART | 1.93 | 0.94 | 1.06 | 1.47 | +0.61 | 0.545 | 1.000 | yes |
 | Hemisphere neural net | 1.78 | 0.87 | 0.97 | 1.36 | +1.49 | 0.136 | 1.000 | yes |
 | Plain neural net (MLP) | 1.76 | 0.86 | 0.96 | 1.36 | +1.62 | 0.105 | 1.000 | yes |
-| Pooled ridge | 1.96 | 0.95 | 1.07 | 1.43 | +1.36 | 0.173 | 1.000 | yes |
-| Pooled boosting | 1.91 | 0.93 | 1.04 | 1.42 | +1.54 | 0.124 | 1.000 | yes |
-| Pooled MRF | 2.06 | 1.00 | 1.13 | 1.52 | -0.08 | 0.938 | 0.350 | yes |
-| Pooled BART | 2.10 | 1.02 | 1.15 | 1.51 | -0.15 | 0.881 | 1.000 | yes |
-| Pooled hemisphere net | 1.89 | 0.92 | 1.03 | 1.41 | +0.86 | 0.389 | 1.000 | yes |
+| Pooled ridge | 1.95 | 0.95 | 1.06 | 1.43 | +1.43 | 0.151 | 1.000 | yes |
+| Pooled boosting | 1.92 | 0.93 | 1.05 | 1.43 | +1.46 | 0.144 | 1.000 | yes |
+| Pooled MRF | 2.01 | 0.98 | 1.10 | 1.51 | +0.49 | 0.622 | 1.000 | yes |
+| Pooled BART | 2.01 | 0.98 | 1.10 | 1.43 | +0.21 | 0.838 | 1.000 | yes |
+| Pooled hemisphere net | 1.81 | 0.88 | 0.99 | 1.37 | +1.25 | 0.211 | 1.000 | yes |
 | Mean of non-linear ML | 1.78 | 0.86 | 0.97 | 1.37 | +2.06 | 0.040 | 1.000 | yes |
 | ½ non-linear ML + ½ UCSV | 1.76 | 0.86 | 0.96 | 1.28 | +1.98 | 0.047 | 1.000 | yes |
-| Median of all models | 1.81 | 0.88 | 0.99 | 1.36 | +2.21 | 0.027 | 1.000 | yes |
-| Combined: nowcast, bottom-up, survey path | 1.69 | 0.82 | 0.92 | 1.24 | +2.22 | 0.027 | 1.000 | yes |
+| Median of all models | 1.81 | 0.88 | 0.99 | 1.36 | +2.28 | 0.022 | 1.000 | yes |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 1.69 | 0.82 | 0.92 | 1.24 | +2.22 | 0.027 | 1.000 | yes |
 | Chronos-Bolt (zero-shot) | 2.17 | 1.06 | 1.19 | 1.57 | -0.71 | 0.476 | 1.000 | yes |
 | Chronos-2 (zero-shot) | 2.01 | 0.98 | 1.10 | 1.46 | +0.87 | 0.387 | 1.000 | yes |
 | Chronos-2 + macro covariates | 1.78 | 0.86 | 0.97 | 1.28 | +2.58 | 0.010 | 1.000 | yes |
 | TimesFM 2.5 (zero-shot) | 1.89 | 0.92 | 1.03 | 1.39 | +1.81 | 0.070 | 1.000 | yes |
 | TimesFM 3.0 (zero-shot) | 1.93 | 0.94 | 1.06 | 1.40 | +1.88 | 0.060 | 1.000 | yes |
 | TimesFM 3.0 + macro covariates | 1.76 | 0.86 | 0.96 | 1.27 | +2.17 | 0.030 | 1.000 | yes |
-| N-HiTS (tier 2) | 2.84 | 1.38 | 1.55 | 2.02 | -2.84 | 0.005 | 0.025 |  |
+| N-HiTS (tier 2) | 2.84 | 1.38 | 1.55 | 2.02 | -2.84 | 0.005 | 0.029 |  |
 | PatchTST (tier 2) | 1.96 | 0.95 | 1.07 | 1.43 | +2.03 | 0.042 | 1.000 | yes |
 | TiDE (tier 2) | 1.86 | 0.91 | 1.02 | 1.34 | +1.37 | 0.172 | 1.000 | yes |
 | LSTM (tier 2) | 1.99 | 0.97 | 1.08 | 1.35 | +0.30 | 0.762 | 1.000 | yes |
@@ -245,15 +245,15 @@ RMSE relative to the random walk by the month being forecast:
 | BART | 1.12 | 0.89 | 1.04 | 0.75 |
 | Hemisphere neural net | 0.77 | 0.91 | 1.01 | 0.46 |
 | Plain neural net (MLP) | 0.78 | 0.88 | 0.99 | 0.55 |
-| Pooled ridge | 1.00 | 0.96 | 1.01 | 0.80 |
-| Pooled boosting | 1.16 | 0.93 | 0.91 | 0.76 |
-| Pooled MRF | 1.11 | 1.00 | 1.03 | 0.90 |
-| Pooled BART | 1.24 | 0.80 | 1.32 | 0.86 |
-| Pooled hemisphere net | 1.18 | 0.78 | 1.09 | 0.76 |
+| Pooled ridge | 0.97 | 0.97 | 0.99 | 0.78 |
+| Pooled boosting | 1.14 | 0.90 | 0.92 | 0.89 |
+| Pooled MRF | 1.15 | 0.98 | 1.02 | 0.77 |
+| Pooled BART | 0.94 | 0.90 | 1.21 | 0.77 |
+| Pooled hemisphere net | 1.11 | 0.76 | 1.06 | 0.70 |
 | Mean of non-linear ML | 0.87 | 0.85 | 0.96 | 0.72 |
 | ½ non-linear ML + ½ UCSV | 0.83 | 0.78 | 1.04 | 0.75 |
-| Median of all models | 0.91 | 0.90 | 0.95 | 0.64 |
-| Combined: nowcast, bottom-up, survey path | 0.80 | 0.80 | 1.01 | 0.46 |
+| Median of all models | 0.90 | 0.91 | 0.95 | 0.64 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 0.80 | 0.80 | 1.01 | 0.46 |
 | Chronos-Bolt (zero-shot) | 1.03 | 0.93 | 0.97 | 1.46 |
 | Chronos-2 (zero-shot) | 1.04 | 1.01 | 0.95 | 0.89 |
 | Chronos-2 + macro covariates | 0.80 | 0.82 | 0.95 | 0.86 |
@@ -271,79 +271,71 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 
 | model | RMSE | rel. RW | rel. UCSV | MAE | DM vs RW | DM p | MCS p | in MCS |
 |---|---|---|---|---|---|---|---|---|
-| Random walk (no change) | 1.71 | 1.00 | 1.06 | 1.14 |  |  | 1.000 | yes |
-| UCSV (Stock-Watson) | 1.60 | 0.94 | 1.00 | 1.05 | +0.86 | 0.389 | 1.000 | yes |
-| AR-type, own inflation only | 1.66 | 0.97 | 1.04 | 1.26 | +0.32 | 0.753 | 1.000 | yes |
-| Ridge | 1.52 | 0.89 | 0.95 | 1.14 | +1.21 | 0.227 | 1.000 | yes |
-| Adaptive lasso | 1.74 | 1.02 | 1.08 | 1.19 | -2.16 | 0.031 | 1.000 | yes |
-| Elastic net | 1.70 | 1.00 | 1.06 | 1.25 | +0.02 | 0.986 | 1.000 | yes |
-| Diffusion index (PCA) | 2.04 | 1.19 | 1.27 | 1.55 | -1.61 | 0.107 | 0.266 | yes |
-| Three-pass regression filter | 2.11 | 1.24 | 1.32 | 1.66 | -1.37 | 0.170 | 1.000 | yes |
-| Complete subset regression | 1.58 | 0.92 | 0.98 | 1.20 | +0.71 | 0.476 | 1.000 | yes |
-| Kernel ridge (RBF) | 1.53 | 0.89 | 0.95 | 1.15 | +1.01 | 0.315 | 1.000 | yes |
-| Random forest | 1.68 | 0.99 | 1.05 | 1.20 | +0.37 | 0.712 | 1.000 | yes |
-| Gradient boosting (LightGBM) | 1.76 | 1.03 | 1.10 | 1.29 | -0.57 | 0.571 | 1.000 | yes |
-| Macroeconomic random forest | 1.69 | 0.99 | 1.05 | 1.19 | +0.16 | 0.875 | 1.000 | yes |
-| BART | 2.00 | 1.17 | 1.24 | 1.51 | -1.13 | 0.257 | 1.000 | yes |
-| Hemisphere neural net | 1.63 | 0.96 | 1.02 | 1.23 | +0.51 | 0.612 | 1.000 | yes |
-| Plain neural net (MLP) | 1.42 | 0.83 | 0.89 | 1.09 | +1.23 | 0.217 | 1.000 | yes |
-| Pooled ridge | 1.57 | 0.92 | 0.98 | 1.15 | +1.17 | 0.240 | 1.000 | yes |
-| Pooled boosting | 1.73 | 1.02 | 1.08 | 1.18 | -0.34 | 0.736 | 1.000 | yes |
-| Pooled MRF | 1.63 | 0.96 | 1.02 | 1.17 | +0.79 | 0.430 | 1.000 | yes |
-| Pooled BART | 1.84 | 1.08 | 1.15 | 1.22 | -0.49 | 0.622 | 1.000 | yes |
-| Pooled hemisphere net | 1.70 | 1.00 | 1.06 | 1.15 | +0.03 | 0.976 | 1.000 | yes |
-| Mean of non-linear ML | 1.60 | 0.94 | 1.00 | 1.19 | +0.88 | 0.377 | 1.000 | yes |
-| ½ non-linear ML + ½ UCSV | 1.56 | 0.91 | 0.97 | 1.07 | +1.24 | 0.214 | 1.000 | yes |
-| Median of all models | 1.54 | 0.90 | 0.96 | 1.12 | +1.34 | 0.180 | 1.000 | yes |
-| Chronos-Bolt (zero-shot) | 1.69 | 0.99 | 1.05 | 1.15 | +0.24 | 0.809 | 1.000 | yes |
-| Chronos-2 (zero-shot) | 1.62 | 0.95 | 1.01 | 1.09 | +1.01 | 0.313 | 1.000 | yes |
-| Chronos-2 + macro covariates | 1.53 | 0.90 | 0.96 | 1.02 | +1.36 | 0.173 | 1.000 | yes |
-| TimesFM 2.5 (zero-shot) | 1.58 | 0.93 | 0.99 | 1.08 | +1.35 | 0.177 | 1.000 | yes |
-| TimesFM 3.0 (zero-shot) | 1.61 | 0.94 | 1.00 | 1.10 | +1.21 | 0.228 | 1.000 | yes |
-| TimesFM 3.0 + macro covariates | 1.47 | 0.86 | 0.92 | 0.98 | +1.29 | 0.198 | 1.000 | yes |
-| N-HiTS (tier 2) | 1.70 | 1.00 | 1.06 | 1.14 | +0.02 | 0.983 | 1.000 | yes |
-| PatchTST (tier 2) | 1.64 | 0.96 | 1.02 | 1.07 | +1.10 | 0.270 | 1.000 | yes |
-| TiDE (tier 2) | 1.60 | 0.94 | 1.00 | 1.04 | +0.55 | 0.580 | 1.000 | yes |
-| LSTM (tier 2) | 1.92 | 1.13 | 1.20 | 1.20 | -0.65 | 0.513 | 1.000 | yes |
+| Random walk (no change) | 2.08 | 1.00 | 1.07 | 1.38 |  |  | 1.000 | yes |
+| UCSV (Stock-Watson) | 1.95 | 0.94 | 1.00 | 1.25 | +0.64 | 0.521 | 1.000 | yes |
+| AR-type, own inflation only | 1.92 | 0.93 | 0.99 | 1.41 | +1.02 | 0.309 | 1.000 | yes |
+| Ridge | 1.87 | 0.90 | 0.96 | 1.38 | +1.18 | 0.239 | 1.000 | yes |
+| Adaptive lasso | 1.96 | 0.94 | 1.01 | 1.35 | +0.88 | 0.379 | 1.000 | yes |
+| Elastic net | 1.98 | 0.95 | 1.02 | 1.45 | +0.57 | 0.570 | 1.000 | yes |
+| Diffusion index (PCA) | 2.06 | 0.99 | 1.06 | 1.56 | +0.09 | 0.930 | 1.000 | yes |
+| Three-pass regression filter | 2.32 | 1.12 | 1.19 | 1.77 | -0.70 | 0.486 | 1.000 | yes |
+| Complete subset regression | 1.89 | 0.91 | 0.97 | 1.40 | +0.85 | 0.398 | 1.000 | yes |
+| Kernel ridge (RBF) | 1.86 | 0.89 | 0.95 | 1.36 | +1.14 | 0.253 | 1.000 | yes |
+| Random forest | 2.02 | 0.97 | 1.04 | 1.40 | +0.76 | 0.447 | 1.000 | yes |
+| Gradient boosting (LightGBM) | 2.12 | 1.02 | 1.09 | 1.54 | -0.44 | 0.657 | 0.388 | yes |
+| Macroeconomic random forest | 1.93 | 0.93 | 0.99 | 1.36 | +1.16 | 0.246 | 1.000 | yes |
+| BART | 2.30 | 1.11 | 1.18 | 1.72 | -1.34 | 0.180 | 0.086 |  |
+| Hemisphere neural net | 2.00 | 0.96 | 1.03 | 1.44 | +0.31 | 0.757 | 1.000 | yes |
+| Plain neural net (MLP) | 1.70 | 0.82 | 0.87 | 1.23 | +1.44 | 0.150 | 1.000 | yes |
+| Pooled ridge | 1.89 | 0.91 | 0.97 | 1.34 | +1.51 | 0.132 | 1.000 | yes |
+| Pooled boosting | 2.11 | 1.01 | 1.08 | 1.38 | -0.35 | 0.728 | 1.000 | yes |
+| Pooled MRF | 1.92 | 0.92 | 0.98 | 1.33 | +1.09 | 0.277 | 1.000 | yes |
+| Pooled BART | 2.08 | 1.00 | 1.07 | 1.44 | -0.00 | 0.997 | 1.000 | yes |
+| Pooled hemisphere net | 1.93 | 0.93 | 0.99 | 1.28 | +0.60 | 0.550 | 1.000 | yes |
+| Mean of non-linear ML | 1.94 | 0.93 | 1.00 | 1.39 | +0.96 | 0.339 | 1.000 | yes |
+| ½ non-linear ML + ½ UCSV | 1.90 | 0.92 | 0.98 | 1.27 | +1.06 | 0.288 | 1.000 | yes |
+| Median of all models | 1.85 | 0.89 | 0.95 | 1.30 | +1.38 | 0.168 | 1.000 | yes |
+| Chronos-Bolt (zero-shot) | 2.09 | 1.00 | 1.07 | 1.38 | -0.09 | 0.930 | 1.000 | yes |
+| Chronos-2 (zero-shot) | 1.99 | 0.96 | 1.02 | 1.32 | +0.83 | 0.404 | 1.000 | yes |
+| Chronos-2 + macro covariates | 1.87 | 0.90 | 0.96 | 1.24 | +1.32 | 0.186 | 1.000 | yes |
+| TimesFM 2.5 (zero-shot) | 1.92 | 0.92 | 0.99 | 1.31 | +1.46 | 0.144 | 1.000 | yes |
+| TimesFM 3.0 (zero-shot) | 1.96 | 0.94 | 1.01 | 1.32 | +1.30 | 0.192 | 1.000 | yes |
+| TimesFM 3.0 + macro covariates | 1.76 | 0.85 | 0.91 | 1.18 | +1.22 | 0.221 | 1.000 | yes |
 
 RMSE relative to the random walk by the month being forecast:
 
 | model | 2000-07 | 2008-20 | 2021-22 surge | 2023- |
 |---|---|---|---|---|
 | Random walk (no change) | 1.00 | 1.00 | 1.00 | 1.00 |
-| UCSV (Stock-Watson) | 1.08 | 0.93 | 1.02 | 0.81 |
-| AR-type, own inflation only | 1.83 | 1.24 | 0.84 | 0.83 |
-| Ridge | 2.01 | 0.98 | 0.90 | 0.67 |
-| Adaptive lasso | 1.44 | 1.01 | 1.00 | 1.02 |
-| Elastic net | 2.62 | 1.14 | 0.92 | 0.77 |
-| Diffusion index (PCA) | 3.15 | 1.59 | 0.81 | 1.04 |
-| Three-pass regression filter | 3.68 | 1.78 | 0.98 | 0.56 |
-| Complete subset regression | 1.84 | 1.23 | 0.82 | 0.67 |
-| Kernel ridge (RBF) | 1.97 | 1.11 | 0.85 | 0.62 |
-| Random forest | 1.48 | 1.05 | 0.95 | 0.95 |
-| Gradient boosting (LightGBM) | 2.47 | 1.02 | 1.02 | 0.88 |
-| Macroeconomic random forest | 1.20 | 1.26 | 0.88 | 0.88 |
-| BART | 3.54 | 1.16 | 1.07 | 0.95 |
-| Hemisphere neural net | 1.63 | 1.21 | 0.91 | 0.72 |
-| Plain neural net (MLP) | 1.75 | 1.09 | 0.78 | 0.54 |
-| Pooled ridge | 1.88 | 0.97 | 0.91 | 0.79 |
-| Pooled boosting | 1.49 | 0.96 | 1.01 | 1.02 |
-| Pooled MRF | 1.58 | 1.04 | 0.93 | 0.86 |
-| Pooled BART | 2.25 | 0.97 | 1.12 | 0.97 |
-| Pooled hemisphere net | 1.27 | 1.05 | 1.04 | 0.87 |
-| Mean of non-linear ML | 1.88 | 1.02 | 0.94 | 0.75 |
-| ½ non-linear ML + ½ UCSV | 1.27 | 0.96 | 0.98 | 0.75 |
-| Median of all models | 1.62 | 0.99 | 0.93 | 0.72 |
-| Chronos-Bolt (zero-shot) | 1.30 | 1.01 | 0.97 | 0.97 |
-| Chronos-2 (zero-shot) | 1.08 | 1.05 | 0.96 | 0.84 |
-| Chronos-2 + macro covariates | 1.11 | 0.98 | 0.96 | 0.72 |
-| TimesFM 2.5 (zero-shot) | 1.11 | 1.03 | 0.93 | 0.83 |
-| TimesFM 3.0 (zero-shot) | 1.05 | 1.03 | 0.92 | 0.90 |
-| TimesFM 3.0 + macro covariates | 1.29 | 0.93 | 0.97 | 0.60 |
-| N-HiTS (tier 2) | 1.15 | 1.15 | 1.09 | 0.70 |
-| PatchTST (tier 2) | 0.98 | 0.97 | 1.01 | 0.88 |
-| TiDE (tier 2) | 1.05 | 0.94 | 1.08 | 0.72 |
-| LSTM (tier 2) | 1.30 | 1.03 | 1.23 | 1.05 |
+| UCSV (Stock-Watson) | 1.04 | 0.92 | 1.05 | 0.80 |
+| AR-type, own inflation only | 1.61 | 1.11 | 0.86 | 0.82 |
+| Ridge | 1.64 | 1.05 | 0.92 | 0.71 |
+| Adaptive lasso | 1.27 | 1.01 | 1.00 | 0.82 |
+| Elastic net | 2.21 | 1.08 | 0.91 | 0.80 |
+| Diffusion index (PCA) | 2.14 | 1.45 | 0.81 | 0.71 |
+| Three-pass regression filter | 3.07 | 1.58 | 1.01 | 0.58 |
+| Complete subset regression | 1.59 | 1.22 | 0.85 | 0.68 |
+| Kernel ridge (RBF) | 1.61 | 1.11 | 0.87 | 0.71 |
+| Random forest | 1.26 | 1.08 | 0.95 | 0.90 |
+| Gradient boosting (LightGBM) | 1.85 | 1.14 | 0.97 | 0.93 |
+| Macroeconomic random forest | 1.10 | 1.12 | 0.91 | 0.80 |
+| BART | 2.42 | 1.39 | 0.97 | 0.94 |
+| Hemisphere neural net | 1.27 | 1.38 | 0.85 | 0.74 |
+| Plain neural net (MLP) | 1.26 | 1.09 | 0.77 | 0.63 |
+| Pooled ridge | 1.43 | 0.96 | 0.93 | 0.82 |
+| Pooled boosting | 1.24 | 0.97 | 1.01 | 1.03 |
+| Pooled MRF | 1.28 | 1.02 | 0.95 | 0.80 |
+| Pooled BART | 2.25 | 1.16 | 0.92 | 0.86 |
+| Pooled hemisphere net | 1.16 | 0.95 | 1.01 | 0.80 |
+| Mean of non-linear ML | 1.45 | 1.11 | 0.92 | 0.80 |
+| ½ non-linear ML + ½ UCSV | 1.11 | 1.00 | 0.98 | 0.77 |
+| Median of all models | 1.35 | 1.02 | 0.92 | 0.73 |
+| Chronos-Bolt (zero-shot) | 1.12 | 1.00 | 0.99 | 1.01 |
+| Chronos-2 (zero-shot) | 1.06 | 1.04 | 1.00 | 0.85 |
+| Chronos-2 + macro covariates | 1.06 | 0.98 | 0.98 | 0.73 |
+| TimesFM 2.5 (zero-shot) | 1.12 | 1.04 | 0.93 | 0.83 |
+| TimesFM 3.0 (zero-shot) | 1.08 | 1.03 | 0.95 | 0.87 |
+| TimesFM 3.0 + macro covariates | 1.27 | 0.96 | 0.97 | 0.56 |
 
 ### Japan (2000-01 – 2025-11 origins)
 
@@ -367,15 +359,16 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | BART | 1.37 | 0.97 | 1.15 | 1.02 | +0.20 | 0.843 | 1.000 | yes |
 | Hemisphere neural net | 1.47 | 1.05 | 1.23 | 1.08 | -0.33 | 0.744 | 1.000 | yes |
 | Plain neural net (MLP) | 1.27 | 0.90 | 1.06 | 0.96 | +0.91 | 0.363 | 1.000 | yes |
-| Pooled ridge | 1.27 | 0.90 | 1.06 | 0.96 | +2.23 | 0.025 | 1.000 | yes |
-| Pooled boosting | 1.34 | 0.95 | 1.12 | 0.95 | +0.58 | 0.561 | 1.000 | yes |
-| Pooled MRF | 1.31 | 0.93 | 1.09 | 0.95 | +1.68 | 0.093 | 1.000 | yes |
-| Pooled BART | 1.44 | 1.03 | 1.21 | 1.07 | -0.20 | 0.844 | 1.000 | yes |
-| Pooled hemisphere net | 1.34 | 0.95 | 1.12 | 0.97 | +0.44 | 0.661 | 1.000 | yes |
+| Pooled ridge | 1.26 | 0.89 | 1.05 | 0.95 | +2.27 | 0.023 | 1.000 | yes |
+| Pooled boosting | 1.28 | 0.91 | 1.07 | 0.91 | +1.02 | 0.308 | 1.000 | yes |
+| Pooled MRF | 1.25 | 0.89 | 1.04 | 0.93 | +2.70 | 0.007 | 1.000 | yes |
+| Pooled BART | 1.48 | 1.05 | 1.23 | 1.10 | -0.40 | 0.689 | 0.541 | yes |
+| Pooled hemisphere net | 1.31 | 0.93 | 1.10 | 0.96 | +0.52 | 0.605 | 1.000 | yes |
 | Mean of non-linear ML | 1.22 | 0.87 | 1.02 | 0.89 | +1.49 | 0.137 | 1.000 | yes |
 | ½ non-linear ML + ½ UCSV | 1.17 | 0.83 | 0.98 | 0.85 | +2.06 | 0.040 | 1.000 | yes |
-| Median of all models | 1.17 | 0.83 | 0.98 | 0.87 | +2.21 | 0.027 | 1.000 | yes |
-| Chronos-Bolt (zero-shot) | 1.48 | 1.05 | 1.24 | 1.08 | -1.00 | 0.317 | 0.796 | yes |
+| Median of all models | 1.16 | 0.83 | 0.97 | 0.86 | +2.25 | 0.024 | 1.000 | yes |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 1.10 | 0.78 | 0.92 | 0.79 | +3.49 | 0.000 | 1.000 | yes |
+| Chronos-Bolt (zero-shot) | 1.48 | 1.05 | 1.24 | 1.08 | -1.00 | 0.317 | 1.000 | yes |
 | Chronos-2 (zero-shot) | 1.38 | 0.98 | 1.15 | 1.01 | +0.69 | 0.492 | 1.000 | yes |
 | Chronos-2 + macro covariates | 1.23 | 0.87 | 1.03 | 0.91 | +2.49 | 0.013 | 1.000 | yes |
 | TimesFM 2.5 (zero-shot) | 1.33 | 0.94 | 1.11 | 0.97 | +2.17 | 0.030 | 1.000 | yes |
@@ -406,14 +399,15 @@ RMSE relative to the random walk by the month being forecast:
 | BART | 1.17 | 0.81 | 0.61 | 1.74 |
 | Hemisphere neural net | 1.26 | 0.79 | 0.98 | 1.85 |
 | Plain neural net (MLP) | 1.17 | 0.72 | 0.92 | 1.42 |
-| Pooled ridge | 1.16 | 0.88 | 0.89 | 0.92 |
-| Pooled boosting | 1.09 | 0.89 | 0.89 | 1.25 |
-| Pooled MRF | 1.01 | 0.87 | 0.90 | 1.16 |
-| Pooled BART | 2.01 | 0.79 | 0.88 | 1.51 |
-| Pooled hemisphere net | 1.07 | 0.77 | 1.07 | 1.43 |
+| Pooled ridge | 1.14 | 0.87 | 0.90 | 0.86 |
+| Pooled boosting | 1.15 | 0.80 | 0.95 | 1.19 |
+| Pooled MRF | 1.07 | 0.87 | 0.86 | 0.90 |
+| Pooled BART | 2.12 | 0.82 | 0.81 | 1.54 |
+| Pooled hemisphere net | 1.09 | 0.69 | 1.11 | 1.49 |
 | Mean of non-linear ML | 0.97 | 0.75 | 0.78 | 1.35 |
 | ½ non-linear ML + ½ UCSV | 0.85 | 0.74 | 0.80 | 1.21 |
-| Median of all models | 1.01 | 0.76 | 0.82 | 1.09 |
+| Median of all models | 1.02 | 0.74 | 0.82 | 1.09 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 0.78 | 0.78 | 0.74 | 0.83 |
 | Chronos-Bolt (zero-shot) | 1.15 | 1.09 | 0.95 | 0.96 |
 | Chronos-2 (zero-shot) | 1.04 | 0.96 | 0.99 | 0.99 |
 | Chronos-2 + macro covariates | 1.11 | 0.87 | 0.77 | 0.91 |
@@ -444,17 +438,17 @@ DM > 0: more accurate than the random walk (Harvey-Leybourne-Newbold, two-sided 
 | Random forest | 1.96 | 0.98 | 0.99 | 1.34 | +0.18 | 0.854 | 1.000 | yes |
 | Gradient boosting (LightGBM) | 1.92 | 0.96 | 0.97 | 1.32 | +0.41 | 0.679 | 1.000 | yes |
 | Macroeconomic random forest | 1.92 | 0.97 | 0.97 | 1.24 | +0.21 | 0.832 | 1.000 | yes |
-| BART | 2.18 | 1.10 | 1.10 | 1.46 | -0.78 | 0.433 | 0.510 | yes |
+| BART | 2.18 | 1.10 | 1.10 | 1.46 | -0.78 | 0.433 | 1.000 | yes |
 | Hemisphere neural net | 1.84 | 0.92 | 0.93 | 1.26 | +1.07 | 0.283 | 1.000 | yes |
 | Plain neural net (MLP) | 1.86 | 0.93 | 0.94 | 1.29 | +0.71 | 0.478 | 1.000 | yes |
-| Pooled ridge | 1.83 | 0.92 | 0.92 | 1.20 | +1.23 | 0.219 | 1.000 | yes |
-| Pooled boosting | 2.09 | 1.05 | 1.05 | 1.39 | -1.01 | 0.311 | 1.000 | yes |
-| Pooled MRF | 2.19 | 1.10 | 1.10 | 1.42 | -1.76 | 0.079 | 1.000 | yes |
-| Pooled BART | 2.19 | 1.10 | 1.10 | 1.42 | -0.56 | 0.577 | 1.000 | yes |
-| Pooled hemisphere net | 2.07 | 1.04 | 1.04 | 1.35 | -0.24 | 0.811 | 1.000 | yes |
+| Pooled ridge | 1.84 | 0.93 | 0.93 | 1.22 | +1.13 | 0.260 | 1.000 | yes |
+| Pooled boosting | 2.13 | 1.07 | 1.08 | 1.37 | -1.09 | 0.275 | 1.000 | yes |
+| Pooled MRF | 2.10 | 1.06 | 1.06 | 1.40 | -1.87 | 0.062 | 1.000 | yes |
+| Pooled BART | 2.33 | 1.17 | 1.18 | 1.56 | -1.16 | 0.245 | 0.343 | yes |
+| Pooled hemisphere net | 2.02 | 1.02 | 1.02 | 1.33 | -0.11 | 0.915 | 1.000 | yes |
 | Mean of non-linear ML | 1.88 | 0.95 | 0.95 | 1.28 | +0.49 | 0.623 | 1.000 | yes |
 | ½ non-linear ML + ½ UCSV | 1.90 | 0.95 | 0.96 | 1.23 | +0.43 | 0.667 | 1.000 | yes |
-| Median of all models | 1.79 | 0.90 | 0.90 | 1.21 | +0.84 | 0.401 | 1.000 | yes |
+| Median of all models | 1.82 | 0.92 | 0.92 | 1.24 | +0.79 | 0.431 | 1.000 | yes |
 | Chronos-Bolt (zero-shot) | 1.99 | 1.00 | 1.01 | 1.32 | -0.09 | 0.927 | 1.000 | yes |
 | Chronos-2 (zero-shot) | 1.86 | 0.94 | 0.94 | 1.21 | +1.05 | 0.291 | 1.000 | yes |
 | Chronos-2 + macro covariates | 1.77 | 0.89 | 0.89 | 1.15 | +1.30 | 0.192 | 1.000 | yes |
@@ -486,14 +480,14 @@ RMSE relative to the random walk by the month being forecast:
 | BART | 0.93 | 1.08 | 1.20 | 0.97 |
 | Hemisphere neural net | 0.89 | 0.93 | 0.99 | 0.83 |
 | Plain neural net (MLP) | 0.90 | 0.98 | 1.01 | 0.80 |
-| Pooled ridge | 1.04 | 0.97 | 1.00 | 0.76 |
-| Pooled boosting | 1.11 | 1.00 | 1.06 | 1.08 |
-| Pooled MRF | 0.97 | 1.02 | 1.05 | 1.21 |
-| Pooled BART | 2.39 | 1.17 | 1.20 | 0.82 |
-| Pooled hemisphere net | 1.67 | 1.02 | 1.19 | 0.79 |
+| Pooled ridge | 1.04 | 0.98 | 1.00 | 0.77 |
+| Pooled boosting | 1.14 | 0.98 | 1.11 | 1.08 |
+| Pooled MRF | 1.05 | 1.06 | 1.03 | 1.09 |
+| Pooled BART | 1.87 | 1.20 | 1.23 | 1.05 |
+| Pooled hemisphere net | 1.48 | 1.01 | 1.16 | 0.78 |
 | Mean of non-linear ML | 0.84 | 1.01 | 1.06 | 0.73 |
 | ½ non-linear ML + ½ UCSV | 0.84 | 0.92 | 1.10 | 0.76 |
-| Median of all models | 0.90 | 0.96 | 1.03 | 0.64 |
+| Median of all models | 0.90 | 0.97 | 1.03 | 0.70 |
 | Chronos-Bolt (zero-shot) | 0.96 | 1.06 | 0.96 | 1.01 |
 | Chronos-2 (zero-shot) | 0.93 | 1.03 | 0.98 | 0.79 |
 | Chronos-2 + macro covariates | 1.14 | 0.98 | 0.96 | 0.70 |
@@ -512,13 +506,13 @@ Chronos and TimesFM were pretrained on public corpora that may contain these CPI
 | model, horizon | origins from | forecasts | model rel. RW | UCSV rel. RW |
 |---|---|---|---|---|
 | Chronos-2 (zero-shot), h=3 | 2025-11 | 39 | 0.99 | 0.86 |
-| Chronos-2 (zero-shot), h=6 | 2025-11 | 27 | 0.99 | 0.84 |
-| Chronos-2 + macro covariates, h=3 | 2025-11 | 39 | 0.80 | 0.86 |
-| Chronos-2 + macro covariates, h=6 | 2025-11 | 27 | 0.74 | 0.84 |
-| Chronos-Bolt (zero-shot), h=3 | 2024-12 | 82 | 1.01 | 0.88 |
-| Chronos-Bolt (zero-shot), h=6 | 2024-12 | 70 | 0.95 | 0.82 |
-| TimesFM 2.5 (zero-shot), h=3 | 2025-10 | 43 | 0.99 | 0.84 |
-| TimesFM 2.5 (zero-shot), h=6 | 2025-10 | 31 | 0.99 | 0.80 |
+| Chronos-2 (zero-shot), h=6 | 2025-11 | 27 | 0.99 | 0.86 |
+| Chronos-2 + macro covariates, h=3 | 2025-11 | 39 | 0.82 | 0.86 |
+| Chronos-2 + macro covariates, h=6 | 2025-11 | 27 | 0.74 | 0.86 |
+| Chronos-Bolt (zero-shot), h=3 | 2024-12 | 82 | 1.01 | 0.87 |
+| Chronos-Bolt (zero-shot), h=6 | 2024-12 | 70 | 0.94 | 0.81 |
+| TimesFM 2.5 (zero-shot), h=3 | 2025-10 | 43 | 1.00 | 0.84 |
+| TimesFM 2.5 (zero-shot), h=6 | 2025-10 | 31 | 1.00 | 0.82 |
 
 ## Interval forecasts, 12 months ahead
 
@@ -537,11 +531,11 @@ Chronos and TimesFM were pretrained on public corpora that may contain these CPI
 | BART (conformal) | 0.70 | 4.47 | 8.80 | 262 |
 | BART (posterior) | 0.35 | 1.64 | 10.13 | 262 |
 | Hemisphere neural net (conformal) | 0.68 | 4.00 | 8.22 | 262 |
-| Pooled BART (conformal) | 0.75 | 4.38 | 9.38 | 262 |
-| Pooled BART (posterior) | 0.51 | 2.30 | 9.26 | 262 |
+| Pooled BART (conformal) | 0.72 | 4.07 | 8.87 | 262 |
+| Pooled BART (posterior) | 0.53 | 2.26 | 9.01 | 262 |
 | Mean of non-linear ML (conformal) | 0.69 | 3.87 | 8.06 | 262 |
 | ½ non-linear ML + ½ UCSV (conformal) | 0.70 | 3.60 | 8.09 | 262 |
-| Median of all models (conformal) | 0.69 | 4.06 | 8.52 | 262 |
+| Median of all models (conformal) | 0.69 | 4.00 | 8.48 | 262 |
 | Chronos-2 + macro covariates (conformal) | 0.70 | 3.62 | 8.97 | 262 |
 | Chronos-2 + macro covariates (posterior) | 0.69 | 3.40 | 6.94 | 262 |
 | TimesFM 3.0 + macro covariates (conformal) | 0.70 | 3.65 | 8.74 | 262 |
@@ -551,24 +545,24 @@ Chronos and TimesFM were pretrained on public corpora that may contain these CPI
 
 | model | coverage | width | interval_score | n |
 |---|---|---|---|---|
-| Random walk (no change) (conformal) | 0.58 | 2.57 | 8.10 | 264 |
-| UCSV (Stock-Watson) (conformal) | 0.56 | 2.54 | 7.42 | 264 |
-| Ridge (conformal) | 0.58 | 2.79 | 7.32 | 264 |
-| Random forest (conformal) | 0.51 | 2.84 | 7.79 | 264 |
-| Gradient boosting (LightGBM) (conformal) | 0.61 | 3.47 | 8.41 | 264 |
-| Macroeconomic random forest (conformal) | 0.54 | 2.85 | 8.05 | 264 |
-| BART (conformal) | 0.65 | 4.10 | 8.72 | 264 |
-| BART (posterior) | 0.42 | 2.15 | 8.55 | 264 |
-| Hemisphere neural net (conformal) | 0.53 | 3.14 | 7.47 | 264 |
-| Pooled BART (conformal) | 0.71 | 3.15 | 7.65 | 264 |
-| Pooled BART (posterior) | 0.62 | 2.22 | 7.28 | 264 |
-| Mean of non-linear ML (conformal) | 0.57 | 2.97 | 7.51 | 264 |
-| ½ non-linear ML + ½ UCSV (conformal) | 0.53 | 2.64 | 7.42 | 264 |
-| Median of all models (conformal) | 0.55 | 2.75 | 7.39 | 264 |
-| Chronos-2 + macro covariates (conformal) | 0.59 | 2.48 | 6.99 | 264 |
-| Chronos-2 + macro covariates (posterior) | 0.64 | 2.52 | 5.98 | 264 |
-| TimesFM 3.0 + macro covariates (conformal) | 0.64 | 2.53 | 6.40 | 264 |
-| TimesFM 3.0 + macro covariates (posterior) | 0.75 | 2.90 | 5.51 | 264 |
+| Random walk (no change) (conformal) | 0.59 | 3.14 | 9.82 | 264 |
+| UCSV (Stock-Watson) (conformal) | 0.54 | 3.00 | 8.84 | 264 |
+| Ridge (conformal) | 0.59 | 3.40 | 9.04 | 264 |
+| Random forest (conformal) | 0.48 | 3.37 | 9.38 | 264 |
+| Gradient boosting (LightGBM) (conformal) | 0.50 | 3.80 | 9.86 | 264 |
+| Macroeconomic random forest (conformal) | 0.51 | 3.29 | 9.11 | 264 |
+| BART (conformal) | 0.59 | 4.61 | 11.04 | 264 |
+| BART (posterior) | 0.44 | 2.42 | 11.06 | 264 |
+| Hemisphere neural net (conformal) | 0.56 | 3.88 | 10.21 | 264 |
+| Pooled BART (conformal) | 0.67 | 4.02 | 8.77 | 264 |
+| Pooled BART (posterior) | 0.50 | 2.29 | 8.99 | 264 |
+| Mean of non-linear ML (conformal) | 0.51 | 3.54 | 9.46 | 264 |
+| ½ non-linear ML + ½ UCSV (conformal) | 0.50 | 3.23 | 9.10 | 264 |
+| Median of all models (conformal) | 0.52 | 3.28 | 8.96 | 264 |
+| Chronos-2 + macro covariates (conformal) | 0.59 | 2.94 | 8.61 | 264 |
+| Chronos-2 + macro covariates (posterior) | 0.65 | 3.02 | 7.26 | 264 |
+| TimesFM 3.0 + macro covariates (conformal) | 0.61 | 2.99 | 7.77 | 264 |
+| TimesFM 3.0 + macro covariates (posterior) | 0.74 | 3.47 | 6.49 | 264 |
 
 ### Japan
 
@@ -583,11 +577,11 @@ Chronos and TimesFM were pretrained on public corpora that may contain these CPI
 | BART (conformal) | 0.66 | 2.62 | 5.74 | 264 |
 | BART (posterior) | 0.61 | 2.21 | 5.95 | 264 |
 | Hemisphere neural net (conformal) | 0.71 | 2.80 | 5.89 | 264 |
-| Pooled BART (conformal) | 0.73 | 3.06 | 5.24 | 264 |
-| Pooled BART (posterior) | 0.59 | 2.20 | 5.62 | 264 |
+| Pooled BART (conformal) | 0.74 | 3.40 | 5.53 | 264 |
+| Pooled BART (posterior) | 0.62 | 2.38 | 5.90 | 264 |
 | Mean of non-linear ML (conformal) | 0.69 | 2.36 | 4.93 | 264 |
 | ½ non-linear ML + ½ UCSV (conformal) | 0.70 | 2.20 | 4.86 | 264 |
-| Median of all models (conformal) | 0.69 | 2.52 | 4.96 | 264 |
+| Median of all models (conformal) | 0.71 | 2.49 | 4.87 | 264 |
 | Chronos-2 + macro covariates (conformal) | 0.72 | 2.83 | 5.52 | 264 |
 | Chronos-2 + macro covariates (posterior) | 0.74 | 2.83 | 4.72 | 264 |
 | TimesFM 3.0 + macro covariates (conformal) | 0.73 | 2.33 | 4.76 | 264 |
@@ -606,11 +600,11 @@ Chronos and TimesFM were pretrained on public corpora that may contain these CPI
 | BART (conformal) | 0.53 | 3.57 | 10.80 | 240 |
 | BART (posterior) | 0.20 | 1.10 | 13.22 | 240 |
 | Hemisphere neural net (conformal) | 0.55 | 2.96 | 9.01 | 240 |
-| Pooled BART (conformal) | 0.65 | 3.97 | 10.38 | 240 |
-| Pooled BART (posterior) | 0.52 | 2.23 | 9.87 | 240 |
+| Pooled BART (conformal) | 0.60 | 3.84 | 11.03 | 240 |
+| Pooled BART (posterior) | 0.45 | 2.34 | 11.12 | 240 |
 | Mean of non-linear ML (conformal) | 0.56 | 3.09 | 9.36 | 240 |
 | ½ non-linear ML + ½ UCSV (conformal) | 0.57 | 2.95 | 9.45 | 240 |
-| Median of all models (conformal) | 0.53 | 3.01 | 8.91 | 240 |
+| Median of all models (conformal) | 0.52 | 3.02 | 9.14 | 240 |
 | Chronos-2 + macro covariates (conformal) | 0.64 | 2.92 | 8.92 | 240 |
 | Chronos-2 + macro covariates (posterior) | 0.62 | 2.48 | 7.39 | 240 |
 | TimesFM 3.0 + macro covariates (conformal) | 0.64 | 2.75 | 8.28 | 240 |
@@ -646,21 +640,21 @@ Hemisphere net: average contribution of each block to the forecast change in y/y
 
 | origins | own | expect | slack | cost | money | global | calendar |
 |---|---|---|---|---|---|---|---|
-| 2000-07 | +0.05 | -0.07 | -0.08 | +0.18 | +0.15 | -0.02 | +0.02 |
-| 2008-19 | +0.07 | +0.05 | -0.40 | +0.10 | +0.12 | -0.07 | -0.02 |
-| 2020 | +0.31 | +0.12 | -0.43 | -0.06 | +0.03 | +0.12 | +0.01 |
-| 2021 | -0.07 | +0.11 | +0.18 | +0.25 | +0.02 | -0.04 | +0.00 |
-| 2022 | -0.79 | -0.02 | -0.06 | -0.11 | +0.15 | +0.53 | +0.06 |
-| 2023- | +0.06 | -0.04 | -0.29 | +0.08 | +0.03 | -0.24 | +0.03 |
+| 2000-07 | +0.15 | -0.04 | -0.02 | +0.17 | +0.02 | -0.07 | +0.01 |
+| 2008-19 | +0.07 | +0.08 | -0.30 | +0.04 | +0.11 | -0.16 | -0.27 |
+| 2020 | +0.32 | +0.08 | -0.26 | -0.19 | -0.16 | +0.17 | +0.05 |
+| 2021 | +0.12 | -0.06 | +0.22 | +0.41 | -0.04 | +0.41 | +0.03 |
+| 2022 | -2.45 | -0.05 | -0.23 | -0.07 | +0.26 | +0.32 | -0.02 |
+| 2023- | +0.21 | -0.00 | -0.36 | +0.15 | -0.13 | -0.14 | +0.00 |
 
 Macroeconomic random forest: average time-varying coefficients (pp of forecast change per standard deviation of each term):
 
 | origins | intercept | pi | oil_yoy | unemp_gap | mech |
 |---|---|---|---|---|---|
-| 2000-07 | -0.15 | -0.48 | +0.02 | -0.04 | -0.02 |
-| 2008-19 | -0.08 | -0.50 | +0.16 | +0.01 | -0.10 |
-| 2020-22 | +0.42 | -0.80 | +0.18 | +0.00 | -0.02 |
-| 2023- | -0.48 | -0.99 | +0.17 | -0.15 | +0.00 |
+| 2000-07 | -0.22 | -0.49 | +0.07 | -0.08 | -0.03 |
+| 2008-19 | -0.26 | -0.63 | +0.15 | -0.04 | -0.16 |
+| 2020-22 | +0.24 | -0.92 | +0.17 | -0.05 | +0.03 |
+| 2023- | -0.49 | -1.06 | +0.20 | -0.11 | -0.01 |
 
 ### Japan
 
@@ -729,28 +723,28 @@ Every model refitted on all realised data and applied at each economy's latest C
 | Part: models with the nowcast | 3.36 | 2.41 | 1.81 | 2.60 |
 | Part: bottom-up | 3.60 | 2.61 | 2.53 | 2.60 |
 | Part: nowcast models around the survey path | 3.67 | 2.74 | 1.93 | 2.33 |
-| Combined: nowcast, bottom-up, survey path | 3.54 | 2.58 | 2.09 | 2.51 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 3.54 | 2.58 | 2.09 | 2.51 |
 | TimesFM 3.0 + macro covariates | 3.66 | 3.39 | 3.12 | 2.88 |
 | TimesFM 3.0 + covariates, 80% band | 2.9 to 4.3 | 2.4 to 4.4 | 1.9 to 4.5 | 1.4 to 4.6 |
 
-### United Kingdom: latest print 2026-10, y/y 3.59%
+### United Kingdom: latest print 2026-10, y/y 3.58%
 
 | model | h=3 (2027-01) | h=6 (2027-04) | h=12 (2027-10) | h=24 (2028-10) |
 |---|---|---|---|---|
-| Random walk (no change) | 3.59 | 3.59 | 3.59 | 3.59 |
-| UCSV (Stock-Watson) | 4.04 | 4.11 | 4.15 | 4.15 |
-| Ridge | 3.76 | 3.89 | 3.90 | 3.44 |
-| Complete subset regression | 3.97 | 4.10 | 4.01 | 3.65 |
-| Kernel ridge (RBF) | 3.78 | 3.94 | 3.83 | 3.36 |
-| Gradient boosting (LightGBM) | 3.82 | 4.05 | 3.06 | 2.40 |
-| Macroeconomic random forest | 3.81 | 3.66 | 3.35 | 2.94 |
-| Hemisphere neural net | 3.53 | 3.58 | 3.49 | 3.08 |
-| Plain neural net (MLP) | 3.60 | 3.95 | 3.47 | 3.22 |
-| Mean of non-linear ML | 3.69 | 3.78 | 2.74 | 2.56 |
-| ½ non-linear ML + ½ UCSV | 3.86 | 3.95 | 3.44 | 3.35 |
-| Median of all models | 3.81 | 3.94 | 3.49 | 3.22 |
-| TimesFM 3.0 + macro covariates | 3.69 | 3.78 | 3.58 | 3.31 |
-| TimesFM 3.0 + covariates, 80% band | 3.1 to 4.5 | 2.8 to 5.2 | 2.2 to 5.8 | 1.6 to 6.3 |
+| Random walk (no change) | 3.58 | 3.58 | 3.58 | 3.58 |
+| UCSV (Stock-Watson) | 4.05 | 4.16 | 4.26 | 4.26 |
+| Ridge | 3.84 | 4.08 | 4.06 | 3.21 |
+| Complete subset regression | 4.00 | 4.17 | 4.07 | 3.10 |
+| Kernel ridge (RBF) | 3.82 | 4.05 | 3.99 | 3.21 |
+| Gradient boosting (LightGBM) | 3.87 | 3.94 | 3.18 | 2.25 |
+| Macroeconomic random forest | 3.89 | 3.82 | 3.55 | 2.79 |
+| Hemisphere neural net | 3.55 | 3.78 | 3.41 | 2.76 |
+| Plain neural net (MLP) | 3.65 | 3.94 | 3.62 | 2.75 |
+| Mean of non-linear ML | 3.86 | 3.86 | 3.58 | 2.83 |
+| ½ non-linear ML + ½ UCSV | 3.95 | 4.01 | 3.92 | 3.55 |
+| Median of all models | 3.84 | 4.00 | 3.99 | 3.00 |
+| TimesFM 3.0 + macro covariates | 3.80 | 3.96 | 3.68 | 3.33 |
+| TimesFM 3.0 + covariates, 80% band | 3.1 to 4.7 | 2.9 to 5.6 | 2.1 to 6.2 | 1.5 to 6.6 |
 
 ### Japan: latest print 2026-10, y/y 2.36%
 
@@ -768,6 +762,8 @@ Every model refitted on all realised data and applied at each economy's latest C
 | Mean of non-linear ML | 2.64 | 2.63 | 2.32 | 2.34 |
 | ½ non-linear ML + ½ UCSV | 2.68 | 2.88 | 2.29 | 2.31 |
 | Median of all models | 2.71 | 2.86 | 2.61 | 2.37 |
+| Part: bottom-up | 3.11 | 3.32 | 3.16 | 2.22 |
+| Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up) | 3.11 | 3.32 | 3.16 | 2.22 |
 | TimesFM 3.0 + macro covariates | 2.64 | 2.64 | 2.46 | 2.03 |
 | TimesFM 3.0 + covariates, 80% band | 1.9 to 3.5 | 1.6 to 3.9 | 1.0 to 4.2 | 0.2 to 4.1 |
 

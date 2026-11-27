@@ -21,7 +21,7 @@ LABELS = {
     "panel:ridge": "Pooled ridge", "panel:lgbm": "Pooled boosting", "panel:mrf": "Pooled MRF",
     "panel:bart": "Pooled BART", "panel:hnn": "Pooled hemisphere net",
     "ens:ml": "Mean of non-linear ML", "ens:ml+ucsv": "½ non-linear ML + ½ UCSV", "ens:median": "Median of all models",
-    "ens:combined": "Combined: nowcast, bottom-up, survey path",
+    "ens:combined": "Headline combination (US: nowcast, bottom-up, survey; Japan: bottom-up)",
     "part:nowcast": "Part: models with the nowcast", "part:bottom_up": "Part: bottom-up",
     "part:nowcast+survey_anchor": "Part: nowcast models around the survey path",
     "deep:nhits": "N-HiTS (tier 2)", "deep:patchtst": "PatchTST (tier 2)", "deep:tide": "TiDE (tier 2)",
@@ -236,7 +236,7 @@ def survey_section(surveys: pd.DataFrame) -> list[str]:
             "\"monthly\" scores y/y inflation in the target quarter's last month, \"quarterly\" the quarterly average "
             "(the survey's own target).  Euro area: ECB Survey of Professional Forecasters, mean forecast of y/y HICP "
             "12 and 24 months after the latest print; \"one print fewer\" handicaps the models by a month.  RMSE "
-            "relative to no change; p-values are Diebold-Mariano tests against the survey.  The combined forecast "
+            "relative to no change; p-values are Diebold-Mariano tests against the survey.  The US combination "
             "uses the survey itself as one of its inputs.", "",
             md_table(show, kinds, "economy, horizon"), ""]
 
@@ -249,10 +249,11 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
           "print.  Forecast origins are month-ends from January 2000 (later for the euro area, whose data start "
           "in 1990), each using only data published by then.  Expanding training window from 1960 where data "
           "exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative "
-          "to headline moved towards core (see the README).  The combined forecast (see `combined.py`) averages "
-          "models that use a nowcast, a bottom-up model of components and models anchored on the professional "
-          "forecasters' path; it is listed for the economies where it is the headline.  The UK index is the CPI "
-          "(ONS) from 1988.  RMSE is relative to the random walk "
+          "to headline moved towards core (see the README).  The headline combination (see `combined.py`) is built "
+          "from six fast models with information the others lack: in the US the average of models with a nowcast, a "
+          "bottom-up model of components and models anchored on the professional forecasters' path; in Japan the "
+          "bottom-up model, fed by the Tokyo CPI.  It is listed for the economies where it passed the adoption rule "
+          "(`docs/inflation_pilot.md`).  The UK index is the CPI (ONS) from 1988.  RMSE is relative to the random walk "
           "(no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set "
           "(Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  "
           "All models of one economy and horizon are scored on the same months.", ""]
