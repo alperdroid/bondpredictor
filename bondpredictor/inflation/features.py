@@ -251,15 +251,18 @@ def convergence_weights(frame: pd.DataFrame, h: int, min_rows: int = 120) -> pd.
     return pd.Series(w, index=frame.index, name=f"w{h}")
 
 
-def anchor_column(frame: pd.DataFrame, h: int) -> pd.Series:
+def anchor_column(frame: pd.DataFrame, h: int, prior: float = 1.0) -> pd.Series:
     """Target offset for horizon ``h``: the expected move of headline towards core, ``w_h * (core - pi)``.
 
-    Training rows before the first weight estimate (about ten years after 1960) take that first
-    estimate, so anchored models keep their full training sample; every forecast origin evaluated
-    comes later and already knew it.
+    ``w_h`` is the real-time share of the gap that closes within ``h`` months.  Until ten years of
+    published data allow an estimate it is ``prior`` (full convergence, which is also what the
+    first estimates for the UK, Japan and the euro area turn out to be), so no origin uses a
+    weight estimated later.  Where there is no core index the offset is zero (no anchor), which
+    keeps those months in the training sample.
     """
-    return (convergence_weights(frame, h).bfill() * (frame["core"] - frame["pi"])).rename(f"anchor_h{h}")
-
+    gap = frame["core"] - frame["pi"]
+    anchor = (convergence_weights(frame, h).fillna(prior) * gap).where(gap.notna(), 0.0)
+    return anchor.where(frame["pi"].notna()).rename(f"anchor_h{h}")
 
 def horizon_columns(frame: pd.DataFrame, groups: dict[str, str], h: int) -> list[str]:
     """Features for horizon ``h``: the base features plus that horizon's base-effect and tax columns."""

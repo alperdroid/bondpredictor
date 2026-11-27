@@ -94,6 +94,10 @@ def cmd_backtest(args):
     kw = dict(start=args.start, end=end, min_train=args.min_train)
     args.horizons = args.horizons or [3, 6, 12, 24]
     specs = [s for s in model_zoo(args.tier) if not args.models or s.name in args.models]
+    if args.no_anchor:
+        from dataclasses import replace
+
+        specs = [replace(s, anchor_horizons=()) for s in specs]
     jobs = _jobs(frames, specs, args.countries, args.horizons, {**kw, "explain": True})
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -106,6 +110,10 @@ def cmd_backtest(args):
     pd.to_pickle(results, path)
     if not args.no_panel:
         panel_specs = [s for s in panel_zoo() if not args.models or s.name in args.models]
+        if args.no_anchor:
+            from dataclasses import replace
+
+            panel_specs = [replace(s, anchor_horizons=()) for s in panel_specs]
         pjobs = [(("panel", h, s.name), s, kw) for s in panel_specs for h in args.horizons]
         pjobs = [j for j in pjobs if not any((c, j[0][1], j[0][2]) in results for c in args.countries)]
         print(f"{len(pjobs)} pooled jobs", flush=True)
@@ -453,6 +461,7 @@ def build_parser():
     t.add_argument("--models", nargs="+", default=None)
     t.add_argument("--no-panel", action="store_true")
     t.add_argument("--panel-only", action="store_true", help="run only the pooled models (needs all four economies)")
+    t.add_argument("--no-anchor", action="store_true", help="forecast every horizon relative to headline (no core anchor)")
     t.add_argument("--out", default="output/inflation")
     t.set_defaults(func=cmd_backtest)
 

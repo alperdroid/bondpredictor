@@ -215,3 +215,21 @@ def test_us_survey_path_chains_quarterly_growth_onto_published_levels():
     expect0 = 100 * (q["2019-10-01"] * 1.04 ** 0.25 / q["2019-01-01"] - 1)
     assert out[0] == pytest.approx(expect0)
     assert out[4] == pytest.approx(4.0)  # four forecast quarters over a forecast base: 4% a year
+
+
+def test_anchor_uses_a_prior_before_its_weight_can_be_estimated_and_zero_without_core():
+    from bondpredictor.inflation.features import anchor_column, convergence_weights
+
+    frame, _ = build_frame(_synthetic(), "US")
+    w = convergence_weights(frame, 24)
+    first = w.first_valid_index()
+    early = frame.index[frame.index.get_loc(first) - 30]
+    gap = frame["core"] - frame["pi"]
+    a = anchor_column(frame, 24)
+    assert np.isfinite(gap[early]) and a[early] == pytest.approx(gap[early])  # prior: full convergence
+    assert a[first] == pytest.approx(w[first] * gap[first])
+    no_core = frame.copy()
+    no_core.loc[: frame.index[150], "core"] = np.nan
+    b = anchor_column(no_core, 24)
+    rows = no_core.index[:150][no_core["pi"].iloc[:150].notna()]
+    assert (b[rows] == 0.0).all()
