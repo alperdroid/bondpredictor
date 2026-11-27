@@ -5,10 +5,17 @@ from __future__ import annotations
 
 import pandas as pd
 
+from .boe import fetch_boe
+from .boj import fetch_boj
 from .bundesbank import fetch_bundesbank
 from .download import DataUnavailable, Downloader
+from .eurostat import fetch_eurostat
 from .fred import fetch_fred
 from .local import read_local_series
+from .nyfed import fetch_nyfed
+from .ons import fetch_ons
+from .sdmx import fetch_ecb, fetch_oecd
+from .zillow import fetch_zillow
 
 __all__ = ["DataUnavailable", "Downloader", "fetch_raw"]
 
@@ -18,6 +25,22 @@ def fetch_raw(dl: Downloader, source: str, key: str) -> pd.Series:
         return fetch_fred(dl, key)
     if source == "bundesbank":
         return fetch_bundesbank(dl, key)
+    if source == "oecd":
+        return fetch_oecd(dl, key)
+    if source == "ecb":
+        return fetch_ecb(dl, key)
+    if source == "eurostat":
+        return fetch_eurostat(dl, key)
+    if source == "boj":
+        return fetch_boj(dl, key)
+    if source == "boe":
+        return fetch_boe(dl, key)
+    if source == "ons":
+        return fetch_ons(dl, key)
+    if source == "nyfed":
+        return fetch_nyfed(dl, key)
+    if source == "zillow":
+        return fetch_zillow(dl, key)
     if source == "csv":
         return read_local_series(key)
     raise ValueError(f"unknown source {source!r}")

@@ -1,8 +1,10 @@
 # bondpredictor
 
 Forecasts **government bond excess returns** (holding a long bond instead of
-rolling short bills) for the **United States, Germany and Japan**.  Everything
-is built from **public data**.
+rolling short bills) for the **United States, Germany and Japan**, and
+**consumer-price inflation** for the **United States, United Kingdom, Japan
+and the euro area** (see [Inflation forecasting](#inflation-forecasting-us-uk-japan-and-the-euro-area)).
+Everything is built from **public data**.
 
 It implements the predictors from the bond-return literature, re-estimates
 them in real time, and judges them **only out of sample**: R²_OS against the
@@ -447,12 +449,254 @@ Caveats:
 * The recent fade means the full-sample Sharpe ratio overstates what the
   combination has earned lately.
 
+## Inflation forecasting: US, UK, Japan and the euro area
+
+`bondpredictor.inflation` runs a real-time horse race of **econometric
+machine-learning models** for consumer-price inflation in the **United
+States, United Kingdom, Japan and the euro area**.  Everything is built from
+public data.
+
+```
+pip install -e ".[dev,ml,excel]"            # + ".[deep,foundation]" for the tier-2 models
+python -m bondpredictor.inflation build                  # download + feature frames -> data/processed/inflation.pkl
+python -m bondpredictor.inflation backtest --jobs 4      # tier 1: benchmarks + econometric ML, all horizons, pooled models
+python -m bondpredictor.inflation robustness --jobs 4    # seeds, fixed hyperparameters, rolling window, post-1985 sample
+python -m bondpredictor.inflation forecast --jobs 4      # latest forecasts
+python -m bondpredictor.inflation foundation             # tier 2: Chronos / TimesFM zero-shot (downloads weights)
+python -m bondpredictor.inflation deep                   # tier 2: global deep time-series nets (slow; optional)
+python -m bondpredictor.inflation report                 # docs/inflation_report.md (+ .csv)
+python -m bondpredictor.inflation scenarios --jobs 4     # what-if responses of the latest forecasts
+python -m bondpredictor.inflation site                   # docs/site/index.html, the interactive site
+```
+
+`python -m bondpredictor.inflation transforms screen|compare|report` runs a
+real-time search over predictor transformations (growth over 1-24 months,
+seasonally adjusted changes, accelerations, gaps, z-scores, asymmetric parts,
+lags of 0-12 months: 50,440 candidates) and backtests the fast ML models with
+the screened transforms, the full transform library, lagged features and a
+core-anchored target.  None of these beat the current features on average
+over 2013-2026; transformations that won on 2000-2010 did no better than random
+ones afterwards.  See `docs/inflation_transforms.md`.
+
+To refresh the forecasts after new CPI prints without rerunning the backtest:
+`build`, `forecast`, `scenarios`, `foundation --models timesfm3_cov chronos2_cov
+--start <a recent month>`, then `site` (it reuses the backtest embedded in the
+last built page when `output/inflation/results.pkl` is missing) and
+`report --latest-only`.
+
+`docs/site/index.html` is a self-contained page (it loads d3 and Google
+Fonts from their CDNs): a fan-chart outlook per economy, a scenario lab, the
+model league table, a backtest replay and the driver coefficients.  The
+scenario lab shifts today's drivers (oil, supply-chain pressure, producer
+prices, the currency, wages, unemployment, expectations, inflation abroad)
+and asks the 13 refitted country models again; levers add up within each
+model before the median is taken, which `scenarios` checks against solving
+each preset jointly (within 0.26 pp in the November 2026 refresh).
+
+### Target and timing
+
+* **Target**: y/y CPI inflation (HICP for the euro area) *h* = 3, 6, 12
+  and 24 months after the latest published print.
+* **Origins** are month-ends from January 2000.  At the end of month *k*
+  the latest CPI print is for *k − 1*.  Every predictor is shifted by its
+  publication lag (`inflation/config.py`), so a row holds only what had
+  been published by then.
+* **Models forecast the change** in the y/y rate.  A zero forecast is the
+  random walk, and tree models are not capped at the inflation levels in
+  their training data.
+* **Seasonality**: y/y rates need no adjustment.  Month-on-month features
+  use a one-sided seasonal filter estimated from past data only
+  (`features.sa_onesided`), because official SA factors are revised with
+  hindsight.  On US CPI it tracks the official SA series closely (0.96
+  correlation of 3-month annualised rates).
+* **Base effects and taxes**: for *h* < 12 part of the target is already
+  known.  `drop` is the annualised rate of the months leaving the 12-month
+  window, and `mech` is the change implied if the next *h* months ran at
+  the recent trend.  Legislated consumption-tax/VAT changes (Japan 1989,
+  1997, 2014, 2019; UK VAT; German VAT in the euro area) enter from the
+  month they were announced.
+* **Training**: expanding window from 1960 where data exist (euro area
+  from 1991), at least ten years.  Linear models are refitted monthly; ML
+  models yearly, with hyperparameters tuned by expanding-window CV with a
+  horizon-length gap.  `tests/test_inflation.py` checks that scrambling
+  all data after an origin leaves its forecast unchanged.
+
+### Data (all reachable without keys)
+
+| | United States | United Kingdom | Japan | Euro area |
+|---|---|---|---|---|
+| CPI target | CPI-U NSA (FRED, 1913–) | CPI (OECD, 1955–) | CPI (OECD COICOP 2018 table, 1955–) | HICP (Eurostat ECOICOP 2, 1996–), OECD euro-area CPI 1990–95 |
+| Core / components | core, energy, food, services, goods, shelter | core, energy, food, services, goods | ex food & energy, energy, food | ex energy & food, energy, food, services, NEIG |
+| Underlying inflation | sticky- and flexible-price CPI (Atlanta Fed), median and trimmed-mean CPI (Cleveland Fed), trimmed-mean PCE (Dallas Fed) | – | – | – |
+| Expectations / price surveys | Michigan, Cleveland Fed, 5y breakeven, Philly Fed prices paid | 10y gilt breakeven (BoE) | Tankan output/input price DIs and firms' inflation outlook (BoJ) | EC consumer and selling-price expectations |
+| Slack | unemployment (level, change, gap), payrolls, claims, wages, IP, capacity utilisation, retail, housing | unemployment, average weekly earnings (ONS), IP, retail, confidence | unemployment, employment, earnings, IP, retail, confidence | unemployment, IP, retail, ESI, confidence |
+| Costs | oil, PPI, import prices, commodities, dollar | oil in GBP, output PPI (ONS, to Jan 2025), REER, GBP/USD | oil in JPY, PPI, import prices, services PPI (BoJ), REER, USD/JPY | oil in EUR, PPI, import prices, NEER, EUR/USD |
+| Money / finance | Fed funds, 10y, term and credit spreads, M2, loans, stocks, house prices | Bank Rate (BoE), 10y gilt, 10y real yield (BoE), money, stocks | call rate, 10y JGB, money, stocks | Euribor, 10y, M3 |
+| Global (all) | median y/y inflation across 20 advanced economies (Ciccarelli–Mojon), its change and dispersion; IMF commodity and food prices; New York Fed supply-chain pressure index (GSCPI); the other three economies' inflation |
+
+Gaps: the UK has no inflation-expectations *survey* (the EC survey dropped
+the UK after Brexit), so the gilt breakeven stands in; ONS suspended its
+producer price index after January 2025; US CPI for October 2025 was never
+collected (federal shutdown) and is interpolated for use as an input, never
+as a target.  Every series is kept on a contiguous calendar, so a missing
+month cannot shift later 12-month changes.
+
+### Models
+
+Two years ahead, the ML models forecast relative to today's headline rate
+moved towards core by the share of the core-headline gap that has
+historically closed within 24 months (estimated in real time; 0.87 for the
+US, 1 elsewhere).  This "core anchor" and the US underlying-inflation
+measures were adopted in November 2026 after the transformation study
+(`docs/inflation_transforms.md`); the backtest tables below predate them.
+
+**Tier 1 – benchmarks and econometric ML** (run first, full robustness):
+
+| | Model | Reference |
+|---|---|---|
+| Benchmarks | random walk; UCSV (particle filter, γ fixed); AR-type regression on own-inflation terms | Atkeson–Ohanian 2001; Stock–Watson 2007 |
+| Shrinkage | ridge; adaptive lasso; elastic net | Medeiros et al. 2021 (JBES) |
+| Factors / combinations | diffusion index (PCA); three-pass regression filter; complete subset regression | Stock–Watson 2002; Kelly–Pruitt 2015; Elliott–Gargano–Timmermann 2013 |
+| Non-linear | kernel ridge; random forest; gradient boosting (LightGBM) | Goulet Coulombe et al. 2022 (JAE); Medeiros et al. 2021 |
+| Macro-specific ML | **Macroeconomic random forest** (generalised time-varying Phillips-curve coefficients); **BART** (Bayesian trees, predictive densities); **hemisphere neural net** ("neural Phillips curve": one sub-network per block, additive, decomposable) and a plain MLP for comparison | Goulet Coulombe 2024 (JAE); Chipman–George–McCulloch 2010, Clark et al. 2023; Goulet Coulombe 2025 (JBES) |
+| Pooled | ridge, boosting, MRF, BART and the hemisphere net estimated on all four economies at once (country-standardised common predictors, country effects) | |
+| Ensembles (fixed in advance) | mean of the six non-linear ML models; half that, half UCSV; median of all tier-1 models | |
+
+**Tier 2 – generic deep learning**:
+
+* pretrained time-series *foundation models*, zero-shot: Chronos-Bolt,
+  Chronos-2, TimesFM 2.5 and TimesFM 3.0 on the inflation history alone, and
+  Chronos-2 and TimesFM 3.0 with five macro series as past covariates (core,
+  energy and oil inflation, the global inflation factor, unemployment);
+* N-HiTS, PatchTST, TiDE and an LSTM (Nixtla `neuralforecast`), univariate
+  but trained globally on ~40 economies' inflation, refitted every two years.
+
+Foundation models may have seen these CPI series in pretraining (their
+release dates run from November 2024 to August 2026), so the report also
+scores them on post-release origins only.
+
+### Evaluation
+
+RMSE relative to the random walk and to UCSV; Diebold–Mariano tests against
+the random walk (HLN-corrected, HAC); the 75% **model confidence set**
+(Hansen–Lunde–Nason, T_max, stationary bootstrap); RMSE by the period being
+forecast (2000–07, 2008–20, the 2021–22 surge, 2023–); 80% interval
+forecasts from rolling conformal intervals (each model's own past errors)
+and BART's posterior, scored by coverage and interval score; and
+re-estimation variants (seeds, fixed hyperparameters, rolling 20-year
+window, training only from 1985).
+
+### Results (October 2026 build)
+
+Full tables (per economy, Diebold–Mariano tests, model confidence sets,
+sub-periods, intervals, robustness, forecast decompositions, latest
+forecasts): [`docs/inflation_report.md`](docs/inflation_report.md).
+Origins run from January 2000 (euro area 2002) to the last month with a
+realised target; all sources above were reachable for this build.
+
+Mean RMSE relative to the random walk over the four economies (below 1 beats
+"no change"):
+
+| Model | 3m | 6m | 12m | 24m |
+|---|---|---|---|---|
+| UCSV | 0.80 | 0.82 | 0.92 | 0.86 |
+| AR-type, own inflation only | 0.81 | 0.85 | 0.96 | 0.89 |
+| Ridge | 0.75 | 0.82 | 0.94 | 0.95 |
+| Complete subset regression | 0.74 | 0.80 | 0.92 | 0.87 |
+| Kernel ridge | 0.77 | 0.85 | 0.91 | 0.97 |
+| Random forest | 0.82 | 0.90 | 0.95 | 0.91 |
+| LightGBM | 0.83 | 0.91 | 0.97 | 0.96 |
+| Macroeconomic random forest | 0.81 | 0.85 | 0.95 | 0.89 |
+| BART | 1.02 | 1.13 | 1.03 | 1.01 |
+| Hemisphere neural net | 0.82 | 0.89 | 0.97 | 0.93 |
+| Plain neural net (MLP) | 0.78 | 0.82 | 0.89 | 0.93 |
+| Pooled ridge | 0.74 | 0.81 | 0.92 | 0.91 |
+| Pooled MRF | 0.77 | 0.84 | 0.97 | 0.90 |
+| ½ non-linear ML + ½ UCSV | 0.75 | 0.81 | **0.88** | 0.86 |
+| Median of all tier-1 models | **0.73** | **0.80** | **0.88** | 0.89 |
+| TimesFM 3.0, zero-shot | 0.93 | 0.93 | 0.94 | 0.91 |
+| Chronos-2 + macro covariates | 0.89 | 0.90 | 0.88 | 0.83 |
+| TimesFM 3.0 + macro covariates | 0.83 | 0.83 | **0.84** | **0.81** |
+| N-HiTS (global, univariate) | 0.96 | 1.00 | 1.09 | 1.04 |
+| PatchTST (global, univariate) | 0.99 | 0.97 | 0.95 | 0.91 |
+| TiDE (global, univariate) | 1.07 | 1.03 | 0.92 | 0.87 |
+| LSTM (global, univariate) | 2.44 | 1.59 | 1.04 | 0.87 |
+
+What it says:
+
+* **Short horizons belong to the econometric models.**  At 3 and 6 months
+  the median combination, complete subset regression and pooled ridge beat
+  the random walk by 20–27% and every foundation model; the
+  Diebold–Mariano test favours the median over TimesFM 3 + covariates in
+  all four economies at 3 months (p ≤ 0.02).  Base effects and recent
+  momentum do most of the work.
+* **A year or more out, gains are modest and statistically thin.**  The best
+  models are 12–19% better than no change, and almost every model stays in
+  the 75% model confidence set.  TimesFM 3 with macro covariates has the
+  lowest RMSE at 12 and 24 months, but its edge over the econometric
+  combinations is significant only borderline, in the euro area.  UCSV is
+  still hard to beat at 24 months.
+* **Foundation models need the macro data.**  On inflation history alone
+  Chronos and TimesFM barely beat the random walk (0.91–1.08); with five
+  macro covariates they move to the top at long horizons.  Since TimesFM
+  2.5 and 3.0 score the same without covariates, and covariate versions
+  also beat UCSV on post-release origins, the gain looks real rather than
+  memorised pretraining data — but that clean window is short.
+* **Generic deep nets add nothing here.**  N-HiTS, PatchTST, TiDE and the
+  LSTM, trained on ~40 economies' inflation histories, are no better than
+  the random walk at short horizons and no better than UCSV (or the
+  univariate foundation models) at long ones.  The LSTM learned little
+  beyond the median of its five-year input window, so it misses every large
+  move.
+* **Among the econometric ML models**, the macroeconomic random forest is
+  the steadiest across horizons and robustness checks, the MLP is good at
+  12 months, and BART is the weakest everywhere.  BART's ranking is not
+  reliable either: its forecasts change markedly with the random seed
+  (variant correlation ~0.65), a sign that the MCMC is not converging with
+  ~70 predictors.
+* **Nobody forecast the 2021–22 surge** 12 months ahead (relative RMSE
+  ~0.8–1.1 for target months 2021–22; Japan is the partial exception).
+  The models earn their keep in the 2023– disinflation (US hemisphere net
+  0.40, euro-area TimesFM 3 + covariates 0.50), while Japan's exit from
+  deflation breaks most of them after 2023.
+* **Robustness**: dropping the 1970s from training slightly *improves* most
+  models; seeds and hyperparameters barely move MRF, random forest,
+  LightGBM and kernel ridge.  Letting trees forecast the deviation from the
+  mechanical base-effect path cuts their 3-month error sharply (random
+  forest 0.82 → 0.74, LightGBM 0.83 → 0.75), so their short-horizon
+  weakness is about representing that arithmetic, not about the data.
+* **More data did not help.**  Adding the supply-chain index, gilt
+  breakevens, Bank Rate and ONS series changed the same models' RMSE by
+  ±1–2% on average.
+* **Intervals**: rolling conformal 80% intervals cover ~70% of outcomes
+  (the surge broke past error patterns); the foundation models' own
+  quantiles are the best calibrated, BART's posterior covers only ~30%.
+
+Latest forecasts, refreshed on 27 November 2026 with the October prints, the 24-month core anchor and the US
+underlying-inflation measures (median of the 13 tier-1 country models / TimesFM 3 + covariates; the backtest
+results above are from the October build):
+
+| | Latest y/y | 3 months | 12 months | 24 months |
+|---|---|---|---|---|
+| US (Oct 2026) | 3.9% | 3.4 / 3.7 (Jan 2027) | 2.0 / 3.1 (Oct 2027) | 2.2 / 2.9 (Oct 2028) |
+| UK (Oct 2026) | 3.6% | 3.8 / 3.7 (Jan 2027) | 3.5 / 3.6 (Oct 2027) | 3.1 / 3.3 (Oct 2028) |
+| Japan (Oct 2026) | 2.4% | 2.7 / 2.6 (Jan 2027) | 2.6 / 2.5 (Oct 2027) | 2.6 / 2.0 (Oct 2028) |
+| Euro area (Oct 2026) | 4.0% | 4.1 / 3.9 (Jan 2027) | 3.2 / 3.4 (Oct 2027) | 2.5 / 2.8 (Oct 2028) |
+
+The typical 12-month error is 1.2–1.8 pp, and TimesFM's 80% bands at 12
+months are about ±1.5 pp, so treat these as central scenarios.
+
+Caveats: data are the latest releases shifted by publication lags, not
+real-time vintages (CPI itself is barely revised); foundation-model scores
+before each model's release may benefit from pretraining exposure; and the
+pooled BART remains unreliable.
+
 ## Layout
 
 ```
 bondpredictor/
   config.py      series and sources per country (edit here)
-  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed ACM, MOF, Bank of England, FRED-MD loaders + cache
+  data/          FRED/ALFRED, Bundesbank, Fed GSW, NY Fed (ACM, GSCPI), MOF, FRED-MD, OECD, ECB, Eurostat, BoJ, BoE, ONS loaders + cache
   curves.py      Svensson & tabulated curves, par→zero bootstrap, forwards
   returns.py     zero-coupon and par-bond excess returns
   features.py    one-sided predictors (trend inflation, HP gap, inflation uncertainty, realised vol)
@@ -468,6 +712,24 @@ bondpredictor/
   inference.py   Newey–West, Hodrick 1B, null bootstrap
   acm.py         Adrian–Crump–Moench term premium
   cli.py         command line
+  inflation/     inflation forecasting (python -m bondpredictor.inflation)
+    config.py      series and publication lags per economy
+    data.py        loading, splicing, gap handling, cross-country CPI panel
+    features.py    real-time features, one-sided seasonal adjustment, base effects, targets
+    econ.py        shrinkage, factor, subset, kernel-ridge, forest and boosting models
+    mrf.py         macroeconomic random forest
+    bart.py        Bayesian additive regression trees
+    hnn.py         hemisphere neural net and MLP (PyTorch)
+    ucsv.py        Stock-Watson UCSV particle filter
+    backtest.py    real-time expanding-window engine and model zoo
+    panel.py       pooled cross-country models
+    foundation.py  Chronos / TimesFM zero-shot forecasts
+    deep.py        N-HiTS, PatchTST, TiDE, LSTM (neuralforecast)
+    evaluation.py  DM tests, model confidence set, sub-periods, conformal intervals
+    robustness.py  re-estimation variants
+    report.py      markdown report
+    scenario.py    what-if responses of the refitted models
+    site.py        data and renderer for docs/site
 tests/           offline tests (parsers on real file formats, maths, look-ahead checks)
 ```
 
