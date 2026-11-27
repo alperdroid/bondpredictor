@@ -462,6 +462,45 @@ def cmd_pistar(args):
     print(f"wrote {path} ({len(results)} forecast series) in {time.time() - t0:.0f}s; {n} packed into {packed}")
 
 
+def cmd_prereg(args):
+    """The pre-registered test of docs/inflation_prereg_1985.md (no-memory trend model vs median, from 1985)."""
+    import hashlib
+
+    from . import prereg as pr
+    from .evaluation import pack_results, unpack_results
+
+    out, store_dir = Path(args.out), Path(args.store)
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "results.pkl"
+    if args.action == "run":
+        digest = hashlib.sha256(Path(_frames_path(args)).read_bytes()).hexdigest()
+        if digest != pr.DATA_SHA256 and not args.other_data:
+            raise SystemExit(f"{_frames_path(args)} is not the build the plan fixed (sha256 {digest[:12]}...); "
+                             "pass --other-data to run anyway")
+        existing = pd.read_pickle(path) if (args.resume and path.exists()) else None
+        t0 = time.time()
+        res = pr.run(load_frames(args), args.countries, args.jobs, _progress(t0), existing)
+        pd.to_pickle(res, path)
+        store_dir.mkdir(parents=True, exist_ok=True)
+        n = pack_results(res, store_dir / "results.csv.gz")
+        fwd = pr.forward_record(res)
+        fwd.to_csv(store_dir / "forward.csv", index=False, float_format="%.6g")
+        print(f"wrote {path}, {n} series packed and {len(fwd)} forward forecasts in {store_dir} ({time.time() - t0:.0f}s)")
+        return
+    if args.action == "report":
+        res = pd.read_pickle(path) if path.exists() else unpack_results([store_dir / "results.csv.gz"])
+        ref_pkl, ref_csv = Path("output/inflation/pistar/pistar.pkl"), Path("results/inflation/pistar/pistar.csv.gz")
+        ref = (pd.read_pickle(ref_pkl) if ref_pkl.exists() else
+               {(c, h, *m.split("|", 1)): r for (c, h, m), r in unpack_results([ref_csv]).items()} if ref_csv.exists()
+               else None)
+        primary = pr.report(res, args.report, ref)
+        print(f"wrote {args.report}: {pr.verdict(primary)} (DM {primary['dm']:.2f}, p {primary['p']:.3f})")
+        return
+    record = pd.read_csv(store_dir / "forward.csv")
+    with pd.option_context("display.width", 200):
+        print(pr.score_forward(record, load_frames(args)).round(3).to_string(index=False))
+
+
 def cmd_results(args):
     """Move results between output/ pickles and compact CSV files that are kept in the repository."""
     from .evaluation import pack_results, unpack_results
@@ -600,6 +639,17 @@ def build_parser():
     ps.add_argument("--report", default="docs/inflation_pistar.md")
     ps.add_argument("--store", default="results/inflation/pistar", help="compact copy kept in the repository")
     ps.set_defaults(func=cmd_pistar)
+
+    pr = sub.add_parser("prereg", parents=[common],
+                        help="pre-registered test: no-memory trend model vs the median, both from 1985")
+    pr.add_argument("action", choices=["run", "report", "forward"])
+    pr.add_argument("--jobs", type=int, default=1)
+    pr.add_argument("--resume", action="store_true")
+    pr.add_argument("--other-data", action="store_true", help="run on a data build other than the one the plan fixed")
+    pr.add_argument("--out", default="output/inflation/prereg_1985")
+    pr.add_argument("--store", default="results/inflation/prereg_1985")
+    pr.add_argument("--report", default="docs/inflation_prereg_1985_results.md")
+    pr.set_defaults(func=cmd_prereg)
 
     rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")
     rs.add_argument("action", choices=["pack", "unpack"])
