@@ -99,7 +99,7 @@ def cmd_backtest(args):
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "results.pkl"
     results = pd.read_pickle(path) if (args.resume and path.exists()) else {}
-    jobs = [j for j in jobs if j[0] not in results]
+    jobs = [] if args.panel_only else [j for j in jobs if j[0] not in results]
     t0 = time.time()
     print(f"{len(jobs)} country jobs on {args.jobs} processes", flush=True)
     raw = run_jobs(frames, jobs, args.jobs, progress=_progress(t0, results, path))
@@ -376,6 +376,33 @@ def cmd_transforms(args):
     print(f"wrote {out / f'transform_compare_{tag}.csv.gz'} and the table")
 
 
+def cmd_results(args):
+    """Move results between output/ pickles and compact CSV files that are kept in the repository."""
+    from .evaluation import pack_results, unpack_results
+
+    out, store_dir = Path(args.out), Path(args.store)
+    if args.action == "pack":
+        store_dir.mkdir(parents=True, exist_ok=True)
+        res = pd.read_pickle(out / f"{args.name}.pkl")
+        if args.countries != CODES:
+            res = {k: v for k, v in res.items() if k[0] in args.countries}
+        path = store_dir / f"{args.tag or args.name}.csv.gz"
+        n = pack_results(res, path)
+        print(f"wrote {path} ({n} forecast series, {path.stat().st_size / 1e6:.2f} MB)")
+        return
+    files = sorted(store_dir.glob("*.csv.gz"))
+    groups = {"results": [], "deep": [], "foundation": []}
+    for f in files:
+        kind = "deep" if f.name.startswith("deep") else "foundation" if f.name.startswith("foundation") else "results"
+        groups[kind].append(f)
+    out.mkdir(parents=True, exist_ok=True)
+    for kind, fs in groups.items():
+        if fs:
+            res = unpack_results(fs)
+            pd.to_pickle(res, out / f"{kind}.pkl")
+            print(f"wrote {out / f'{kind}.pkl'} ({len(res)} forecast series from {len(fs)} file(s))")
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="bondpredictor.inflation", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -403,6 +430,7 @@ def build_parser():
     t.add_argument("--tier", type=int, default=1, help="1: benchmarks + econometric ML")
     t.add_argument("--models", nargs="+", default=None)
     t.add_argument("--no-panel", action="store_true")
+    t.add_argument("--panel-only", action="store_true", help="run only the pooled models (needs all four economies)")
     t.add_argument("--out", default="output/inflation")
     t.set_defaults(func=cmd_backtest)
 
@@ -463,6 +491,14 @@ def build_parser():
     tr.add_argument("--jobs", type=int, default=1)
     tr.add_argument("--out", default="output/inflation")
     tr.set_defaults(func=cmd_transforms)
+
+    rs = sub.add_parser("results", parents=[common], help="pack results into results/inflation or unpack them")
+    rs.add_argument("action", choices=["pack", "unpack"])
+    rs.add_argument("--name", default="results", help="pickle to pack: results, deep or foundation")
+    rs.add_argument("--tag", default=None, help="file name to write (default: --name)")
+    rs.add_argument("--out", default="output/inflation")
+    rs.add_argument("--store", default="results/inflation")
+    rs.set_defaults(func=cmd_results)
 
     st = sub.add_parser("site", parents=[common], help="interactive site with forecasts and scenarios")
     st.add_argument("--results", default="output/inflation")

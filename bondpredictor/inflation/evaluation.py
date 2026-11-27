@@ -202,3 +202,34 @@ def density_table(results: dict[str, pd.DataFrame], h: int, models=None) -> pd.D
             ok = ci["lo"].notna()  # same evaluation months
             rows[f"{m} (posterior)"] = interval_scores(r["actual"][ok], r["q10"][ok], r["q90"][ok])
     return pd.DataFrame(rows).T
+
+
+# ------------------------------------------------------------------ results on disk
+
+def pack_results(results: dict, path) -> int:
+    """Write ``{(economy, horizon, model): frame}`` as one long CSV (gzip if the name ends in .gz)."""
+    parts = []
+    for (c, h, m), r in results.items():
+        if isinstance(r, pd.DataFrame) and not r.empty:
+            x = r.reset_index()
+            x.insert(0, "model", m)
+            x.insert(0, "horizon", h)
+            x.insert(0, "economy", c)
+            parts.append(x)
+    long = pd.concat(parts, ignore_index=True)
+    long["date"] = long["date"].astype(str)
+    long.to_csv(path, index=False, float_format="%.6g")
+    return len(parts)
+
+
+def unpack_results(paths) -> dict:
+    """Read files written by ``pack_results`` back into ``{(economy, horizon, model): frame}``."""
+    out = {}
+    for path in paths:
+        long = pd.read_csv(path)
+        long["date"] = pd.PeriodIndex(long["date"], freq="M")
+        for (c, h, m), g in long.groupby(["economy", "horizon", "model"], sort=False):
+            r = g.drop(columns=["economy", "horizon", "model"]).set_index("date").dropna(axis=1, how="all")
+            r = r.astype({col: bool if col == "refit" else float for col in r.columns})
+            out[(c, int(h), m)] = r
+    return out

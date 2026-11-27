@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from .backtest import Spec, make_model
-from .features import common_columns
+from .features import ANCHOR_HORIZONS, common_columns
 
 
 def _country_design(frame, groups, code, h):
@@ -52,7 +52,11 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
     dummies = [f"cty_{c}" for c in codes]
     group_of.update({d: "fixed" for d in dummies})
     Xc = {c: D[c][0].reindex(columns=names) for c in codes}
-    Y = {c: D[c][3] - D[c][2] for c in codes}
+    # Target offset: at anchored horizons the models forecast relative to headline moved towards core.
+    zero = {c: pd.Series(0.0, index=frames[c][0].index) for c in codes}
+    A = {c: frames[c][0][f"anchor_h{h}"] if h in spec.anchor_horizons and f"anchor_h{h}" in frames[c][0] else zero[c]
+         for c in codes}
+    Y = {c: D[c][3] - D[c][2] - A[c] for c in codes}
     dates = pd.period_range(pd.Period(start, "M"), pd.Period(end, "M") if end else max(D[c][2].index.max() for c in codes), freq="M")
     t0 = pd.Period(spec.train_start, "M")
     rows = {c: [] for c in codes}
@@ -92,6 +96,9 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
         for c in codes:
             if c not in moments or d not in Xc[c].index or not np.isfinite(D[c][2].get(d, np.nan)):
                 continue
+            off = float(A[c].get(d, np.nan))
+            if not np.isfinite(off):
+                continue
             mu, valid = moments[c]
             z = Xc[c].loc[[d]] - mu
             z[list(valid.index[~valid])] = np.nan
@@ -99,21 +106,17 @@ def run_panel_backtest(frames: dict, h: int, spec: Spec, start: str = "2000-01",
             z[f"cty_{c}"] = 1.0
             change = float(model.predict(z[feats].to_numpy(float))[0])
             pi = float(D[c][2][d])
-            row = {"date": d, "forecast": pi + change, "rw": pi, "actual": D[c][3].get(d, np.nan),
+            pi_a = pi + off
+            row = {"date": d, "forecast": pi_a + change, "rw": pi, "actual": D[c][3].get(d, np.nan),
                    "n_train": int(len(stacked)) if fitted_at == d else np.nan, "n_features": len(feats),
                    "refit": fitted_at == d}
             if hasattr(model, "predict_quantiles"):
                 q = model.predict_quantiles(z[feats].to_numpy(float), (0.1, 0.5, 0.9))[0]
-                row.update({"q10": pi + q[0], "q50": pi + q[1], "q90": pi + q[2]})
+                row.update({"q10": pi_a + q[0], "q50": pi_a + q[1], "q90": pi_a + q[2]})
             rows[c].append(row)
     return {c: pd.DataFrame(r).set_index("date") for c, r in rows.items() if r}
 
 
 def panel_zoo() -> list[Spec]:
-    return [
-        Spec("panel:ridge", "ridge", refit_every=12),
-        Spec("panel:lgbm", "lgbm", refit_every=12),
-        Spec("panel:mrf", "mrf", refit_every=12),
-        Spec("panel:bart", "bart", refit_every=12),
-        Spec("panel:hnn", "hnn", refit_every=12),
-    ]
+    return [Spec(f"panel:{m}", m, refit_every=12, anchor_horizons=ANCHOR_HORIZONS)
+            for m in ("ridge", "lgbm", "mrf", "bart", "hnn")]

@@ -168,3 +168,35 @@ def test_ml_models_are_anchored_at_24_months_only():
     a24, p24 = run_backtest(frame, groups, 24, ridge, **kw), run_backtest(frame, groups, 24, plain, **kw)
     assert np.allclose(a12["forecast"], p12["forecast"])
     assert not np.allclose(a24["forecast"], p24["forecast"])
+
+
+def test_results_round_trip_through_csv(tmp_path):
+    from bondpredictor.inflation.evaluation import pack_results, unpack_results
+
+    idx = pd.period_range("2020-01", periods=4, freq="M", name="date")
+    a = pd.DataFrame({"forecast": [1.0, 2.0, 3.0, 4.0], "rw": [1.5] * 4, "actual": [1.1, np.nan, np.nan, np.nan],
+                      "refit": [True, False, False, True]}, index=idx)
+    b = a.assign(q10=0.5).drop(columns="refit")
+    path = tmp_path / "r.csv.gz"
+    assert pack_results({("US", 12, "ridge"): a, ("UK", 3, "panel:bart"): b, ("JP", 3, "x"): pd.DataFrame()}, path) == 2
+    back = unpack_results([path])
+    assert set(back) == {("US", 12, "ridge"), ("UK", 3, "panel:bart")}
+    pd.testing.assert_frame_equal(back[("US", 12, "ridge")], a, check_freq=False)
+    assert "q10" in back[("UK", 3, "panel:bart")] and "q10" not in back[("US", 12, "ridge")]
+
+
+def test_pooled_models_use_the_24_month_anchor():
+    from dataclasses import replace
+
+    from bondpredictor.inflation.panel import panel_zoo, run_panel_backtest
+
+    a, b = build_frame(_synthetic(seed=0), "US"), build_frame(_synthetic(seed=1), "US")
+    frames = {"US": a, "UK": b}
+    spec = replace(next(s for s in panel_zoo() if s.name == "panel:ridge"), train_start="1985-01")
+    assert spec.anchor_horizons == (24,)
+    kw = dict(start="2012-01", end="2012-03", min_train=60, min_hist=24)
+    with_a = run_panel_backtest(frames, 24, spec, **kw)["US"]["forecast"]
+    without = run_panel_backtest(frames, 24, replace(spec, anchor_horizons=()), **kw)["US"]["forecast"]
+    same12 = run_panel_backtest(frames, 12, spec, **kw)["US"]["forecast"]
+    assert not np.allclose(with_a, without)
+    assert np.allclose(same12, run_panel_backtest(frames, 12, replace(spec, anchor_horizons=()), **kw)["US"]["forecast"])
