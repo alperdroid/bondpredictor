@@ -136,3 +136,6 @@ def test_partial_anchor_offset_reaches_the_backtest():
     base = run_backtest(frame, groups, 12, spec, start="2010-01", end="2010-06", min_train=60, min_hist=24)
     anch = run_backtest(f, g, 12, replace(spec, offset=off), start="2010-01", end="2010-06", min_train=60, min_hist=24)
     assert len(anch) == len(base) and not np.allclose(anch["forecast"], base["forecast"])
+    # the anchor must not shrink the training sample: the offset exists wherever the target and core do
+    usable = frame[f"tgt12"].notna() & frame["core"].notna() & (frame.index >= pd.Period("1985-01", "M"))
+    assert f.loc[usable, off].notna().all()

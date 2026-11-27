@@ -369,7 +369,10 @@ def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFra
     anchor = f"_anchor{h}"  # an offset column, not a feature (not in groups)
     anchored = None
     if "core" in frame:
-        anchored = convergence_weights(frame, h) * (frame["core"] - frame["pi"])
+        # Training rows before the first estimate (about ten years after 1960) take that first estimate, so the
+        # anchored models train on the same rows as the others; every origin tested comes later, so the first
+        # estimate was already known at each of them.
+        anchored = convergence_weights(frame, h).bfill() * (frame["core"] - frame["pi"])
         out["partial_anchor"] = (frame.assign(**{anchor: anchored}), groups, anchor)
     if extras is not None and not extras.empty:
         fu = pd.concat([frame, extras], axis=1)
