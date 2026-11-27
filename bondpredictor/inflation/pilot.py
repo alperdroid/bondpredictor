@@ -36,7 +36,10 @@ from .surveys import ECB_SPF, SPF_CPI_URL, parse_spf_cpi, us_spf_yoy
 
 TRAIN_START = "1960-01"
 FUEL_MIN_TRAIN = 60  # months before the pump-price nowcast replaces the crude-oil one (UK pump prices start in 2003)
-NOWCAST_FUELS = ("gasoline", "diesel")  # road fuels whose average y/y change drives the nowcast
+# What the nowcast is built from, besides crude oil: the series whose average y/y rate, in its latest month, signals
+# the print that is not yet published.  Pump prices where they exist; in Japan the Tokyo CPI, which is published
+# at the end of its own month, four weeks before the national index.
+NOWCAST = {"US": ("gasoline",), "UK": ("gasoline", "diesel"), "EA": ("gasoline", "diesel"), "JP": ("tokyo",)}
 
 ECB_HICP = "ICP/M.U2.N.{}.4.INX"
 
@@ -62,7 +65,13 @@ EXTRA = {
         "heating_oil": (Series("ecoil", "heating_oil", how="mean"), "cost"),
         "natgas": (fred("PNGASEUUSDM", lag=1), "cost"),
     },
-    "JP": {  # the pump prices need hand-saved files (see data/fuel.py); without them the nowcast uses crude oil in yen
+    "JP": {
+        # Tokyo CPI (Statistics Bureau): all items; less food and energy; energy; food.  Known in its own month.
+        "tokyo": (Series("jstat", "tokyo/0001"), "own"),
+        "tokyo_core": (Series("jstat", "tokyo/0168"), "own"),
+        "tokyo_energy": (Series("jstat", "tokyo/0167"), "cost"),
+        "tokyo_food": (Series("jstat", "tokyo/0002"), "own"),
+        # The pump prices need hand-saved files (see data/fuel.py) and are skipped without them.
         "gasoline": (Series("meti", "regular", how="mean"), "cost"),
         "kerosene": (Series("meti", "kerosene", how="mean"), "cost"),
         "natgas": (fred("PNGASJPUSDM", lag=1), "cost"),  # LNG in Asia, US$ (IMF)
@@ -124,14 +133,16 @@ COMPONENTS = {
     # OECD: energy; food and non-alcoholic beverages; everything else.  No current goods/services split is published there.
     "JP": {
         "energy": ((oecd_cpi("JPN", "CP045_0722", coicop2018=True),),
-                   ["oil_yoy", "oil_c3", "oil_c1", "gasoline_yoy", "gasoline_c3", "gasoline_c1", "kerosene_yoy",
-                    "kerosene_c3", "natgas_yoy", "natgas_c3", "import_prices_yoy", "import_prices_c3", "usdjpy_yoy",
-                    "commodities_yoy"]),
+                   ["tokyo_energy_yoy", "tokyo_energy_dyoy", "oil_yoy", "oil_c3", "oil_c1", "gasoline_yoy",
+                    "gasoline_c3", "gasoline_c1", "kerosene_yoy", "kerosene_c3", "natgas_yoy", "natgas_c3",
+                    "import_prices_yoy", "import_prices_c3", "usdjpy_yoy", "commodities_yoy"]),
         "food": ((oecd_cpi("JPN", "CP01", coicop2018=True), oecd_cpi("JPN", "CP01")),
-                 ["food_commodities_yoy", "commodities_yoy", "import_prices_yoy", "import_prices_c3", "ppi_yoy",
-                  "ppi_c3", "usdjpy_yoy", "reer_yoy", "earnings_yoy", "oil_yoy", "g_infl"]),
+                 ["tokyo_food_yoy", "tokyo_food_dyoy", "food_commodities_yoy", "commodities_yoy", "import_prices_yoy",
+                  "import_prices_c3", "ppi_yoy", "ppi_c3", "usdjpy_yoy", "reer_yoy", "earnings_yoy", "oil_yoy",
+                  "g_infl"]),
         "core": ((oecd_cpi("JPN", "_TXCP01_NRG", coicop2018=True),),
-                 ["sppi_yoy", "earnings_yoy", "unemp_gap", "unemp_lvl", "tankan_output_prices_lvl",
+                 ["tokyo_core_yoy", "tokyo_core_dyoy", "sppi_yoy", "earnings_yoy", "unemp_gap", "unemp_lvl",
+                  "tankan_output_prices_lvl",
                   "tankan_output_prices_fcst_lvl", "tankan_infl_outlook_1y_lvl", "import_prices_yoy", "ppi_yoy",
                   "usdjpy_yoy", "reer_yoy", "gscpi_lvl", "consumer_conf_lvl", "call_rate_lvl", "energy_yoy",
                   "food_yoy", "g_infl"]),
@@ -156,14 +167,16 @@ def extra_columns(dl: Downloader, code: str, index: pd.PeriodIndex) -> tuple[pd.
         for t, k in (("yoy", 12), ("c3", 3), ("c1", 1)):
             cols[f"{name}_{t}"] = L.diff(k)
             groups[f"{name}_{t}"] = group
+        cols[f"{name}_dyoy"] = L.diff(12).diff()  # this month's change in the y/y rate
+        groups[f"{name}_dyoy"] = group
     return pd.DataFrame(cols, index=index), groups
 
 
 # ------------------------------------------------------------------ nowcast
 
-def fuel_yoy(extras: pd.DataFrame) -> pd.Series | None:
-    """Average y/y change of the road fuels that have pump prices (None without any)."""
-    cols = [f"{n}_yoy" for n in NOWCAST_FUELS if f"{n}_yoy" in extras]
+def nowcast_signal(extras: pd.DataFrame, code: str) -> pd.Series | None:
+    """Average y/y rate of the economy's nowcast series that are available (None without any)."""
+    cols = [f"{n}_yoy" for n in NOWCAST.get(code, ()) if f"{n}_yoy" in extras]
     return extras[cols].mean(axis=1, skipna=False) if cols else None
 
 
@@ -174,8 +187,8 @@ def nowcast(frame: pd.DataFrame, gasoline_yoy: pd.Series | None = None, min_trai
     Recursive regression of that change on this month's change in the y/y rates of crude oil and,
     where available, retail fuel, and on the last change in inflation.  Year-on-year rates
     difference out the seasonal pattern on both sides.  Rows up to the previous origin train the
-    regression: the change they predict is published by now.  The regression with retail fuel takes
-    over once it has ``fuel_min_train`` months.
+    regression: the change they predict is published by now.  The regression with retail fuel (or,
+    for Japan, the Tokyo CPI, passed the same way) takes over once it has ``fuel_min_train`` months.
     """
     pi = frame["pi"]
     n = len(frame)
@@ -336,12 +349,12 @@ def pilot_sets(dl: Downloader, code: str, frame: pd.DataFrame, groups: dict, h: 
     """Feature sets for the direct models at horizon ``h``: name -> (frame, groups, offset or None)."""
     out = {"current": (frame, groups, None)}
     extras, eg = extra_columns(dl, code, frame.index)
-    now = nowcast(frame, fuel_yoy(extras))
+    now = nowcast(frame, nowcast_signal(extras, code))
     ncols = pd.DataFrame({"now_d1": now})
     ng = {"now_d1": "own"}
-    for c in (f"{n}_{t}" for n in NOWCAST_FUELS for t in ("yoy", "c3", "c1")):
+    for c in (f"{n}_{t}" for n in NOWCAST.get(code, ()) for t in ("yoy", "c3", "c1")):
         if c in extras:
-            ncols[c], ng[c] = extras[c], "cost"
+            ncols[c], ng[c] = extras[c], eg[c]
     out["nowcast"] = (pd.concat([frame, ncols], axis=1), {**groups, **ng}, None)
     if code in SURVEY_POINTS:
         sv = survey_gap(dl, code, frame, (h,))
@@ -553,8 +566,8 @@ def report(results: dict, store: dict, surveys: dict | None = None, baseline: di
          "are scored on the months for which all of them have forecasts (the bottom-up model needs ten years of "
          "component data: from 2007 in the euro area).  Sub-periods are by the month being forecast.  `*` marks a "
          "Diebold-Mariano p-value below 0.1 against the current features (full sample, better or worse).", "",
-         "The nowcast uses pump prices in the US, the UK and the euro area, and crude oil in yen in Japan, where no "
-         "pump-price source accepts automated downloads.", ""]
+         "The nowcast uses pump prices in the US, the UK and the euro area, and in Japan the Tokyo CPI, which is "
+         "published four weeks before the national index (the backtest uses its revised values).", ""]
     if baseline:
         L += ["## What becomes the headline", "",
               "Rule, fixed before the UK, Japan and euro-area runs: the first combination below that beats the six "

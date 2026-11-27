@@ -12,6 +12,7 @@ from .download import DataUnavailable, Downloader
 from .eurostat import fetch_eurostat
 from .fred import fetch_fred
 from .fuel import fetch_fuel
+from .jstat import fetch_jstat
 from .local import read_local_series
 from .nyfed import fetch_nyfed
 from .ons import fetch_ons
@@ -44,6 +45,8 @@ def fetch_raw(dl: Downloader, source: str, key: str) -> pd.Series:
         return fetch_zillow(dl, key)
     if source in ("ukfuel", "ecoil", "meti"):
         return fetch_fuel(dl, source, key)
+    if source == "jstat":
+        return fetch_jstat(dl, key)
     if source == "csv":
         return read_local_series(key)
     raise ValueError(f"unknown source {source!r}")

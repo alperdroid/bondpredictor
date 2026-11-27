@@ -115,3 +115,24 @@ def test_survey_comparison_scores_each_economy_on_the_models_it_has(monkeypatch)
     store = {"frames": {"US": (None, None), "EA": (None, None)}}
     surveys.compare(store, results, {"us_spf": None, "us_cpi_sa": None, "ecb": None}, models=("ens:median", "ucsv", "ens:combined"))
     assert seen == {"US": ("ens:median", "ens:combined"), "EA": ("ens:median",)}
+
+
+def test_tokyo_cpi_file_is_found_in_the_listing_and_read_by_item_code():
+    from bondpredictor.data import jstat
+
+    page = ('<tr><td>表番号 1</td><td>中分類指数 前月比（1970年2月～最新月）</td>'
+            '<a href="/stat-search/file-download?statInfId=000040482970&amp;fileKind=1">CSV</a></tr>'
+            '<tr><td>表番号 1</td><td>中分類指数（1970年1月～最新月）</td><td>調査年月 2026年11月</td>'
+            '<a href="/stat-search/file-download?statInfId=000040482965&amp;fileKind=1">CSV</a>'
+            '<a href="/stat-search/file-download?statInfId=000040482965&amp;fileKind=0">EXCEL</a></tr>')
+    assert jstat.table_id(page) == "000040482965"
+    with pytest.raises(jstat.DataUnavailable):
+        jstat.table_id("<a href='?statInfId=1&fileKind=1'>CSV</a>")
+    text = ("類・品目,総合,食料\nGroup/Item,All items,Food\n類・品目符号(Group/Item code),0001,0002\n"
+            "ウエイト(Weight),100,25\n197001,27.7,23.6\n197002,27.9,\n202611,103.8,104.9\n")
+    s = jstat.parse_cpi_csv(text, "0001")
+    assert s.index.tolist() == [pd.Timestamp("1970-01-01"), pd.Timestamp("1970-02-01"), pd.Timestamp("2026-11-01")]
+    assert s.tolist() == [27.7, 27.9, 103.8]
+    assert jstat.parse_cpi_csv(text, "0002").tolist() == [23.6, 104.9]  # blanks are skipped
+    with pytest.raises(jstat.DataUnavailable):
+        jstat.parse_cpi_csv(text, "9999")
