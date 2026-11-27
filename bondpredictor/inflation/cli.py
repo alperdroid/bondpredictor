@@ -197,6 +197,7 @@ def cmd_deep(args):
                    start=args.start, end=args.end, refit_every=args.refit_every, max_steps=args.max_steps,
                    progress=_progress(t0))
     path = Path(args.out) / "deep.pkl"
+    path.parent.mkdir(parents=True, exist_ok=True)  # a long run must not fail at the save for want of a directory
     pd.to_pickle(res, path)
     print(f"wrote {path} ({len(res)} forecast series)")
 
@@ -212,6 +213,7 @@ def cmd_foundation(args):
     res = run_foundation(store, args.countries, names=tuple(args.models), horizons=tuple(args.horizons or [3, 6, 12, 24]),
                          start=args.start, end=args.end, progress=_progress(t0))
     path = Path(args.out) / "foundation.pkl"
+    path.parent.mkdir(parents=True, exist_ok=True)  # a long run must not fail at the save for want of a directory
     pd.to_pickle(res, path)
     print(f"wrote {path} ({len(res)} forecast series)")
 
