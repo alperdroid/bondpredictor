@@ -334,8 +334,14 @@ def cmd_transforms(args):
         tables = [out / f"transform_compare_{c}_table.csv" for c in CODES]
         compare = pd.concat([pd.read_csv(t) for t in tables if t.exists()]) if any(t.exists() for t in tables) else None
         latest_path = out / "transform_latest_US.csv"
+        # Follow-up rounds: the estimated core anchor (round 3) and the US underlying measures (round 2).
+        parts = [pd.read_csv(f) for f in sorted((out / "round3").glob("transform_compare_*_table.csv"))]
+        r2 = out / "round2" / "transform_compare_US_table.csv"
+        if r2.exists():
+            parts.append(pd.read_csv(r2).query("set == 'underlying'"))
+        rounds = pd.concat(parts) if parts else None
         text = report(pd.read_pickle(screen_path), compare, store["frames"],
-                      pd.read_csv(latest_path) if latest_path.exists() else None)
+                      pd.read_csv(latest_path) if latest_path.exists() else None, rounds)
         Path(args.report).write_text(text)
         print(text)
         print(f"wrote {args.report}")

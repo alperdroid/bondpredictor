@@ -97,15 +97,39 @@ How often each alternative beat the current features (median model, 16 economy-h
 | + best transform per variable | 31% | 6% | 25% |
 | + best three per variable | 25% | 6% | 31% |
 
+## Stickiness: an estimated core anchor and new US measures
+
+Core inflation was already an input.  The core-anchored target above changes what the models fall back on when evidence is weak: today's core rate instead of today's headline rate.  It assumed headline closes the whole gap to core at every horizon.  The estimated anchor instead measures, at each origin from data published by then, how much of the gap has historically closed within h months, and anchors to that.  Share of the gap closed (latest estimate):
+
+| economy | 3 months | 6 months | 12 months | 24 months |
+|---|---|---|---|---|
+| United States | 0.02 | 0.08 | 0.37 | 0.87 |
+| United Kingdom | 0.00 | 0.08 | 0.63 | 1.00 |
+| Japan | 0.18 | 0.34 | 0.96 | 1.00 |
+| Euro area | 0.01 | 0.16 | 0.74 | 1.00 |
+
+Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano p < 0.1 against the current features).  The US underlying measures are the Atlanta Fed sticky-price core and flexible-price CPI, the Cleveland Fed median and trimmed-mean CPI and the Dallas Fed trimmed-mean PCE, each with its publication lag.
+
+| economy, horizon | Current features | Estimated core anchor | + US underlying inflation | + US underlying, estimated anchor |
+|---|---|---|---|---|
+| Euro area, 3m | 0.842 | 0.815 |  |  |
+| Euro area, 6m | 0.882 | 0.969* |  |  |
+| Euro area, 12m | 0.909 | 0.981 |  |  |
+| Euro area, 24m | 0.824 | 0.783* |  |  |
+| United States, 3m | 0.588 | 0.597 | 0.602 | 0.607 |
+| United States, 6m | 0.760 | 0.772 | 0.754 | 0.764 |
+| United States, 12m | 0.932 | 0.931 | 0.898 | 0.905 |
+| United States, 24m | 0.877 | 0.864 | 0.877 | 0.857 |
+
 ## What the alternatives say about the US today
 
 Median of the same six models at the latest origin (October 2026 print, 3.9%), by feature set:
 
-| horizon | Current features | Core-anchored target | + full transform library |
-|---|---|---|---|
-| 3 months | 3.34 | 3.55 | 3.53 |
-| 12 months | 1.40 | 2.24 | 1.78 |
-| 24 months | 2.36 | 2.49 | 1.70 |
+| horizon | Current features | Core-anchored target | + full transform library | Estimated core anchor | + US underlying inflation | + US underlying, estimated anchor |
+|---|---|---|---|---|---|---|
+| 3 months | 3.34 | 3.55 | 3.53 | 3.34 | 3.42 | 3.40 |
+| 12 months | 1.40 | 2.24 | 1.78 | 1.13 | 1.91 | 1.69 |
+| 24 months | 2.36 | 2.49 | 1.70 | 2.37 | 2.51 | 2.43 |
 
 ## Stickiness check for the current US forecast
 

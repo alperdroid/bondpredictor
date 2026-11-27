@@ -54,6 +54,7 @@ from . import config as cfg
 from .backtest import AR_FEATURES, design
 from .features import sa_onesided
 
+HORIZONS_ALL = (3, 6, 12, 24)
 SCREEN_VERSION = 2  # bump when the scoring changes, so a stale screen file is not reused
 FIRST_ORIGIN = "2000-01"
 TRAIN_START = "1960-01"  # as Spec.train_start
@@ -490,10 +491,44 @@ def base_rates(frame: pd.DataFrame, gap_min: float = 0.9, oil_min: float = 25.0,
 
 
 SET_LABELS = {"current": "Current features", "core_anchor": "Core-anchored target", "top1": "+ best transform per variable",
-              "top3": "+ best three per variable", "library": "+ full transform library", "lags": "+ lags 1-12 of current"}
+              "top3": "+ best three per variable", "library": "+ full transform library", "lags": "+ lags 1-12 of current",
+              "partial_anchor": "Estimated core anchor", "underlying": "+ US underlying inflation",
+              "underlying_anchor": "+ US underlying, estimated anchor"}
 
 
-def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest: pd.DataFrame | None = None) -> str:
+def stickiness_section(frames: dict, rounds: pd.DataFrame | None) -> list[str]:
+    """Markdown lines on the estimated core anchor and the US underlying-inflation measures."""
+    from .report import NAMES, md_table
+
+    w = pd.DataFrame({c: {f"{h} months": convergence_weights(frames[c][0], h).dropna().iloc[-1] for h in HORIZONS_ALL}
+                      for c in frames if "core" in frames[c][0]}).T.rename(index=NAMES)
+    L = ["## Stickiness: an estimated core anchor and new US measures", "",
+         "Core inflation was already an input.  The core-anchored target above changes what the models fall back on "
+         "when evidence is weak: today's core rate instead of today's headline rate.  It assumed headline closes the "
+         "whole gap to core at every horizon.  The estimated anchor instead measures, at each origin from data "
+         "published by then, how much of the gap has historically closed within h months, and anchors to that.  "
+         "Share of the gap closed (latest estimate):", "", md_table(w.round(2), index_name="economy"), ""]
+    if rounds is None or rounds.empty:
+        return L
+    med = rounds[rounds["model"] == "median"]
+    piv = med.pivot_table(index=["economy", "horizon"], columns="set", values="rel_rw")
+    piv = piv[[c for c in SETS if c in piv.columns]].rename(columns=SET_LABELS)
+    pv = med.pivot_table(index=["economy", "horizon"], columns="set", values="dm_p")
+    for col in [c for c in SETS if c in pv.columns and c != "current"]:
+        lab = SET_LABELS[col]
+        piv[lab] = [f"{v:.3f}" + ("*" if pd.notna(pv.loc[i, col]) and pv.loc[i, col] < 0.1 else "") if pd.notna(v) else ""
+                    for i, v in zip(piv.index, piv[lab])]
+    piv[SET_LABELS["current"]] = piv[SET_LABELS["current"]].map(lambda v: f"{v:.3f}")
+    piv.index = [f"{NAMES.get(c, c)}, {h}m" for c, h in piv.index]
+    L += ["Median-model RMSE relative to no change on origins from 2013 (* Diebold-Mariano p < 0.1 against the current "
+          "features, better or worse).  The US underlying measures are the Atlanta Fed sticky-price core and flexible-price CPI, the "
+          "Cleveland Fed median and trimmed-mean CPI and the Dallas Fed trimmed-mean PCE, each with its publication lag.",
+          "", md_table(piv, index_name="economy, horizon"), ""]
+    return L
+
+
+def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest: pd.DataFrame | None = None,
+           rounds: pd.DataFrame | None = None) -> str:
     """Markdown summary of the screen, the model comparison and the base-rate check."""
     from .report import NAMES, md_table
 
@@ -552,9 +587,10 @@ def report(screen_res: dict, compare: pd.DataFrame | None, frames: dict, latest:
               "change (below 1 beats it):", "", md_table(piv.round(3), index_name="economy, horizon"), "",
               "How often each alternative beat the current features (median model, 16 economy-horizon pairs; Diebold-"
               "Mariano at 10%):", "", md_table(wins, index_name="feature set"), ""]
+    L += stickiness_section(frames, rounds)
     if latest is not None and not latest.empty:
         lt = latest.pivot_table(index="h", columns="set", values="median")
-        lt = lt[[c for c in ("current", "core_anchor", "library") if c in lt.columns]].rename(columns=SET_LABELS)
+        lt = lt[[c for c in SETS if c in lt.columns]].rename(columns=SET_LABELS)
         lt.index = [f"{h} months" for h in lt.index]
         L += ["## What the alternatives say about the US today", "",
               "Median of the same six models at the latest origin (October 2026 print, 3.9%), by feature set:", "",
