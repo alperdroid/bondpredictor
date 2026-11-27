@@ -448,9 +448,9 @@ US underlying-inflation measures and, for the UK, the CPI as the target
 (`docs/inflation_report.md`, `results/inflation/`).  Averaged over the four
 economies the median of all models scores 0.72 / 0.80 / 0.88 / 0.84 of the
 no-change RMSE at 3 / 6 / 12 / 24 months (October: 0.73 / 0.80 / 0.88 / 0.89).
-The generic deep nets still trail the econometric models; their rerun with
-the UK on CPI is under way, so the report lists them for the other three
-economies only.
+The generic deep nets were rerun as well and still trail: PatchTST 0.98 / 0.97
+/ 0.95 / 0.91, TiDE 1.08 / 1.02 / 0.92 / 0.86, N-HiTS 0.95 / 1.00 / 1.11 /
+1.06 and the LSTM 2.48 / 1.62 / 1.05 / 0.87.
 Further results:
 
 * **Professional forecasters are still ahead of the median model.**  On the
