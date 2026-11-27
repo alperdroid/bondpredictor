@@ -113,7 +113,7 @@ def run_backtest(frame: pd.DataFrame, groups: dict[str, str], h: int, spec: Spec
     y = (tgt - pi).to_numpy()
     if spec.offset:
         sign, col = (-1.0, spec.offset[1:]) if spec.offset.startswith("-") else (1.0, spec.offset)
-        off = sign * X[col].to_numpy(dtype=float)
+        off = sign * (X[col] if col in X.columns else frame[col]).to_numpy(dtype=float)  # may be a non-feature column
     else:
         off = np.zeros(len(X))
     y = y - off

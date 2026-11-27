@@ -344,8 +344,14 @@ def cmd_transforms(args):
         return
     table = pd.read_pickle(screen_path)["table"]
     tag = "_".join(args.countries)
+    extras = None
+    if {"underlying", "underlying_anchor"} & set(args.sets):
+        from .transform_search import underlying_features
+
+        dl = DL(cache_dir=args.cache, max_age_days=args.max_age)
+        extras = {c: underlying_features(dl, c, store["frames"][c][0].index) for c in args.countries}
     res = run_compare(data, store, table, args.countries, tuple(args.horizons), tuple(args.sets), tuple(args.models),
-                      n_jobs=args.jobs, progress=_progress(t0))
+                      n_jobs=args.jobs, progress=_progress(t0), extras=extras)
     pd.to_pickle(res, out / f"transform_compare_{tag}.pkl")
     long = pd.concat([r.assign(economy=c, horizon=h, set=s, model=m).reset_index()[
         ["economy", "horizon", "set", "model", "date", "forecast", "rw", "actual"]]
@@ -441,6 +447,8 @@ def build_parser():
     tr = sub.add_parser("transforms", parents=[common], help="search over predictor transformations")
     tr.add_argument("stage", choices=["screen", "compare", "report"])
     tr.add_argument("--report", default="docs/inflation_transforms.md")
+    tr.add_argument("--cache", default=None)
+    tr.add_argument("--max-age", type=float, default=7.0, help="days before cached downloads are refreshed")
     tr.add_argument("--horizons", nargs="+", type=int, default=[3, 6, 12, 24])
     tr.add_argument("--sets", nargs="+", default=["current", "core_anchor", "top1", "top3", "library", "lags"])
     tr.add_argument("--models", nargs="+", default=["ridge", "adalasso", "enet", "krr", "rf", "lgbm"])

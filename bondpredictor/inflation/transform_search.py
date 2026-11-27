@@ -146,7 +146,8 @@ def candidates(raw: dict, index: pd.PeriodIndex, lags=LAGS) -> tuple[pd.DataFram
                 meta.append({"name": name, "var": var, "transform": base, "lag": lag, "kind": kind, "group": group})
     X = pd.DataFrame(cols, index=index)
     keep = X.notna().sum() >= 60
-    meta = pd.DataFrame(meta).set_index("name").loc[keep[keep].index]
+    meta = pd.DataFrame(meta, columns=["name", "var", "transform", "lag", "kind", "group"]).set_index("name")
+    meta = meta.loc[keep[keep].index]
     return X.loc[:, keep], meta
 
 
@@ -270,12 +271,68 @@ def run_screen(data, store: dict, codes=("US", "UK", "JP", "EA"), horizons=(3, 6
 
 # ------------------------------------------------------------------ multivariate comparison
 
-SETS = ("current", "core_anchor", "top1", "top3", "library", "lags")
+SETS = ("current", "core_anchor", "top1", "top3", "library", "lags", "partial_anchor", "underlying", "underlying_anchor")
+
+# US measures of underlying inflation, all in % (12-month or 1-month rates), published with CPI (lag 1) or PCE (lag 2).
+UNDERLYING = {
+    "US": {
+        "sticky_core": ("CORESTICKM159SFRBATL", 1), "sticky_core_m": ("CORESTICKM157SFRBATL", 1),
+        "median_cpi": ("MEDCPIM159SFRBCLE", 1), "median_cpi_m": ("MEDCPIM158SFRBCLE", 1),
+        "trimmed_cpi": ("TRMMEANCPIM159SFRBCLE", 1), "trimmed_cpi_m": ("TRMMEANCPIM158SFRBCLE", 1),
+        "flexible_cpi": ("FLEXCPIM679SFRBATL", 1), "pce_trimmed": ("PCETRIM12M159SFRBDAL", 2),
+    },
+}
+
+
+def underlying_features(dl, code: str, index: pd.PeriodIndex) -> pd.DataFrame:
+    """Sticky, median, trimmed-mean and flexible inflation for ``code`` on the known-at grid.
+
+    12-month rates enter as level, 3- and 12-month change; 1-month rates as level and 3-month average.
+    """
+    from ..config import fred
+    from ..dataset import load_series
+
+    cols = {}
+    for name, (key, lag) in UNDERLYING.get(code, {}).items():
+        s = _monthly(load_series(dl, fred(key, lag=lag)))
+        if s.empty:
+            continue
+        if name.endswith("_m"):
+            cols[f"{name}_lvl"], cols[f"{name}_ma3"] = s, s.rolling(3).mean()
+        else:
+            cols[f"{name}_lvl"], cols[f"{name}_d3"], cols[f"{name}_d12"] = s, s.diff(3), s.diff(12)
+    return pd.DataFrame({k: v.reindex(index) for k, v in cols.items()}, index=index)
+
+
+def convergence_weights(frame: pd.DataFrame, h: int, min_rows: int = 120) -> pd.Series:
+    """Real-time share of the core-headline gap that closes within ``h`` months.
+
+    At origin ``k``: the OLS slope of (inflation in ``h`` months - inflation now) on (core now -
+    inflation now), over the rows from 1960 whose target was published by ``k``, clipped to [0, 1].
+    1 means headline is expected to land on today's core rate; 0 means no convergence.
+    """
+    pi = frame["pi"].to_numpy(float)
+    x = frame["core"].to_numpy(float) - pi
+    y = frame[f"tgt{h}"].to_numpy(float) - pi
+    ok = np.isfinite(x) & np.isfinite(y)
+    ok[: frame.index.searchsorted(pd.Period(TRAIN_START, "M"))] = False
+    xw, yw = np.where(ok, x, 0.0), np.where(ok, y, 0.0)
+    n, sx, sy = np.cumsum(ok), np.cumsum(xw), np.cumsum(yw)
+    sxx, sxy = np.cumsum(xw * xw), np.cumsum(xw * yw)
+    w = np.full(len(pi), np.nan)
+    for k in range(h, len(pi)):
+        j = k - h
+        if n[j] >= min_rows:
+            vx = sxx[j] - sx[j] ** 2 / n[j]
+            if vx > 0:
+                w[k] = np.clip((sxy[j] - sx[j] * sy[j] / n[j]) / vx, 0.0, 1.0)
+    return pd.Series(w, index=frame.index, name=f"w{h}")
 COMPARE_MODELS = ("ridge", "adalasso", "enet", "krr", "rf", "lgbm")
 FEATURE_LAGS = (1, 3, 6, 12)
 
 
-def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFrame, h: int) -> dict:
+def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFrame, h: int,
+                 extras: pd.DataFrame | None = None) -> dict:
     """The feature sets compared at horizon ``h``: name -> (frame, groups, target offset).
 
     * current: the frame as used by the backtest;
@@ -285,7 +342,12 @@ def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFra
       sample (``table`` holds this economy's and horizon's screening scores);
     * library: current plus every undelayed candidate (growth over 1-24 months, accelerations,
       gaps, z-scores, asymmetric parts), letting the models choose jointly;
-    * lags: current plus the current features delayed by 1, 3, 6 and 12 months.
+    * lags: current plus the current features delayed by 1, 3, 6 and 12 months;
+    * partial_anchor: current features, forecasting relative to today's headline rate moved part of
+      the way to core, by the share of the gap that has historically closed within ``h`` months
+      (``convergence_weights``, estimated in real time);
+    * underlying / underlying_anchor: current plus ``extras`` (measures of underlying inflation),
+      without and with the partial anchor.
     """
     C, meta = candidates(raw, frame.index)
     X, g, _, _ = design(frame, groups, h)
@@ -304,11 +366,23 @@ def feature_sets(frame: pd.DataFrame, groups: dict, raw: dict, table: pd.DataFra
     lagged = {f"L{lag}:{c}": X[c].shift(lag) for lag in FEATURE_LAGS for c in base}
     out["lags"] = (pd.concat([frame, pd.DataFrame(lagged, index=frame.index)], axis=1),
                    {**groups, **{n: g[n.split(":", 1)[1]] for n in lagged}}, None)
+    anchor = f"_anchor{h}"  # an offset column, not a feature (not in groups)
+    anchored = None
+    if "core" in frame:
+        anchored = convergence_weights(frame, h) * (frame["core"] - frame["pi"])
+        out["partial_anchor"] = (frame.assign(**{anchor: anchored}), groups, anchor)
+    if extras is not None and not extras.empty:
+        fu = pd.concat([frame, extras], axis=1)
+        gu = {**groups, **{n: "own" for n in extras.columns}}
+        out["underlying"] = (fu, gu, None)
+        if anchored is not None:
+            out["underlying_anchor"] = (fu.assign(**{anchor: anchored}), gu, anchor)
     return out
 
 
 def run_compare(data, store: dict, screen_table: pd.DataFrame, codes, horizons=(3, 6, 12, 24), sets=SETS,
-                models=COMPARE_MODELS, start: str = HOLDOUT_START, n_jobs: int = 1, progress=None) -> dict:
+                models=COMPARE_MODELS, start: str = HOLDOUT_START, n_jobs: int = 1, progress=None,
+                extras: dict | None = None) -> dict:
     """Backtest each model on each feature set over the holdout: {(economy, h, set, model): results}."""
     from dataclasses import replace
 
@@ -321,7 +395,7 @@ def run_compare(data, store: dict, screen_table: pd.DataFrame, codes, horizons=(
         raw = raw_inputs(data, c)
         for h in horizons:
             table = screen_table[(screen_table["economy"] == c) & (screen_table["horizon"] == h)]
-            for name, (f, g, offset) in feature_sets(frame, groups, raw, table, h).items():
+            for name, (f, g, offset) in feature_sets(frame, groups, raw, table, h, (extras or {}).get(c)).items():
                 if name not in sets:
                     continue
                 key = f"{c}|{name}|{h}"

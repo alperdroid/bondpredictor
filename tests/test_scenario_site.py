@@ -109,3 +109,30 @@ def test_candidate_transforms_use_only_the_past():
         cut = base_transforms(s.iloc[: k + 1], kind)
         for name, x in full.items():
             pd.testing.assert_series_equal(x.iloc[: k + 1], cut[name], check_names=False)
+
+
+def test_convergence_weights_use_only_published_targets():
+    from bondpredictor.inflation.transform_search import convergence_weights
+
+    frame, _ = build_frame(_synthetic(), "US")
+    h, k = 12, 300
+    w = convergence_weights(frame, h, min_rows=60)
+    later = frame.copy()
+    later.iloc[k - h + 1:, later.columns.get_loc(f"tgt{h}")] = 50.0  # targets not yet published at origin k
+    assert convergence_weights(later, h, min_rows=60).iloc[k] == pytest.approx(w.iloc[k])
+    assert w.dropna().between(0, 1).all()
+
+
+def test_partial_anchor_offset_reaches_the_backtest():
+    from dataclasses import replace
+
+    from bondpredictor.inflation.transform_search import feature_sets
+
+    frame, groups = build_frame(_synthetic(), "US")
+    sets = feature_sets(frame, groups, {}, pd.DataFrame(columns=["name", "var", "select_ratio"]), 12)
+    f, g, off = sets["partial_anchor"]
+    assert off == "_anchor12" and off not in g
+    spec = Spec("ridge", "ridge", refit_every=1, train_start="1985-01")
+    base = run_backtest(frame, groups, 12, spec, start="2010-01", end="2010-06", min_train=60, min_hist=24)
+    anch = run_backtest(f, g, 12, replace(spec, offset=off), start="2010-01", end="2010-06", min_train=60, min_hist=24)
+    assert len(anch) == len(base) and not np.allclose(anch["forecast"], base["forecast"])
