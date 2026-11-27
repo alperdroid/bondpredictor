@@ -197,7 +197,8 @@ def build_frame(data: InflationData, code: str, horizons=HORIZONS) -> tuple[pd.D
     groups.update({k: "global" for k in gf.columns})
     for other, od in data.countries.items():
         if other != code:
-            parts.append(yoy(od.cpi).rename(f"x_{other}").reindex(idx))
+            seen = od.abroad if getattr(od, "abroad", None) is not None else od.cpi
+            parts.append(yoy(seen).rename(f"x_{other}").reindex(idx))
             groups[f"x_{other}"] = "global"
     pi = own["pi"].reindex(idx)
     sa_i = sa.reindex(idx)

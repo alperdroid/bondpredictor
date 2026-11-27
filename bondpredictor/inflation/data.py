@@ -102,6 +102,7 @@ class CountryData:
     predictors: dict[str, pd.Series]  # raw levels, known-at grid
     notes: list[str] = field(default_factory=list)
     filled: dict[str, list] = field(default_factory=dict)  # interpolated months per price index
+    abroad: pd.Series | None = None  # headline index shown to the other economies' models (None: cpi)
 
 
 def build_country(dl: Downloader, c: cfg.InflationCountry) -> CountryData:
@@ -122,6 +123,7 @@ def build_country(dl: Downloader, c: cfg.InflationCountry) -> CountryData:
     if cpi is None:
         raise DataUnavailable(f"{c.code}: no CPI source available")
     core = prices(c.core, "core") if c.core else None
+    abroad = prices(c.abroad, "abroad") if c.abroad else None
     comps = {}
     for name, srcs in c.components.items():
         s = prices(srcs, name)
@@ -133,7 +135,7 @@ def build_country(dl: Downloader, c: cfg.InflationCountry) -> CountryData:
         s = load_sources(dl, p.sources, p.splice, notes, f"{c.code} {name}")
         if s is not None:
             preds[name] = s
-    return CountryData(c.code, cpi, core, comps, oil, preds, notes, filled)
+    return CountryData(c.code, cpi, core, comps, oil, preds, notes, filled, abroad)
 
 
 def oecd_cpi_panel(dl: Downloader) -> pd.DataFrame:

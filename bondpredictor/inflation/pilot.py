@@ -28,7 +28,7 @@ import pandas as pd
 from ..config import Series, fred
 from ..data import Downloader
 from ..dataset import load_series
-from .config import HICP, ecb, estat, oecd_cpi, ons
+from .config import HICP, ONS_CPI, ecb, estat, oecd_cpi, ons
 from .data import CountryData, fill_price_gaps, load_sources, yoy
 from .features import HORIZONS, base_effects, own_features
 from .recursive import recursive_ols
@@ -38,7 +38,6 @@ TRAIN_START = "1960-01"
 FUEL_MIN_TRAIN = 60  # months before the pump-price nowcast replaces the crude-oil one (UK pump prices start in 2003)
 NOWCAST_FUELS = ("gasoline", "diesel")  # road fuels whose average y/y change drives the nowcast
 
-ONS_CPI = "/economy/inflationandpriceindices/timeseries/{}/mm23"
 ECB_HICP = "ICP/M.U2.N.{}.4.INX"
 
 # Extra series: name -> (source, group).  Prices observed within the month have no publication lag.
@@ -88,19 +87,18 @@ COMPONENTS = {
                            "unemp_lvl", "payrolls_yoy", "sticky_core_lvl", "sticky_core_m_ma3", "median_cpi_lvl",
                            "mich_lvl", "cleveland1y_lvl", "fedfunds_lvl"]),
     },
-    # ONS special aggregates of CPIH, the index behind the OECD's UK headline (CPI plus owner occupiers' housing
-    # costs and council tax): energy; food, alcohol and tobacco; non-energy industrial goods; services.
+    # ONS special aggregates of the CPI (1988-): energy; food, alcohol and tobacco; non-energy industrial goods; services.
     "UK": {
-        "energy": ((ons(ONS_CPI.format("l5jj"), lag=1),),
+        "energy": ((ons(ONS_CPI.format("dk9t"), lag=1),),
                    ["oil_yoy", "oil_c3", "oil_c1", "gasoline_yoy", "gasoline_c3", "gasoline_c1", "diesel_yoy",
                     "diesel_c3", "natgas_yoy", "natgas_c3", "commodities_yoy", "gbpusd_yoy"]),
-        "food": ((ons(ONS_CPI.format("l5je"), lag=1),),
+        "food": ((ons(ONS_CPI.format("dk9o"), lag=1),),
                  ["food_commodities_yoy", "commodities_yoy", "ppi_yoy", "oil_yoy", "earnings_yoy", "gbpusd_yoy",
                   "reer_yoy", "g_infl", "x_EA"]),
-        "core_goods": ((ons(ONS_CPI.format("l5jm"), lag=1),),
+        "core_goods": ((ons(ONS_CPI.format("dk9j"), lag=1),),
                        ["ppi_yoy", "reer_yoy", "gbpusd_yoy", "gscpi_lvl", "gscpi_d3", "commodities_yoy", "retail_yoy",
                         "ip_yoy", "unemp_gap", "earnings_yoy", "energy_yoy", "g_infl", "x_EA"]),
-        "services": ((ons(ONS_CPI.format("l52g"), lag=1),),
+        "services": ((ons(ONS_CPI.format("d7f5"), lag=1),),
                      ["earnings_yoy", "unemp_gap", "unemp_lvl", "breakeven10_lvl", "policy_rate_lvl",
                       "consumer_conf_lvl", "business_conf_lvl", "money_yoy", "energy_yoy", "food_yoy", "g_infl"]),
     },
@@ -556,7 +554,7 @@ def report(results: dict, store: dict, surveys: dict | None = None, baseline: di
          "component data: from 2007 in the euro area).  Sub-periods are by the month being forecast.  `*` marks a "
          "Diebold-Mariano p-value below 0.1 against the current features (full sample, better or worse).", "",
          "The nowcast uses pump prices in the US, the UK and the euro area, and crude oil in yen in Japan, where no "
-         "pump-price source accepts automated downloads.  The UK index is CPIH, the OECD's headline for the UK.", ""]
+         "pump-price source accepts automated downloads.", ""]
     if baseline:
         L += ["## What becomes the headline", "",
               "Rule, fixed before the UK, Japan and euro-area runs: the first combination below that beats the six "

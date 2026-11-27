@@ -26,7 +26,7 @@ from .report import LABELS, NAMES, ORDER, collect
 
 ECONOMIES = ("US", "UK", "JP", "EA")
 HORIZONS = (3, 6, 12, 24)
-INDEX = {"US": "CPI", "UK": "CPIH", "JP": "CPI", "EA": "HICP"}
+INDEX = {"US": "CPI", "UK": "CPI", "JP": "CPI", "EA": "HICP"}
 
 SHORT = {
     "rw": "No change", "ucsv": "UCSV trend", "ar": "AR benchmark", "ridge": "Ridge", "adalasso": "Adaptive lasso",

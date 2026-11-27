@@ -37,6 +37,7 @@ OECD_CPI18 = "OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0/{area}.
 OECD_KEI = "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0/{area}.M.{measure}.{unit}.{activity}.{adj}._Z"
 OECD_FIN = "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/{area}.M.{measure}.{unit}._Z._Z._Z._Z.N"
 HICP = "prc_hicp_minr?geo=EA&unit=I15&coicop18={item}"
+ONS_CPI = "/economy/inflationandpriceindices/timeseries/{}/mm23"  # ONS consumer price series, by four-letter code
 
 
 def oecd(key: str, **kw) -> Series:
@@ -61,6 +62,10 @@ def ons(path: str, **kw) -> Series:
 
 def boe(code: str, **kw) -> Series:
     return Series("boe", code, **kw)
+
+
+def ons_cpi(code: str, lag: int = 1) -> Series:
+    return ons(ONS_CPI.format(code), lag=lag)
 
 
 def oecd_cpi(area: str, item: str = "_T", coicop2018: bool = False, lag: int = 1) -> Series:
@@ -105,6 +110,7 @@ class InflationCountry:
     tax_events: tuple[TaxEvent, ...] = ()
     oil_local: tuple[Series, ...] = ()  # crude oil price in local currency
     oecd_code: str = ""
+    abroad: tuple[Series, ...] = ()  # headline index the other economies' models see as this one's (default: cpi)
 
 
 # Crude oil, US$ per barrel: Brent (daily, 1987-) with WTI (monthly, 1946-) before.
@@ -173,15 +179,18 @@ UK = InflationCountry(
     code="UK",
     name="United Kingdom",
     oecd_code="GBR",
-    # The OECD's all-items index for the UK is CPIH (the CPI plus owner occupiers' housing costs and council
-    # tax) from 1988, not the CPI the Bank of England targets; the two differed by up to 1.3 pp in 2022-23.
-    cpi=(oecd_cpi("GBR"),),
-    core=(oecd_cpi("GBR", "_TXCP01_NRG"),),
+    # The CPI, which the Bank of England targets (ONS, 1988-).  The OECD's all-items index for the UK is CPIH
+    # (the CPI plus owner occupiers' housing costs and council tax; up to 1.3 pp away in 2022-23): it supplies
+    # the years before 1988, and stays the UK series the other economies' models see, so their inputs are the
+    # same whichever UK index is the target.  Core excludes energy, food, alcohol and tobacco.
+    cpi=(ons_cpi("d7bt"), oecd_cpi("GBR")),
+    abroad=(oecd_cpi("GBR"),),
+    core=(ons_cpi("dkc6"), oecd_cpi("GBR", "_TXCP01_NRG")),
     components={
-        "energy": (oecd_cpi("GBR", "CP045_0722"),),
-        "food": (oecd_cpi("GBR", "CP01"),),
-        "services": (oecd_cpi("GBR", "SERV"),),
-        "goods": (oecd_cpi("GBR", "GD"),),
+        "energy": (ons_cpi("dk9t"), oecd_cpi("GBR", "CP045_0722")),
+        "food": (ons_cpi("d7bu"), oecd_cpi("GBR", "CP01")),
+        "services": (ons_cpi("d7f5"),),
+        "goods": (ons_cpi("d7f4"),),
     },
     oil_local=(Series("fred", "DCOILBRENTEU", how="mean", divide=fred("DEXUSUK", how="mean")),
                Series("fred", "WTISPLC", divide=fred("EXUSUK"))),

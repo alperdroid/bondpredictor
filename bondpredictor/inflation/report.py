@@ -251,8 +251,8 @@ def build_report(results: dict, robust: dict, store: dict, countries, horizons, 
           "exist; at least ten years of training data.  Twenty-four months ahead the ML models forecast relative "
           "to headline moved towards core (see the README).  The combined forecast (see `combined.py`) averages "
           "models that use a nowcast, a bottom-up model of components and models anchored on the professional "
-          "forecasters' path; it is listed for the economies where it is the headline.  The UK index is CPIH, the "
-          "OECD's headline for the UK.  RMSE is relative to the random walk "
+          "forecasters' path; it is listed for the economies where it is the headline.  The UK index is the CPI "
+          "(ONS) from 1988.  RMSE is relative to the random walk "
           "(no change in the y/y rate); below 1 beats it.  `*` marks the 75% model confidence set "
           "(Hansen-Lunde-Nason, T_max, 2,000 stationary-bootstrap draws); bold is the lowest in each column.  "
           "All models of one economy and horizon are scored on the same months.", ""]
