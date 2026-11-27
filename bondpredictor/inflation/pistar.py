@@ -32,10 +32,12 @@ Two losses, each re-estimated at every origin on data published by then:
   Banker's loss").  ``partial=True`` keeps origins whose H months are only partly published, scored on
   the months already out, as in the paper; ``partial=False`` waits until all H are out (the paper's
   footnote 3 counterfactual).  Given ``phi`` the forecasts are linear in the trend parameters, so ``phi``
-  is optimised numerically and the rest is a ridge solve at each step (variable projection).
+  is optimised numerically and the rest is a ridge solve at each step (variable projection).  The loss has
+  two local optima in ``phi`` (persistent and trend-led), so every fit starts from both the previous
+  solution and the one-month-loss solution and keeps the better one.
 
 The ridge penalty on ``beta`` is chosen every ``tune_every`` months by expanding-window validation on the
-model's own loss.  Year-on-year forecasts follow from the monthly path:
+model's own loss, with ``phi`` re-estimated for each candidate penalty on each fold.  Year-on-year forecasts follow from the monthly path:
 
     pi[k+h] = pi[k] + mean(a[k+h-11 .. k+h]) - mean(s[k-11 .. k]),
 
@@ -240,6 +242,24 @@ class _Problem:
         phi = res.x if np.isfinite(res.fun) else x0
         return phi, self.solve_psi(phi, lam, M)[0]
 
+    def fit_fwd_multi(self, lam, M, phi_prev=None):
+        """``fit_fwd`` from the previous solution and from the one-month-loss solution; the lower loss wins.
+
+        The forward loss is not convex in ``phi``: it has a persistent optimum (sum phi near 0.8) and a
+        trend-led one (sum phi near 0.1).  A single warm start would make the estimate depend on the path
+        of earlier fits.
+        """
+        starts = [self.solve_cur(lam, M)[0]]
+        if phi_prev is not None:
+            starts.append(np.asarray(phi_prev, float))
+        best = None
+        for x0 in starts:
+            phi, psi = self.fit_fwd(lam, M, x0)
+            loss = self.solve_psi(phi, lam, M)[1]
+            if best is None or loss < best[0]:
+                best = (loss, phi, psi)
+        return best[1], best[2]
+
     def loss_of(self, phi, psi, M) -> float:
         """Mean squared error of the model's forecasts over the cells in ``M``."""
         R = responses(phi, self.spec.theta, self.H)
@@ -387,9 +407,7 @@ def run_state_backtest(frame: pd.DataFrame, groups: dict[str, str], spec: StateS
             if spec.loss == "cur":
                 phi, psi = prob.solve_cur(lam, M_all)
             else:
-                if phi_prev is None:
-                    phi_prev, _ = prob.solve_cur(lam, prob.rows())
-                phi, psi = prob.fit_fwd(lam, M_all, phi_prev)
+                phi, psi = prob.fit_fwd_multi(lam, M_all, phi_prev)
             phi_prev = phi
             fit = dict(cols=cols, mu=mu, sd=sd, zsd=zsd, keep=keep, phi=phi, psi=psi, U=U, n=n_orig, lam=lam)
             fitted_at = k
@@ -444,8 +462,6 @@ def _tune(prob: _Problem, spec: StateSpec, M_all: np.ndarray, phi_prev) -> float
     if len(origins) < 120:
         return spec.lambdas[len(spec.lambdas) // 2]
     edges = np.linspace(origins[len(origins) // 2], origins[-1] + 1, 4).astype(int)
-    if spec.loss == "fwd":
-        phi_fix = phi_prev if phi_prev is not None else prob.solve_cur(spec.lambdas[len(spec.lambdas) // 2], prob.rows())[0]
     sse = np.zeros(len(spec.lambdas))
     for v0, v1 in zip(edges[:-1], edges[1:]):
         M_fit = prob.rows(0, v0, realised_by=v0)
@@ -455,9 +471,8 @@ def _tune(prob: _Problem, spec: StateSpec, M_all: np.ndarray, phi_prev) -> float
         for i, lam in enumerate(spec.lambdas):
             if spec.loss == "cur":
                 phi, psi = prob.solve_cur(lam, M_fit)
-            else:
-                phi = phi_fix
-                psi, _ = prob.solve_psi(phi, lam, M_fit)
+            else:  # phi re-estimated for each penalty on the fold's own training cells
+                phi, psi = prob.fit_fwd_multi(lam, M_fit, phi_prev)
             sse[i] += prob.loss_of(phi, psi, M_val) * M_val.sum()
     return spec.lambdas[int(np.argmin(sse))] if sse.any() else spec.lambdas[len(spec.lambdas) // 2]
 
@@ -470,8 +485,11 @@ _FRAMES: dict = {}
 def _run_state_job(job):
     (country, name), spec, kw = job
     frame, groups = _FRAMES[country]
+    import threadpoolctl
+
     try:
-        return (country, name), run_state_backtest(frame, groups, spec, **kw)
+        with threadpoolctl.threadpool_limits(limits=1):  # small matrices: threads only contend across processes
+            return (country, name), run_state_backtest(frame, groups, spec, **kw)
     except Exception as err:  # keep the other jobs running
         log.exception("job %s failed", (country, name))
         return (country, name), err

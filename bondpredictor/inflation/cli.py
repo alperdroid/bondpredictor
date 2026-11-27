@@ -440,12 +440,16 @@ def cmd_pistar(args):
             if isinstance(r, pd.DataFrame):
                 results[(c, h, *label.split("|"))] = r
         pd.to_pickle(results, path)
-    specs = [s for s in state_zoo() if s.name not in {k[3] for k in results if k[2] == "state"}]
-    if specs:
-        raw = run_state_jobs(frames, specs, args.countries, kw, args.jobs, show)
-        for (c, h, name), r in raw.items():
-            results[(c, h, "state", name)] = r
-        pd.to_pickle(results, path)
+    sets = [("state", state_zoo())]
+    if args.from1985:  # robustness: the state models trained from 1985, as in ``robustness.py``
+        sets.append(("state85", [replace(s, train_start="1985-01") for s in state_zoo()]))
+    for label, zoo_s in sets:
+        specs = [s for s in zoo_s if s.name not in {k[3] for k in results if k[2] == label}]
+        if specs:
+            raw = run_state_jobs(frames, specs, args.countries, kw, args.jobs, show)
+            for (c, h, name), r in raw.items():
+                results[(c, h, label, name)] = r
+            pd.to_pickle(results, path)
     print(f"wrote {path} ({len(results)} forecast series) in {time.time() - t0:.0f}s")
 
 
@@ -582,6 +586,7 @@ def build_parser():
     ps.add_argument("--models", nargs="+", default=["rw", "ucsv", "ar", "ridge", "adalasso", "enet", "di", "3prf",
                                                     "csr", "krr", "rf", "lgbm", "mrf", "bart", "hnn", "mlp"])
     ps.add_argument("--stacked", nargs="+", default=["ar", "ridge", "enet", "rf", "lgbm"])
+    ps.add_argument("--from1985", action="store_true", help="also run the state models trained from 1985")
     ps.add_argument("--out", default="output/inflation/pistar")
     ps.add_argument("--report", default="docs/inflation_pistar.md")
     ps.set_defaults(func=cmd_pistar)

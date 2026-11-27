@@ -145,6 +145,28 @@ def state_table(results, h: int) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+def from1985_table(results, h: int = 12) -> pd.DataFrame:
+    """State models trained from 1985 against the same models trained from 1960, 12 months ahead."""
+    rows = {}
+    for c in ECONOMIES:
+        res = {m: r for m, r in _with_median(results, c).items() if m in ("rw", "ucsv", "ens:median")}
+        res.update({f"1960:{m}": r for m, r in _sel(results, c, h, "state").items()})
+        res.update({f"1985:{m}": r for m, r in _sel(results, c, h, "state85").items()})
+        if "rw" not in res or not any(k.startswith("1985:") for k in res):
+            continue
+        res = common_sample(res)
+        for m, r in res.items():
+            if m != "rw":
+                rows.setdefault(m, {})[NAMES[c]] = _rel(r)
+    out = []
+    for m in ["ucsv", "ens:median"] + [f"{y}:{n}" for n in STATE_LABELS for y in ("1960", "1985")]:
+        if m in rows:
+            lab = _label(m) if ":" not in m or m.startswith("ens:") else f"{_label(m.split(':')[1])}, trained from {m[:4]}"
+            vals = list(rows[m].values())
+            out.append({"model": lab, **{k: _f(v) for k, v in rows[m].items()}, "mean": _f(np.mean(vals))})
+    return pd.DataFrame(out)
+
+
 def decomposition_table(results) -> pd.DataFrame:
     """What each ingredient adds, 12 months ahead: RMSE ratio and DM test of one variant against another."""
     pairs = [("pistar_fwd", "pistar_fwd_complete", "partial horizons (vs complete paths only)"),
@@ -334,6 +356,12 @@ def write_report(results: dict, path: str, summary: str | None = None) -> None:
     L += ["## Which ingredient does the work (12 months ahead)", "",
           "RMSE of the paper's design relative to the variant without one ingredient (below 1: the ingredient "
           "helps), with the DM p-value.", "", _md(decomposition_table(results)), ""]
+    t85 = from1985_table(results)
+    if not t85.empty:
+        L += ["## Robustness: state models trained from 1985", "",
+              "The repository's robustness suite also trains from 1985 (`robustness.py`).  Run after the main "
+              "results, as a diagnostic of the long training sample.  Same origins; RMSE relative to the random walk.",
+              "", _md(t85), ""]
     L += ["## Adding the state model to the median", "", _md(median_table(results)), ""]
     L += ["## By the month being forecast, 12 months ahead", "", _md(subperiod_rel(results)), ""]
     L += ["## The paper's test window (US)", "",
